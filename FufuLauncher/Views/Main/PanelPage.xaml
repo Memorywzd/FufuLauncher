@@ -26,6 +26,11 @@
     </Page.Resources>
 
     <Grid Padding="40" x:Name="RootLayoutGrid" Opacity="0" RenderTransformOrigin="0.5,0.5">
+        <Grid.Transitions>
+            <TransitionCollection>
+                <EntranceThemeTransition FromVerticalOffset="40"/>
+            </TransitionCollection>
+        </Grid.Transitions>
         <Grid.RenderTransform>
             <ScaleTransform x:Name="RootLayoutScale" ScaleX="1" ScaleY="1"/>
         </Grid.RenderTransform>

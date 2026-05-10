@@ -51,11 +51,13 @@ public sealed partial class UpdateNotificationWindow : WindowEx
         }
         catch { }
         
-        await Task.Delay(400);
-        
-        var updateWindow = new UpdateWindow();
-        updateWindow.Activate();
-        
+        await Task.Delay(200);
+
+        if (App.MainWindow is MainWindow mainWindow)
+        {
+            await mainWindow.NavigateToSettingsUpdateSectionAsync();
+        }
+
         Close();
     }
 }

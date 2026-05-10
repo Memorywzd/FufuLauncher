@@ -1,6 +1,7 @@
-﻿using System.ComponentModel;
+using System.ComponentModel;
 using System.Diagnostics;
 using FufuLauncher.Contracts.Services;
+using FufuLauncher.Messages;
 using FufuLauncher.ViewModels;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -15,6 +16,8 @@ public sealed partial class MainPage : Page
 {
     private Microsoft.UI.Xaml.Media.Brush _originalInfoCardBrush;
     private Microsoft.UI.Xaml.Media.Brush _originalCheckinCardBrush;
+    private DateTimeOffset _lastBackgroundSwitchTime = DateTimeOffset.MinValue;
+    private static readonly TimeSpan BackgroundSwitchCooldown = TimeSpan.FromSeconds(2);
     public MainViewModel ViewModel
     {
         get;
@@ -351,8 +354,17 @@ private async void ChangeUidButton_Click(object sender, RoutedEventArgs e)
     
     private void BackgroundGridView_ItemClick(object sender, ItemClickEventArgs e)
     {
+        var now = DateTimeOffset.Now;
+        if (now - _lastBackgroundSwitchTime < BackgroundSwitchCooldown)
+        {
+            var notificationService = App.GetService<INotificationService>();
+            notificationService.Show("背景切换过快", "还在切换中，请等待2秒", NotificationType.Warning, 2000);
+            return;
+        }
+
         if (e.ClickedItem is FufuLauncher.Services.Background.BackgroundUrlInfo info)
         {
+            _lastBackgroundSwitchTime = now;
             // 触发 ViewModel 中的背景切换命令
             ViewModel.SelectSpecificBackgroundCommand.Execute(info);
         

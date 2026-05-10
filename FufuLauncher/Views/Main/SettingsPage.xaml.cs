@@ -1,4 +1,5 @@
-﻿using FufuLauncher.ViewModels;
+using System.Linq;
+using FufuLauncher.ViewModels;
 using Microsoft.UI;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
@@ -230,5 +231,28 @@ public sealed partial class SettingsPage : Page
         };
 
         element.StartBringIntoView(bringIntoViewOptions);
+    }
+
+    public async Task NavigateToUpdateSectionAsync()
+    {
+        var updateNavItem = SettingsNavigationView.MenuItems
+            .OfType<NavigationViewItem>()
+            .FirstOrDefault(item => item.Tag?.ToString() == "UpdateItem");
+
+        if (updateNavItem != null)
+        {
+            SettingsNavigationView.SelectedItem = updateNavItem;
+        }
+
+        await Task.Delay(120);
+
+        if (UpdateItem != null)
+        {
+            BringElementIntoView(UpdateItem);
+        }
+
+        await Task.Delay(120);
+
+        CheckUpdateButton?.Focus(FocusState.Programmatic);
     }
 }

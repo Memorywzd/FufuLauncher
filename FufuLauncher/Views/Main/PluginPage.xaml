@@ -1,4 +1,4 @@
-﻿<Page
+<Page
     x:Class="FufuLauncher.Views.PluginPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -44,6 +44,11 @@
           Padding="24" 
           Opacity="0" 
           RenderTransformOrigin="0.5,0.5">
+        <Grid.Transitions>
+            <TransitionCollection>
+                <EntranceThemeTransition FromVerticalOffset="40"/>
+            </TransitionCollection>
+        </Grid.Transitions>
         
         <Grid.RenderTransform>
             <ScaleTransform x:Name="RootLayoutScale" ScaleX="1" ScaleY="1"/>

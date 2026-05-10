@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 using CommunityToolkit.Mvvm.Messaging;
@@ -928,6 +928,15 @@ private async Task ShowAutoPathDialog(string foundPath)
         private async void SelectPath_Click(object sender, RoutedEventArgs e)
         {
             await PickGameFolderAsync();
+        }
+
+        private async void ClearPath_Click(object sender, RoutedEventArgs e)
+        {
+            PathTextBox.Text = string.Empty;
+            _currentConfig = null;
+            await _localSettingsService.SaveSettingAsync("GameInstallationPath", string.Empty);
+            WeakReferenceMessenger.Default.Send(new GamePathChangedMessage(string.Empty));
+            ShowEmptyState();
         }
 
         private async Task PickGameFolderAsync()

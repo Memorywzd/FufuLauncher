@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
+using System.Linq;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Numerics;
@@ -1260,6 +1261,40 @@ private async Task CheckRedeemCodesForTodayAsync()
             ContentFrame.Navigate(pageType);
             var isMainPage = pageType == typeof(Views.MainPage);
             UpdatePageOverlayState(isMainPage);
+        }
+    }
+
+    public async Task NavigateToSettingsUpdateSectionAsync()
+    {
+        Activate();
+
+        for (int i = 0; i < 40 && !_isMainUiLoaded; i++)
+        {
+            await Task.Delay(100);
+        }
+
+        var settingsItem = NavigationView.FooterMenuItems
+            .OfType<NavigationViewItem>()
+            .FirstOrDefault(item => item.Tag?.ToString() == "FufuLauncher.ViewModels.SettingsViewModel");
+
+        if (settingsItem != null)
+        {
+            NavigationView.SelectedItem = settingsItem;
+        }
+        else
+        {
+            NavigateToPage("FufuLauncher.ViewModels.SettingsViewModel");
+        }
+
+        for (int i = 0; i < 40; i++)
+        {
+            if (ContentFrame.Content is Views.SettingsPage settingsPage)
+            {
+                await settingsPage.NavigateToUpdateSectionAsync();
+                return;
+            }
+
+            await Task.Delay(100);
         }
     }
 

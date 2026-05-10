@@ -1,4 +1,4 @@
-﻿<Page x:Class="FufuLauncher.Views.SettingsPage"
+<Page x:Class="FufuLauncher.Views.SettingsPage"
       xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
       xmlns:helpers="using:FufuLauncher.Helpers"
@@ -52,6 +52,11 @@
     </Page.Resources>
 
     <Grid x:Name="RootLayoutGrid" Opacity="0" RenderTransformOrigin="0.5,0.5">
+        <Grid.Transitions>
+            <TransitionCollection>
+                <EntranceThemeTransition FromVerticalOffset="40"/>
+            </TransitionCollection>
+        </Grid.Transitions>
         <Grid.RenderTransform>
             <ScaleTransform x:Name="RootLayoutScale" ScaleX="1" ScaleY="1"/>
         </Grid.RenderTransform>
@@ -580,7 +585,8 @@
                                    Opacity="0.7"
                                    Margin="0,2,0,12"/>
         
-                        <Button Content="检查更新" 
+                        <Button x:Name="CheckUpdateButton"
+                                Content="检查更新" 
                                 Command="{x:Bind ViewModel.CheckUpdateCommand}" 
                                 HorizontalAlignment="Left" 
                                 Padding="12,6" 
