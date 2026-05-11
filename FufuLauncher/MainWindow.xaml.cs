@@ -1253,6 +1253,7 @@ private async Task CheckRedeemCodesForTodayAsync()
             "FufuLauncher.ViewModels.PluginViewModel" => typeof(Views.PluginPage),
             "FufuLauncher.ViewModels.DataViewModel" => typeof(Views.DataPage),
             "FufuLauncher.ViewModels.PluginSettingsViewModel" => typeof(Views.PluginSettingsPage),
+            "FufuLauncher.ViewModels.HelpViewModel" => typeof(Views.HelpPage),
             _ => null
         };
 
