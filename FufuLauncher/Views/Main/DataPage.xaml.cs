@@ -18,6 +18,7 @@ public sealed partial class DataPage : Page
     {
         ViewModel = App.GetService<DataViewModel>();
         InitializeComponent();
+        Loaded += (s, e) => EntranceStoryboard.Begin();
     }
     
     private void OnAbyssFilterChanged(object sender, SelectionChangedEventArgs e)

@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.Numerics;
 using FufuLauncher.ViewModels;
 using Microsoft.UI.Xaml;
@@ -26,6 +26,7 @@ namespace FufuLauncher.Views
             ViewModel = App.GetService<CalculatorViewModel>();
             DataContext = ViewModel;
             InitializeComponent();
+            Loaded += (s, e) => EntranceStoryboard.Begin();
 
             Debug.WriteLine("=== CalculatorPage 初始化 ===");
             _ = InitializeWebViewAsync();

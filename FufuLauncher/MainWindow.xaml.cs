@@ -1239,7 +1239,7 @@ private async Task CheckRedeemCodesForTodayAsync()
         }
     }
 
-    private void NavigateToPage(string viewModelTag)
+    private async void NavigateToPage(string viewModelTag)
     {
         var pageType = viewModelTag switch
         {
@@ -1259,7 +1259,17 @@ private async Task CheckRedeemCodesForTodayAsync()
 
         if (pageType != null && ContentFrame.CurrentSourcePageType != pageType)
         {
-            ContentFrame.Navigate(pageType);
+            if (ContentFrame.Content is Page currentPage)
+            {
+                var exitStoryboard = currentPage.FindName("ExitStoryboard") as Storyboard;
+                if (exitStoryboard != null)
+                {
+                    exitStoryboard.Begin();
+                    await Task.Delay(300);
+                }
+            }
+
+            ContentFrame.Navigate(pageType, null, new SuppressNavigationTransitionInfo());
             var isMainPage = pageType == typeof(Views.MainPage);
             UpdatePageOverlayState(isMainPage);
         }

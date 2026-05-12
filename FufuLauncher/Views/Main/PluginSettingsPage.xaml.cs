@@ -1,4 +1,4 @@
-﻿using System.IO.Compression;
+using System.IO.Compression;
 using System.Security.Cryptography;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -33,6 +33,7 @@ public sealed partial class PluginSettingsPage : Page
     
     private async void PluginSettingsPage_Loaded(object sender, RoutedEventArgs e)
     {
+        EntranceStoryboard.Begin();
         if (ViewModel.IsPluginCorrupted())
         {
             var dialog = new ContentDialog

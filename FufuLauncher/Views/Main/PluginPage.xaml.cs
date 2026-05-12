@@ -1,4 +1,4 @@
-﻿using System.IO.Compression;
+using System.IO.Compression;
 using Windows.System;
 using FufuLauncher.Models;
 using FufuLauncher.ViewModels;
@@ -494,7 +494,7 @@ public sealed partial class PluginPage : Page
         }
     }
 
-    private void OnConfigClick(object sender, RoutedEventArgs e)
+    private async void OnConfigClick(object sender, RoutedEventArgs e)
     {
         if (sender is Button btn && btn.Tag is PluginItem item && item.HasConfig)
         {
@@ -503,7 +503,9 @@ public sealed partial class PluginPage : Page
 
             if (isFuFuPlugin)
             {
-                Frame.Navigate(typeof(PluginSettingsPage), item);
+                ExitStoryboard.Begin();
+                await Task.Delay(300);
+                Frame.Navigate(typeof(PluginSettingsPage), item, new Microsoft.UI.Xaml.Media.Animation.SuppressNavigationTransitionInfo());
                 
                 var navView = FindParentNavigationView(this);
                 if (navView != null)
@@ -521,7 +523,9 @@ public sealed partial class PluginPage : Page
             }
             else
             {
-                Frame.Navigate(typeof(PluginConfigPage), item);
+                ExitStoryboard.Begin();
+                await Task.Delay(300);
+                Frame.Navigate(typeof(PluginConfigPage), item, new Microsoft.UI.Xaml.Media.Animation.SuppressNavigationTransitionInfo());
             }
         }
     }

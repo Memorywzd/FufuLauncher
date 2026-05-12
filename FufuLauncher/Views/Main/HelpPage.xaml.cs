@@ -1,4 +1,4 @@
-﻿using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using FufuLauncher.ViewModels;
 using FufuLauncher.Models;
@@ -37,6 +37,7 @@ public sealed partial class HelpPage : Page
 
     private async void HelpPage_Loaded(object sender, RoutedEventArgs e)
     {
+        EntranceStoryboard.Begin();
         if (_searchFlyoutDebounce is null)
         {
             var dq = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
