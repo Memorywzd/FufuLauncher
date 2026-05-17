@@ -156,7 +156,9 @@ public partial class App : Application
                     services.AddSingleton<GachaService>();
                     services.AddSingleton<IAnnouncementService, AnnouncementService>();
                     services.AddTransient<IPluginUpdateService, PluginUpdateService>();
-                    services.AddTransient<FufuLauncher.ViewModels.GachaAnalysisModel>();
+                    services.AddTransient<GachaAnalysisModel>();
+                    services.AddTransient<CommunityViewModel>();
+                    services.AddTransient<CommunityPage>();
                     services.Configure<LocalSettingsOptions>(context.Configuration.GetSection(nameof(LocalSettingsOptions)));
                 })
                 .Build();
