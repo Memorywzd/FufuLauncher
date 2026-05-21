@@ -63,7 +63,9 @@
                         Loaded="NavigationView_Loaded"
                         OpenPaneLength="150"
                         CompactPaneLength="60"
-                        Background="{x:Null}">
+                        Background="{x:Null}"
+                        ScrollViewer.VerticalScrollBarVisibility="Auto"
+                        ScrollViewer.VerticalScrollMode="Enabled">
 
             <NavigationView.Resources>
                 <ResourceDictionary>
@@ -173,6 +175,12 @@
                 <NavigationViewItem Content="VanillaBBS" Tag="FufuLauncher.ViewModels.CommunityViewModel">
                     <NavigationViewItem.Icon>
                         <FontIcon Glyph="&#xE716;" FontFamily="{StaticResource ActionIconFont}" FontSize="24"/>
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+                
+                <NavigationViewItem Content="养成计算" Tag="FufuLauncher.ViewModels.CalculatorViewModel">
+                    <NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE1D0;" FontFamily="{StaticResource ActionIconFont}" FontSize="24"/>
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
             </NavigationView.MenuItems>
