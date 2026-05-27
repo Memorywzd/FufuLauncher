@@ -239,6 +239,12 @@ namespace FufuLauncher.ViewModels
                         AvailableBackgrounds.Add(bg);
                     }
                 });
+
+                // 后台预加载所有图片背景到文件缓存
+                var imageUrls = backgrounds
+                    .Where(b => !b.IsVideo && !string.IsNullOrEmpty(b.Url))
+                    .Select(b => b.Url);
+                _ = _backgroundRenderer.PreloadImageBackgroundsAsync(imageUrls);
             }
             catch (Exception ex)
             {

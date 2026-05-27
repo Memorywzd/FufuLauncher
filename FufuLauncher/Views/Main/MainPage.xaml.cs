@@ -19,8 +19,6 @@ public sealed partial class MainPage : Page
 {
     private const double BannerSwipeThreshold = 42;
     private const double BannerAnimationMs = 460;
-    private DateTimeOffset _lastBackgroundSwitchTime = DateTimeOffset.MinValue;
-    private static readonly TimeSpan BackgroundSwitchCooldown = TimeSpan.FromSeconds(2);
     private BannerItem _displayedBanner;
     private bool _isBannerTransitioning;
     private bool _isBannerPointerPressed;
@@ -341,17 +339,8 @@ private async void ChangeUidButton_Click(object sender, RoutedEventArgs e)
     
     private void BackgroundGridView_ItemClick(object sender, ItemClickEventArgs e)
     {
-        var now = DateTimeOffset.Now;
-        if (now - _lastBackgroundSwitchTime < BackgroundSwitchCooldown)
-        {
-            var notificationService = App.GetService<INotificationService>();
-            notificationService.Show("背景切换过快", "还在切换中，请等待2秒", NotificationType.Warning, 2000);
-            return;
-        }
-
         if (e.ClickedItem is BackgroundUrlInfo info)
         {
-            _lastBackgroundSwitchTime = now;
             ViewModel.SelectSpecificBackgroundCommand.Execute(info);
             
             BackgroundFlyout.Hide();

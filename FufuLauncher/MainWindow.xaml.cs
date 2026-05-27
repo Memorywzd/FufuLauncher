@@ -752,13 +752,13 @@ private Task ApplyGlobalBackgroundAsync(BackgroundRenderResult? result)
             GlobalBackgroundImage.Source = result.ImageSource;
             GlobalBackgroundImage.Visibility = Visibility.Visible;
             
-            await Task.Delay(900); 
+            await Task.Delay(100); 
             
             var fadeInAnimation = new DoubleAnimation
             {
                 From = 0.0,
                 To = finalOpacity,
-                Duration = TimeSpan.FromMilliseconds(1000),
+                Duration = TimeSpan.FromMilliseconds(400),
                 EasingFunction = new CircleEase { EasingMode = EasingMode.EaseOut }
             };
 

@@ -38,6 +38,7 @@ namespace FufuLauncher.Services.Background
         Task<BackgroundRenderResult> GetBackgroundAsync(ServerType server, bool preferVideo);
         Task<BackgroundRenderResult> GetCustomBackgroundAsync(string filePath);
         Task<BackgroundRenderResult> GetSpecificOnlineBackgroundAsync(string url, bool isVideo);
+        Task PreloadImageBackgroundsAsync(IEnumerable<string> imageUrls);
         void ClearBackground();
         void ClearCustomBackground();
     }
@@ -46,9 +47,11 @@ namespace FufuLauncher.Services.Background
     {
         private static readonly HttpClient _httpClient;
 
-        
+        private readonly SemaphoreSlim _loadLock = new(1, 1);
+
         public async Task<BackgroundRenderResult> GetSpecificOnlineBackgroundAsync(string url, bool isVideo)
         {
+            await _loadLock.WaitAsync();
             try
             {
                 if (isVideo)
@@ -66,6 +69,10 @@ namespace FufuLauncher.Services.Background
             {
                 Debug.WriteLine($"指定背景加载失败: {ex.Message}");
                 return GetFallbackBackground();
+            }
+            finally
+            {
+                _loadLock.Release();
             }
         }
         
@@ -112,6 +119,7 @@ namespace FufuLauncher.Services.Background
 
         public async Task<BackgroundRenderResult> GetBackgroundAsync(ServerType server, bool preferVideo)
         {
+            await _loadLock.WaitAsync();
             try
             {
                 var backgroundService = App.GetService<IHoyoverseBackgroundService>();
@@ -127,7 +135,7 @@ namespace FufuLauncher.Services.Background
 
                 if (backgroundInfo.Url == _currentBackgroundUrl && _cachedBackground != null)
                 {
-                    Debug.WriteLine("BackgroundRenderer: 使用缓存媒体");
+                    Debug.WriteLine("BackgroundRenderer: 使用内存缓存媒体");
                     return _cachedBackground;
                 }
 
@@ -159,6 +167,10 @@ namespace FufuLauncher.Services.Background
             {
                 Debug.WriteLine($"BackgroundRenderer: 加载或处理背景失败 - {ex.Message}");
                 return GetFallbackBackground();
+            }
+            finally
+            {
+                _loadLock.Release();
             }
         }
 
@@ -250,16 +262,59 @@ namespace FufuLauncher.Services.Background
 
         private async Task<ImageSource> ProcessImageBackground(string imageUrl)
         {
+            var fileName = GetCacheFileName(imageUrl, ".img");
+            var cachedFilePath = Path.Combine(_cacheFolderPath, fileName);
+
+            // 优先从文件缓存加载
+            if (File.Exists(cachedFilePath))
+            {
+                var fileInfo = new FileInfo(cachedFilePath);
+                if (fileInfo.Length > 1024)
+                {
+                    try
+                    {
+                        Debug.WriteLine($"BackgroundRenderer: 从文件缓存加载图片: {fileName}");
+                        var bitmap = new BitmapImage();
+                        using (var stream = File.OpenRead(cachedFilePath))
+                        {
+                            await bitmap.SetSourceAsync(stream.AsRandomAccessStream());
+                        }
+                        return bitmap;
+                    }
+                    catch
+                    {
+                        File.Delete(cachedFilePath);
+                        Debug.WriteLine($"BackgroundRenderer: 图片缓存损坏，已删除 {fileName}");
+                    }
+                }
+            }
+
+            // 缓存不存在，从网络下载
             Debug.WriteLine($"BackgroundRenderer: 开始下载图片: {imageUrl}");
             var data = await _httpClient.GetByteArrayAsync(imageUrl);
             Debug.WriteLine($"BackgroundRenderer: 下载完成，大小 {data.Length} bytes");
 
-            var bitmap = new BitmapImage();
+            // 保存到文件缓存
+            try
+            {
+                Directory.CreateDirectory(_cacheFolderPath);
+                var tempFile = Path.Combine(_cacheFolderPath, $"{fileName}.tmp");
+                await File.WriteAllBytesAsync(tempFile, data);
+                File.Move(tempFile, cachedFilePath, true);
+                Debug.WriteLine($"BackgroundRenderer: 图片已缓存到 {fileName}");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"BackgroundRenderer: 图片缓存写入失败: {ex.Message}");
+            }
+
+            // 从下载数据解码
+            var bitmapImage = new BitmapImage();
             using (var stream = new MemoryStream(data))
             {
                 try
                 {
-                    await bitmap.SetSourceAsync(stream.AsRandomAccessStream());
+                    await bitmapImage.SetSourceAsync(stream.AsRandomAccessStream());
                 }
                 catch (Exception ex)
                 {
@@ -269,12 +324,12 @@ namespace FufuLauncher.Services.Background
             }
 
             Debug.WriteLine("BackgroundRenderer: BitmapImage 从流加载完成");
-            return bitmap;
+            return bitmapImage;
         }
 
-        private string GetCacheFileName(string url)
+        private string GetCacheFileName(string url, string defaultExtension = ".mp4")
         {
-            var extension = ".mp4";
+            var extension = defaultExtension;
             try
             {
                 var uri = new Uri(url);
@@ -316,6 +371,38 @@ namespace FufuLauncher.Services.Background
 
             _cachedBackground = null;
             _currentBackgroundUrl = null;
+        }
+
+        public async Task PreloadImageBackgroundsAsync(IEnumerable<string> imageUrls)
+        {
+            var tasks = imageUrls.Select(async url =>
+            {
+                try
+                {
+                    var fileName = GetCacheFileName(url, ".img");
+                    var cachedFilePath = Path.Combine(_cacheFolderPath, fileName);
+
+                    if (File.Exists(cachedFilePath) && new FileInfo(cachedFilePath).Length > 1024)
+                    {
+                        Debug.WriteLine($"BackgroundRenderer: 预加载跳过(已缓存): {fileName}");
+                        return;
+                    }
+
+                    Debug.WriteLine($"BackgroundRenderer: 预加载下载中: {url}");
+                    var data = await _httpClient.GetByteArrayAsync(url);
+                    Directory.CreateDirectory(_cacheFolderPath);
+                    var tempFile = Path.Combine(_cacheFolderPath, $"{fileName}.tmp");
+                    await File.WriteAllBytesAsync(tempFile, data);
+                    File.Move(tempFile, cachedFilePath, true);
+                    Debug.WriteLine($"BackgroundRenderer: 预加载完成: {fileName}");
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"BackgroundRenderer: 预加载失败({url}): {ex.Message}");
+                }
+            });
+
+            await Task.WhenAll(tasks);
         }
 
         public void ClearCustomBackground()
