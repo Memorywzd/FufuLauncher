@@ -408,6 +408,14 @@ namespace FufuLauncher.Views
             ClearPluginsFolder();
 
             print("正在比对");
+
+            string localDataDirName = isCurrentlyOs ? GameConstants.OS_DATA_DIR : GameConstants.CN_DATA_DIR;
+            string pluginsDir = Path.Combine(gameDir, localDataDirName, "Plugins");
+            if (Directory.Exists(pluginsDir))
+            {
+                Directory.Delete(pluginsDir, true);
+            }
+
             var ops = GenerateOperations(_targetManifest, localManifest, _targetChunkPrefix, _targetChunkSuffix);
 
             print("正在下载所需的数据块");
@@ -617,37 +625,45 @@ private async Task<(string manifestUrl, string chunkPrefix, string chunkSuffix)>
     return ($"{urlPrefix}/{manifestId}{urlSuffix}", chunkPrefix, chunkSuffix);
 }
 
-        public async Task ExecutePreDownloadAsync()
-        {
-            print("正在请求网络分支 (预下载)");
-            var localInfo = await GetBranchAndManifestUrlAsync(isCurrentlyOs, isCurrentlyBili, false);
-            var targetInfo = await GetBranchAndManifestUrlAsync(isCurrentlyOs, isCurrentlyBili, true);
+public async Task ExecutePreDownloadAsync()
+{
+    print("正在请求网络分支 (预下载)");
+    var localInfo = await GetBranchAndManifestUrlAsync(isCurrentlyOs, isCurrentlyBili, false);
+    var targetInfo = await GetBranchAndManifestUrlAsync(isCurrentlyOs, isCurrentlyBili, true);
 
-            _targetChunkPrefix = targetInfo.chunkPrefix;
-            _targetChunkSuffix = targetInfo.chunkSuffix;
+    _targetChunkPrefix = targetInfo.chunkPrefix;
+    _targetChunkSuffix = targetInfo.chunkSuffix;
 
-            print("正在下载并解析清单");
-            var localManifest = await DownloadAndDecodeManifestAsync(localInfo.manifestUrl);
-            _targetManifest = await DownloadAndDecodeManifestAsync(targetInfo.manifestUrl);
+    print("正在下载并解析清单");
+    var localManifest = await DownloadAndDecodeManifestAsync(localInfo.manifestUrl);
+    _targetManifest = await DownloadAndDecodeManifestAsync(targetInfo.manifestUrl);
 
-            print("正在比对预下载资源");
-            var ops = GenerateUpdateOperations(_targetManifest, localManifest, _targetChunkPrefix, _targetChunkSuffix);
+    print("正在比对预下载资源");
 
-            print("正在下载预下载数据块");
-            await DownloadDiffChunksAsync(ops.Assemble);
+    string localDataDirName = isCurrentlyOs ? GameConstants.OS_DATA_DIR : GameConstants.CN_DATA_DIR;
+    string pluginsDir = Path.Combine(gameDir, localDataDirName, "Plugins");
+    if (Directory.Exists(pluginsDir))
+    {
+        Directory.Delete(pluginsDir, true);
+    }
 
-            print("正在组装预下载文件");
-            AssembleFiles(ops.Assemble);
+    var ops = GenerateUpdateOperations(_targetManifest, localManifest, _targetChunkPrefix, _targetChunkSuffix);
 
-            print("正在安装预下载文件");
-            ApplyUpdatePhysicalFiles();
+    print("正在下载预下载数据块");
+    await DownloadDiffChunksAsync(ops.Assemble);
 
-            print("清理临时数据");
-            if (Directory.Exists(targetDir))
-            {
-                Directory.Delete(targetDir, true);
-            }
-        }
+    print("正在组装预下载文件");
+    AssembleFiles(ops.Assemble);
+
+    print("正在安装预下载文件");
+    ApplyUpdatePhysicalFiles();
+
+    print("清理临时数据");
+    if (Directory.Exists(targetDir))
+    {
+        Directory.Delete(targetDir, true);
+    }
+}
 
         private OperationLists GenerateUpdateOperations(SophonManifestProto targetManifest, SophonManifestProto localManifest, string urlPrefix, string urlSuffix)
         {
