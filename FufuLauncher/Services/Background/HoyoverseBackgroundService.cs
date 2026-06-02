@@ -92,13 +92,7 @@ namespace FufuLauncher.Services.Background
                     var backgrounds = result.Data.GameInfoList[0].Backgrounds;
                     if (backgrounds?.Length > 0)
                     {
-                        var videoBg = backgrounds.FirstOrDefault(b => b.Type == "BACKGROUND_TYPE_VIDEO" && !string.IsNullOrEmpty(b.Video?.Url));
-                        var staticBgs = backgrounds.Where(b => !string.IsNullOrEmpty(b.Background?.Url)).ToList();
-
-                        if (preferVideo && videoBg != null)
-                        {
-                            return new BackgroundUrlInfo { Url = videoBg.Video.Url, IsVideo = true };
-                        }
+                        var staticBgs = backgrounds.Where(b => b.Type != "BACKGROUND_TYPE_VIDEO" && !string.IsNullOrEmpty(b.Background?.Url)).ToList();
 
                         if (staticBgs.Count > 0)
                         {
@@ -146,20 +140,10 @@ namespace FufuLauncher.Services.Background
                 if (result?.Retcode == 0 && result.Data?.GameInfoList?.Length > 0)
                 {
                     var backgrounds = result.Data.GameInfoList[0].Backgrounds;
-                    if (backgrounds?.Length > 0)
                     {
                         foreach (var b in backgrounds)
                         {
-                            if (b.Type == "BACKGROUND_TYPE_VIDEO" && !string.IsNullOrEmpty(b.Video?.Url))
-                            {
-                                list.Add(new BackgroundUrlInfo 
-                                { 
-                                    Url = b.Video.Url, 
-                                    IsVideo = true, 
-                                    ThumbnailUrl = b.Background?.Url ?? b.Video.Url 
-                                });
-                            }
-                            else if (!string.IsNullOrEmpty(b.Background?.Url))
+                            if (b.Type != "BACKGROUND_TYPE_VIDEO" && !string.IsNullOrEmpty(b.Background?.Url))
                             {
                                 list.Add(new BackgroundUrlInfo 
                                 { 

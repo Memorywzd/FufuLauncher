@@ -54,6 +54,9 @@ public sealed partial class MainWindow : WindowEx
     private DispatcherTimer _memoryOptimizationTimer;
     private DispatcherTimer _periodicMemoryTimer; 
     private bool _isSuspended;
+    private DateTime _backgroundInitWindowShowTime;
+    private bool _isBackgroundDownloading;
+    private Views.BackgroundInitWindow? _backgroundInitWindow;
 
     public IRelayCommand ShowWindowCommand
     {
@@ -104,6 +107,43 @@ public sealed partial class MainWindow : WindowEx
         settings.ColorValuesChanged += Settings_ColorValuesChanged;
         _backgroundRenderer = App.GetService<IBackgroundRenderer>();
         _localSettingsService = App.GetService<ILocalSettingsService>();
+        
+        WeakReferenceMessenger.Default.Register<BackgroundDownloadStateMessage>(this, (_, m) =>
+        {
+            _isBackgroundDownloading = m.Value;
+
+            dispatcherQueue.TryEnqueue(async () =>
+            {
+                if (_isBackgroundDownloading)
+                {
+                    if (_backgroundInitWindow == null)
+                    {
+                        _backgroundInitWindow = new Views.BackgroundInitWindow();
+                        _backgroundInitWindowShowTime = DateTime.Now;
+                        _backgroundInitWindow.Activate();
+                    }
+                }
+                else
+                {
+                    if (_backgroundInitWindow != null)
+                    {
+                        var elapsed = DateTime.Now - _backgroundInitWindowShowTime;
+                        var minDuration = TimeSpan.FromSeconds(1);
+                        
+                        if (elapsed < minDuration)
+                        {
+                            await Task.Delay(minDuration - elapsed);
+                        }
+                        
+                        if (!_isBackgroundDownloading)
+                        {
+                            _backgroundInitWindow?.Close();
+                            _backgroundInitWindow = null;
+                        }
+                    }
+                }
+            });
+        });
 
         WeakReferenceMessenger.Default.Register<AgreementAcceptedMessage>(this, (_, _) =>
         {
@@ -702,14 +742,13 @@ public sealed partial class MainWindow : WindowEx
                     return;
                 }
             }
-
-            var preferVideoSetting = await _localSettingsService.ReadSettingAsync("UserPreferVideoBackground");
-            var preferVideo = preferVideoSetting != null && Convert.ToBoolean(preferVideoSetting);
+            
+            var preferVideo = false;
 
             var serverJson = await _localSettingsService.ReadSettingAsync(LocalSettingsService.BackgroundServerKey);
             var serverValue = serverJson != null ? Convert.ToInt32(serverJson) : 0;
             var server = (ServerType)serverValue;
-            
+        
             var result = await _backgroundRenderer.GetBackgroundAsync(server, preferVideo);
             await ApplyGlobalBackgroundAsync(result);
         }
@@ -727,18 +766,11 @@ private Task ApplyGlobalBackgroundAsync(BackgroundRenderResult? result)
 
         if (result.IsVideo)
         {
-            _isVideoBackground = true;
-            GlobalBackgroundImage.Visibility = Visibility.Collapsed;
+            _isVideoBackground = false;
             _globalBackgroundPlayer?.Pause();
-            _globalBackgroundPlayer = new MediaPlayer
-            {
-                Source = result.VideoSource,
-                IsMuted = true,
-                IsLoopingEnabled = true,
-                AutoPlay = true
-            };
-            GlobalBackgroundVideo.SetMediaPlayer(_globalBackgroundPlayer);
-            GlobalBackgroundVideo.Visibility = Visibility.Visible;
+            _globalBackgroundPlayer = null;
+            GlobalBackgroundVideo.Visibility = Visibility.Collapsed;
+            return;
         }
         else
         {

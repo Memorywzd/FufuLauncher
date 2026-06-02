@@ -50,6 +50,33 @@ namespace FufuLauncher.Services.Background
         private static readonly HttpClient _httpClient;
 
         private readonly SemaphoreSlim _loadLock = new(1, 1);
+        
+        private int _downloadingCount = 0;
+        private readonly object _downloadStateLock = new object();
+        
+        private void NotifyDownloadStarted()
+        {
+            lock (_downloadStateLock)
+            {
+                _downloadingCount++;
+                if (_downloadingCount == 1)
+                {
+                    WeakReferenceMessenger.Default.Send(new BackgroundDownloadStateMessage(true));
+                }
+            }
+        }
+
+        private void NotifyDownloadFinished()
+        {
+            lock (_downloadStateLock)
+            {
+                _downloadingCount--;
+                if (_downloadingCount == 0)
+                {
+                    WeakReferenceMessenger.Default.Send(new BackgroundDownloadStateMessage(false));
+                }
+            }
+        }
 
         public async Task<BackgroundRenderResult> GetSpecificOnlineBackgroundAsync(string url, bool isVideo)
         {
@@ -58,8 +85,7 @@ namespace FufuLauncher.Services.Background
             {
                 if (isVideo)
                 {
-                    var videoSource = await ProcessVideoBackground(url);
-                    return new BackgroundRenderResult { VideoSource = videoSource, IsVideo = true };
+                    return GetFallbackBackground();
                 }
                 else
                 {
@@ -143,13 +169,8 @@ namespace FufuLauncher.Services.Background
 
                 if (backgroundInfo.IsVideo)
                 {
-                    Debug.WriteLine($"BackgroundRenderer: 处理视频背景");
-                    var videoSource = await ProcessVideoBackground(backgroundInfo.Url);
-                    _cachedBackground = new BackgroundRenderResult
-                    {
-                        VideoSource = videoSource,
-                        IsVideo = true
-                    };
+                    Debug.WriteLine("BackgroundRenderer: 视频背景已被禁用，触发回退机制");
+                    return GetFallbackBackground();
                 }
                 else
                 {
@@ -194,12 +215,7 @@ namespace FufuLauncher.Services.Background
 
                 if (isVideo)
                 {
-                    var file = await StorageFile.GetFileFromPathAsync(filePath);
-                    result = new BackgroundRenderResult
-                    {
-                        VideoSource = MediaSource.CreateFromStorageFile(file),
-                        IsVideo = true
-                    };
+                    return null;
                 }
                 else
                 {
