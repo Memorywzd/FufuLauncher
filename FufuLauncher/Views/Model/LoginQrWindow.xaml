@@ -70,6 +70,12 @@
                 </Grid>
             </Grid>
             
+            <TextBlock x:Name="WebLoginWarningTextBlock" 
+                       Text="注意：网页通行证登录无法获取到Stoken，部分功能会无法使用。" 
+                       Foreground="DarkOrange" 
+                       HorizontalAlignment="Center" 
+                       Visibility="Collapsed"/>
+            
             <Button x:Name="ManualCookieButton" Content="手动输入Cookie" Click="ManualCookieButton_Click" HorizontalAlignment="Center"/>
             <Button x:Name="ClearCacheButton" Content="清除历史登录数据" Click="ClearCacheButton_Click" HorizontalAlignment="Center"/>
         </StackPanel>

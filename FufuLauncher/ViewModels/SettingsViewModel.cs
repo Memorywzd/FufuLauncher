@@ -61,6 +61,12 @@ namespace FufuLauncher.ViewModels
         [ObservableProperty] private string _launchArgsPreview = "";
         [ObservableProperty] private string _customBackgroundPath;
         [ObservableProperty] private bool _hasCustomBackground;
+        
+        [ObservableProperty] private bool _isBackgroundSlideshowEnabled;
+        [ObservableProperty] private string _backgroundSlideshowFolder;
+        [ObservableProperty] private bool _hasBackgroundSlideshowFolder;
+        [ObservableProperty] private int _backgroundSlideshowInterval = 60; // seconds
+
         [ObservableProperty] private double _panelBackgroundOpacity = 0.5;
         [ObservableProperty] private bool _isShortTermSupportEnabled;
         [ObservableProperty] private bool _isBetterGIIntegrationEnabled;
@@ -119,6 +125,16 @@ namespace FufuLauncher.ViewModels
             get;
         }
 
+        public IAsyncRelayCommand SelectBackgroundSlideshowFolderCommand
+        {
+            get;
+        }
+        
+        public IAsyncRelayCommand ClearBackgroundSlideshowFolderCommand
+        {
+            get;
+        }
+
         public ICommand CheckUpdateCommand
         {
             get;
@@ -144,6 +160,9 @@ namespace FufuLauncher.ViewModels
             get;
         }
         
+        public IAsyncRelayCommand DownloadLatestBackgroundImageCommand { get; }
+        public IAsyncRelayCommand DownloadLatestBackgroundVideoCommand { get; }
+
         public SettingsViewModel(
             IThemeSelectorService themeSelectorService,
             IBackgroundRenderer backgroundRenderer,
@@ -213,6 +232,11 @@ namespace FufuLauncher.ViewModels
                 });
 
             SelectCustomBackgroundCommand = new AsyncRelayCommand(SelectCustomBackgroundAsync);
+            SelectBackgroundSlideshowFolderCommand = new AsyncRelayCommand(SelectBackgroundSlideshowFolderAsync);
+            ClearBackgroundSlideshowFolderCommand = new AsyncRelayCommand(ClearBackgroundSlideshowFolderAsync);
+
+            DownloadLatestBackgroundImageCommand = new AsyncRelayCommand(DownloadLatestBackgroundImageAsync);
+            DownloadLatestBackgroundVideoCommand = new AsyncRelayCommand(DownloadLatestBackgroundVideoAsync);
         }
         
         private async Task ClearCustomBackgroundAsync()
@@ -230,6 +254,97 @@ namespace FufuLauncher.ViewModels
                 Debug.WriteLine($"清除自定义背景失败: {ex.Message}");
             }
         }
+
+        private async Task DownloadLatestBackgroundImageAsync()
+        {
+            try
+            {
+                var service = App.GetService<IHoyoverseBackgroundService>();
+                var (imgUrl, _) = await service.GetLatestBackgroundUrlsAsync(SelectedServer);
+                if (!string.IsNullOrEmpty(imgUrl))
+                {
+                    await DownloadAndSaveFileAsync(imgUrl, "背景图片", ".png");
+                }
+                else
+                {
+                    ShowDialogMessage("提示", "当前服务器没有可用的背景图片。");
+                }
+            }
+            catch (Exception ex)
+            {
+                ShowDialogMessage("错误", $"下载图片失败: {ex.Message}");
+            }
+        }
+
+        private async Task DownloadLatestBackgroundVideoAsync()
+        {
+            try
+            {
+                var service = App.GetService<IHoyoverseBackgroundService>();
+                var (_, videoUrl) = await service.GetLatestBackgroundUrlsAsync(SelectedServer);
+                if (!string.IsNullOrEmpty(videoUrl))
+                {
+                    await DownloadAndSaveFileAsync(videoUrl, "背景视频", ".mp4");
+                }
+                else
+                {
+                    ShowDialogMessage("提示", "当前服务器没有可用的背景视频。");
+                }
+            }
+            catch (Exception ex)
+            {
+                ShowDialogMessage("错误", $"下载视频失败: {ex.Message}");
+            }
+        }
+
+        private async Task DownloadAndSaveFileAsync(string url, string typeName, string extension)
+        {
+            var savePicker = new Windows.Storage.Pickers.FileSavePicker();
+            var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(App.MainWindow);
+            WinRT.Interop.InitializeWithWindow.Initialize(savePicker, hwnd);
+
+            savePicker.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.PicturesLibrary;
+            if (extension == ".mp4")
+            {
+                savePicker.FileTypeChoices.Add("视频文件", new List<string> { ".mp4" });
+                savePicker.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.VideosLibrary;
+            }
+            else
+            {
+                savePicker.FileTypeChoices.Add("图片文件", new List<string> { ".png", ".jpg" });
+            }
+            savePicker.SuggestedFileName = $"FufuLauncher_{typeName}_{DateTime.Now:yyyyMMddHHmmss}";
+
+            var file = await savePicker.PickSaveFileAsync();
+            if (file == null) return;
+
+            using var httpClient = new HttpClient();
+            var response = await httpClient.GetAsync(url);
+            response.EnsureSuccessStatusCode();
+
+            using var stream = await response.Content.ReadAsStreamAsync();
+            using var fileStream = await file.OpenStreamForWriteAsync();
+            await stream.CopyToAsync(fileStream);
+
+            ShowDialogMessage("下载成功", $"{typeName} 已保存至：\n{file.Path}");
+        }
+
+        private async void ShowDialogMessage(string title, string content)
+        {
+            try
+            {
+                var dialog = new ContentDialog
+                {
+                    Title = title,
+                    Content = content,
+                    CloseButtonText = "确定",
+                    XamlRoot = App.MainWindow.Content.XamlRoot
+                };
+                await dialog.ShowAsync();
+            }
+            catch { }
+        }
+
         
         private string FormatSize(long bytes)
         {
@@ -436,6 +551,10 @@ namespace FufuLauncher.ViewModels
                 OnPropertyChanged(nameof(LaunchArgsHeight));
                 OnPropertyChanged(nameof(CustomBackgroundPath));
                 OnPropertyChanged(nameof(HasCustomBackground));
+                OnPropertyChanged(nameof(IsBackgroundSlideshowEnabled));
+                OnPropertyChanged(nameof(BackgroundSlideshowFolder));
+                OnPropertyChanged(nameof(HasBackgroundSlideshowFolder));
+                OnPropertyChanged(nameof(BackgroundSlideshowInterval));
                 OnPropertyChanged(nameof(CurrentWindowBackdrop));
                 OnPropertyChanged(nameof(IsShortTermSupportEnabled));
                 OnPropertyChanged(nameof(IsBetterGIIntegrationEnabled));
@@ -763,6 +882,31 @@ namespace FufuLauncher.ViewModels
                 CustomBackgroundPath = null;
                 HasCustomBackground = false;
             }
+
+            var isSlideshowEnabledJson = await _localSettingsService.ReadSettingAsync("IsBackgroundSlideshowEnabled");
+            IsBackgroundSlideshowEnabled = isSlideshowEnabledJson != null && Convert.ToBoolean(isSlideshowEnabledJson);
+
+            var slideshowFolderJson = await _localSettingsService.ReadSettingAsync("BackgroundSlideshowFolder");
+            if (slideshowFolderJson != null)
+            {
+                BackgroundSlideshowFolder = slideshowFolderJson.ToString();
+                HasBackgroundSlideshowFolder = Directory.Exists(BackgroundSlideshowFolder);
+            }
+            else
+            {
+                BackgroundSlideshowFolder = null;
+                HasBackgroundSlideshowFolder = false;
+            }
+
+            var slideshowIntervalJson = await _localSettingsService.ReadSettingAsync("BackgroundSlideshowInterval");
+            if (slideshowIntervalJson != null)
+            {
+                BackgroundSlideshowInterval = Convert.ToInt32(slideshowIntervalJson);
+            }
+            else
+            {
+                BackgroundSlideshowInterval = 60;
+            }
         }
 
         private void ParseLaunchParameters(string args)
@@ -876,6 +1020,19 @@ namespace FufuLauncher.ViewModels
         {
             Debug.WriteLine($"SettingsViewModel: 保存服务器设置 {value}");
             _ = _localSettingsService.SaveSettingAsync(LocalSettingsService.BackgroundServerKey, (int)value);
+            WeakReferenceMessenger.Default.Send(new BackgroundRefreshMessage());
+        }
+
+        partial void OnIsBackgroundSlideshowEnabledChanged(bool value)
+        {
+            _ = _localSettingsService.SaveSettingAsync("IsBackgroundSlideshowEnabled", value);
+            WeakReferenceMessenger.Default.Send(new BackgroundRefreshMessage());
+        }
+
+        partial void OnBackgroundSlideshowIntervalChanged(int value)
+        {
+            if (value < 1) value = 1; // min 1 second
+            _ = _localSettingsService.SaveSettingAsync("BackgroundSlideshowInterval", value);
             WeakReferenceMessenger.Default.Send(new BackgroundRefreshMessage());
         }
 
@@ -1026,6 +1183,42 @@ namespace FufuLauncher.ViewModels
             catch (Exception ex)
             {
                 Debug.WriteLine($"选择自定义背景失败: {ex.Message}");
+            }
+        }
+
+        private async Task SelectBackgroundSlideshowFolderAsync()
+        {
+            try
+            {
+                var folder = await _filePickerService.PickFolderAsync();
+                if (!string.IsNullOrEmpty(folder))
+                {
+                    BackgroundSlideshowFolder = folder;
+                    HasBackgroundSlideshowFolder = true;
+                    await _localSettingsService.SaveSettingAsync("BackgroundSlideshowFolder", folder);
+
+                    WeakReferenceMessenger.Default.Send(new BackgroundRefreshMessage());
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"选择轮播图文件夹失败: {ex.Message}");
+            }
+        }
+
+        private async Task ClearBackgroundSlideshowFolderAsync()
+        {
+            try
+            {
+                await _localSettingsService.SaveSettingAsync<string>("BackgroundSlideshowFolder", null);
+                BackgroundSlideshowFolder = null;
+                HasBackgroundSlideshowFolder = false;
+
+                WeakReferenceMessenger.Default.Send(new BackgroundRefreshMessage());
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"清除轮播图文件夹失败: {ex.Message}");
             }
         }
 

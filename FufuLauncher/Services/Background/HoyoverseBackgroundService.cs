@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -20,6 +20,7 @@ namespace FufuLauncher.Services.Background
     {
         Task<BackgroundUrlInfo> GetBackgroundUrlAsync(ServerType server, bool preferVideo);
         Task<List<BackgroundUrlInfo>> GetAvailableBackgroundsAsync(ServerType server);
+        Task<(string ImageUrl, string VideoUrl)> GetLatestBackgroundUrlsAsync(ServerType server);
     }
 
     public class HoyoverseBackgroundService : IHoyoverseBackgroundService
@@ -92,6 +93,17 @@ namespace FufuLauncher.Services.Background
                     var backgrounds = result.Data.GameInfoList[0].Backgrounds;
                     if (backgrounds?.Length > 0)
                     {
+                        if (preferVideo)
+                        {
+                            var videoBgs = backgrounds.Where(b => b.Type == "BACKGROUND_TYPE_VIDEO" && !string.IsNullOrEmpty(b.Video?.Url)).ToList();
+                            if (videoBgs.Count > 0)
+                            {
+                                var random = new Random();
+                                var selectedBg = videoBgs[random.Next(videoBgs.Count)];
+                                return new BackgroundUrlInfo { Url = selectedBg.Video.Url, IsVideo = true };
+                            }
+                        }
+
                         var staticBgs = backgrounds.Where(b => b.Type != "BACKGROUND_TYPE_VIDEO" && !string.IsNullOrEmpty(b.Background?.Url)).ToList();
 
                         if (staticBgs.Count > 0)
@@ -140,10 +152,20 @@ namespace FufuLauncher.Services.Background
                 if (result?.Retcode == 0 && result.Data?.GameInfoList?.Length > 0)
                 {
                     var backgrounds = result.Data.GameInfoList[0].Backgrounds;
+                    if (backgrounds != null)
                     {
                         foreach (var b in backgrounds)
                         {
-                            if (b.Type != "BACKGROUND_TYPE_VIDEO" && !string.IsNullOrEmpty(b.Background?.Url))
+                            if (b.Type == "BACKGROUND_TYPE_VIDEO" && !string.IsNullOrEmpty(b.Video?.Url))
+                            {
+                                list.Add(new BackgroundUrlInfo 
+                                { 
+                                    Url = b.Video.Url, 
+                                    IsVideo = true, 
+                                    ThumbnailUrl = b.Background?.Url ?? "" 
+                                });
+                            }
+                            else if (b.Type != "BACKGROUND_TYPE_VIDEO" && !string.IsNullOrEmpty(b.Background?.Url))
                             {
                                 list.Add(new BackgroundUrlInfo 
                                 { 
@@ -161,6 +183,48 @@ namespace FufuLauncher.Services.Background
             {
                 Debug.WriteLine($"获取可选背景异常: {ex.Message}");
                 return new List<BackgroundUrlInfo>();
+            }
+        }
+
+        public async Task<(string ImageUrl, string VideoUrl)> GetLatestBackgroundUrlsAsync(ServerType server)
+        {
+            try
+            {
+                var apiUrl = server switch
+                {
+                    ServerType.CN => ApiEndpoints.BackgroundCnApi,
+                    ServerType.OS => ApiEndpoints.BackgroundOsApi,
+                    _ => ApiEndpoints.BackgroundCnApi
+                };
+
+                var response = await _httpClient.GetStringAsync(apiUrl);
+                var options = new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = false,
+                    ReadCommentHandling = JsonCommentHandling.Skip
+                };
+
+                var result = JsonSerializer.Deserialize<HoyoverseBackgroundResponse>(response, options);
+
+                if (result?.Retcode != 0) return (null, null);
+
+                if (result.Data?.GameInfoList?.Length > 0)
+                {
+                    var backgrounds = result.Data.GameInfoList[0].Backgrounds;
+                    if (backgrounds?.Length > 0)
+                    {
+                        var staticBg = backgrounds.FirstOrDefault(b => b.Type != "BACKGROUND_TYPE_VIDEO" && !string.IsNullOrEmpty(b.Background?.Url))?.Background?.Url;
+                        var videoBg = backgrounds.FirstOrDefault(b => b.Type == "BACKGROUND_TYPE_VIDEO" && !string.IsNullOrEmpty(b.Video?.Url))?.Video?.Url;
+
+                        return (staticBg, videoBg);
+                    }
+                }
+                return (null, null);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"HoyoverseBackgroundService: 请求最新背景异常 - {ex.Message}");
+                return (null, null);
             }
         }
     }

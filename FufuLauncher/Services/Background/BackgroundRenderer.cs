@@ -85,7 +85,8 @@ namespace FufuLauncher.Services.Background
             {
                 if (isVideo)
                 {
-                    return GetFallbackBackground();
+                    var videoSource = await ProcessVideoBackground(url);
+                    return new BackgroundRenderResult { VideoSource = videoSource, IsVideo = true };
                 }
                 else
                 {
@@ -169,8 +170,13 @@ namespace FufuLauncher.Services.Background
 
                 if (backgroundInfo.IsVideo)
                 {
-                    Debug.WriteLine("BackgroundRenderer: 视频背景已被禁用，触发回退机制");
-                    return GetFallbackBackground();
+                    Debug.WriteLine($"BackgroundRenderer: 处理视频背景");
+                    var videoSource = await ProcessVideoBackground(backgroundInfo.Url);
+                    _cachedBackground = new BackgroundRenderResult
+                    {
+                        VideoSource = videoSource,
+                        IsVideo = true
+                    };
                 }
                 else
                 {
@@ -215,7 +221,12 @@ namespace FufuLauncher.Services.Background
 
                 if (isVideo)
                 {
-                    return null;
+                    var videoSource = MediaSource.CreateFromUri(new Uri(filePath));
+                    result = new BackgroundRenderResult
+                    {
+                        VideoSource = videoSource,
+                        IsVideo = true
+                    };
                 }
                 else
                 {
@@ -254,8 +265,7 @@ namespace FufuLauncher.Services.Background
                 {
                     try
                     {
-                        var file = await StorageFile.GetFileFromPathAsync(cachedFilePath);
-                        return MediaSource.CreateFromStorageFile(file);
+                        return MediaSource.CreateFromUri(new Uri(cachedFilePath));
                     }
                     catch
                     {
@@ -282,8 +292,7 @@ namespace FufuLauncher.Services.Background
                 
             }
 
-            var storageFile = await StorageFile.GetFileFromPathAsync(cachedFilePath);
-            return MediaSource.CreateFromStorageFile(storageFile);
+            return MediaSource.CreateFromUri(new Uri(cachedFilePath));
         }
 
 private async Task<ImageSource> ProcessImageBackground(string imageUrl)

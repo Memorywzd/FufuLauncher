@@ -18,6 +18,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.Windows.AppLifecycle;
 using Windows.Media.Core;
 using Windows.Media.Playback;
+using Sentry;
 
 namespace FufuLauncher;
 
@@ -36,6 +37,8 @@ public partial class App : Application
     private void ShowCrashDialog(string source, Exception? ex)
     {
         if (ex == null) return;
+
+        SentrySdk.FlushAsync(TimeSpan.FromSeconds(2)).Wait();
 
         var message = $"程序遇到了一个错误\n\n" +
                       $"错误来源: {source}\n" +
@@ -282,6 +285,11 @@ public partial class App : Application
 
         try
         {
+            SentrySdk.CaptureException(ex, scope => 
+            {
+                scope.SetTag("source", source);
+            });
+
             var logPath = Path.Combine(Helpers.AppPaths.RootDir, "CrashLog.txt");
             Directory.CreateDirectory(Path.GetDirectoryName(logPath)!);
 

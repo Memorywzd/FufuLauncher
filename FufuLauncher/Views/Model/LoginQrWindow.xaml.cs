@@ -246,6 +246,11 @@ public sealed partial class LoginQrWindow : Window
         {
             GameSelectionComboBox.Visibility = LoginMethodComboBox.SelectedIndex == 1 ? Visibility.Visible : Visibility.Collapsed;
         }
+        
+        if (WebLoginWarningTextBlock != null)
+        {
+            WebLoginWarningTextBlock.Visibility = LoginMethodComboBox.SelectedIndex == 2 ? Visibility.Visible : Visibility.Collapsed;
+        }
 
         if (QrCodeContainer != null && PassportWebView != null)
         {

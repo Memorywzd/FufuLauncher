@@ -6,6 +6,7 @@ namespace FufuLauncher.Services
     {
         Task<string> PickImageOrVideoAsync();
         Task<string> PickAudioFileAsync();
+        Task<string> PickFolderAsync();
     }
 
     public class FilePickerService : IFilePickerService
@@ -64,6 +65,28 @@ namespace FufuLauncher.Services
             catch (Exception ex)
             {
                 Debug.WriteLine($"文件选择失败: {ex.Message}");
+                return null;
+            }
+        }
+        public async Task<string> PickFolderAsync()
+        {
+            try
+            {
+                var folderPicker = new Windows.Storage.Pickers.FolderPicker
+                {
+                    SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.PicturesLibrary
+                };
+                folderPicker.FileTypeFilter.Add("*");
+
+                var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(App.MainWindow);
+                WinRT.Interop.InitializeWithWindow.Initialize(folderPicker, hwnd);
+
+                var folder = await folderPicker.PickSingleFolderAsync();
+                return folder?.Path;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"文件夹选择失败: {ex.Message}");
                 return null;
             }
         }

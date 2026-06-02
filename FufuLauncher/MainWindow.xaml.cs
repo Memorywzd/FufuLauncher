@@ -53,6 +53,11 @@ public sealed partial class MainWindow : WindowEx
     
     private DispatcherTimer _memoryOptimizationTimer;
     private DispatcherTimer _periodicMemoryTimer; 
+
+    private DispatcherTimer _slideshowTimer;
+    private List<string> _slideshowImages = new List<string>();
+    private int _currentSlideshowIndex = 0;
+
     private bool _isSuspended;
     private DateTime _backgroundInitWindowShowTime;
     private bool _isBackgroundDownloading;
@@ -307,6 +312,8 @@ public sealed partial class MainWindow : WindowEx
             _globalBackgroundPlayer.Pause();
         }
     
+        _slideshowTimer?.Stop();
+
         _networkMonitorService.Stop();
         _messageDismissTimer.Stop();
         
@@ -327,6 +334,8 @@ public sealed partial class MainWindow : WindowEx
         {
             _globalBackgroundPlayer.Play();
         }
+        
+        _slideshowTimer?.Start();
         
         if (!_networkMonitorService.IsEnabled)
         {
@@ -732,6 +741,27 @@ public sealed partial class MainWindow : WindowEx
 
             if (isCustomEnabled)
             {
+                var isSlideshowEnabledJson = await _localSettingsService.ReadSettingAsync("IsBackgroundSlideshowEnabled");
+                var isSlideshowEnabled = isSlideshowEnabledJson != null && Convert.ToBoolean(isSlideshowEnabledJson);
+
+                if (isSlideshowEnabled)
+                {
+                    var slideshowFolderJson = await _localSettingsService.ReadSettingAsync("BackgroundSlideshowFolder");
+                    var slideshowFolder = slideshowFolderJson?.ToString();
+
+                    if (!string.IsNullOrEmpty(slideshowFolder) && Directory.Exists(slideshowFolder))
+                    {
+                        var slideshowIntervalJson = await _localSettingsService.ReadSettingAsync("BackgroundSlideshowInterval");
+                        var interval = slideshowIntervalJson != null ? Convert.ToInt32(slideshowIntervalJson) : 60;
+                        if (interval < 1) interval = 1;
+
+                        await StartSlideshowAsync(slideshowFolder, interval);
+                        return;
+                    }
+                }
+
+                StopSlideshow();
+
                 var customPathObj = await _localSettingsService.ReadSettingAsync("CustomBackgroundPath");
                 var customPath = customPathObj?.ToString();
 
@@ -742,8 +772,13 @@ public sealed partial class MainWindow : WindowEx
                     return;
                 }
             }
+            else
+            {
+                StopSlideshow();
+            }
             
-            var preferVideo = false;
+            var preferVideoObj = await _localSettingsService.ReadSettingAsync("PreferVideoBackground");
+            var preferVideo = preferVideoObj != null && Convert.ToBoolean(preferVideoObj);
 
             var serverJson = await _localSettingsService.ReadSettingAsync(LocalSettingsService.BackgroundServerKey);
             var serverValue = serverJson != null ? Convert.ToInt32(serverJson) : 0;
@@ -754,11 +789,70 @@ public sealed partial class MainWindow : WindowEx
         }
         catch
         {
+            StopSlideshow();
             await ClearGlobalBackgroundAsync();
         }
     }
 
-private Task ApplyGlobalBackgroundAsync(BackgroundRenderResult? result)
+    private void StopSlideshow()
+    {
+        if (_slideshowTimer != null)
+        {
+            _slideshowTimer.Stop();
+            _slideshowTimer = null;
+        }
+    }
+
+    private async Task StartSlideshowAsync(string folder, int intervalSeconds)
+    {
+        StopSlideshow();
+
+        try
+        {
+            string[] extensions = { ".jpg", ".jpeg", ".png", ".bmp" };
+            _slideshowImages = Directory.GetFiles(folder)
+                .Where(f => extensions.Contains(Path.GetExtension(f).ToLowerInvariant()))
+                .ToList();
+
+            if (_slideshowImages.Count == 0)
+            {
+                await ClearGlobalBackgroundAsync();
+                return;
+            }
+
+            _currentSlideshowIndex = 0;
+            await ShowNextSlideshowImageAsync();
+
+            _slideshowTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(intervalSeconds) };
+            _slideshowTimer.Tick += async (_, _) => await ShowNextSlideshowImageAsync();
+            _slideshowTimer.Start();
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"启动轮播失败: {ex.Message}");
+        }
+    }
+
+    private async Task ShowNextSlideshowImageAsync()
+    {
+        if (_slideshowImages == null || _slideshowImages.Count == 0) return;
+
+        if (_currentSlideshowIndex >= _slideshowImages.Count)
+        {
+            _currentSlideshowIndex = 0;
+        }
+
+        var imagePath = _slideshowImages[_currentSlideshowIndex];
+        _currentSlideshowIndex++;
+
+        var customResult = await _backgroundRenderer.GetCustomBackgroundAsync(imagePath);
+        if (customResult != null)
+        {
+            await ApplyGlobalBackgroundAsync(customResult);
+        }
+    }
+
+    private Task ApplyGlobalBackgroundAsync(BackgroundRenderResult? result)
 {
     return RunOnUIThreadAsync(async void () => 
     {
@@ -766,11 +860,22 @@ private Task ApplyGlobalBackgroundAsync(BackgroundRenderResult? result)
 
         if (result.IsVideo)
         {
-            _isVideoBackground = false;
-            _globalBackgroundPlayer?.Pause();
-            _globalBackgroundPlayer = null;
-            GlobalBackgroundVideo.Visibility = Visibility.Collapsed;
-            return;
+            _isVideoBackground = true;
+            GlobalBackgroundImage.Visibility = Visibility.Collapsed;
+            
+            if (_globalBackgroundPlayer == null)
+            {
+                _globalBackgroundPlayer = new Windows.Media.Playback.MediaPlayer
+                {
+                    IsLoopingEnabled = true,
+                    IsMuted = true
+                };
+                GlobalBackgroundVideo.SetMediaPlayer(_globalBackgroundPlayer);
+            }
+            _globalBackgroundPlayer.Source = result.VideoSource;
+            _globalBackgroundPlayer.Play();
+            
+            GlobalBackgroundVideo.Visibility = Visibility.Visible;
         }
         else
         {
