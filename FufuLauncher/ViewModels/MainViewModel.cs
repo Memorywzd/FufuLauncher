@@ -399,20 +399,31 @@ namespace FufuLauncher.ViewModels
             bool isDailyNoteCardHidden = hideDailyNoteCardJson == null || Convert.ToBoolean(hideDailyNoteCardJson);
             DailyNoteCardVisibility = isDailyNoteCardHidden ? Visibility.Collapsed : Visibility.Visible;
 
+            int activeCount = 0;
+
             var showResinJson = await _localSettingsService.ReadSettingAsync("ShowDailyNoteResin");
-            ShowResin = showResinJson == null || Convert.ToBoolean(showResinJson) ? Visibility.Visible : Visibility.Collapsed;
+            bool showResin = showResinJson == null || Convert.ToBoolean(showResinJson);
+            if (showResin) activeCount++;
+            ShowResin = showResin ? Visibility.Visible : Visibility.Collapsed;
 
             var showDailyTasksJson = await _localSettingsService.ReadSettingAsync("ShowDailyNoteDailyTasks");
-            ShowDailyTasks = showDailyTasksJson == null || Convert.ToBoolean(showDailyTasksJson) ? Visibility.Visible : Visibility.Collapsed;
+            bool showDailyTasks = (showDailyTasksJson == null || Convert.ToBoolean(showDailyTasksJson)) && activeCount < 3;
+            if (showDailyTasks) activeCount++;
+            ShowDailyTasks = showDailyTasks ? Visibility.Visible : Visibility.Collapsed;
 
             var showHomeCoinJson = await _localSettingsService.ReadSettingAsync("ShowDailyNoteHomeCoin");
-            ShowHomeCoin = showHomeCoinJson == null || Convert.ToBoolean(showHomeCoinJson) ? Visibility.Visible : Visibility.Collapsed;
+            bool showHomeCoin = (showHomeCoinJson == null || Convert.ToBoolean(showHomeCoinJson)) && activeCount < 3;
+            if (showHomeCoin) activeCount++;
+            ShowHomeCoin = showHomeCoin ? Visibility.Visible : Visibility.Collapsed;
 
             var showExpeditionsJson = await _localSettingsService.ReadSettingAsync("ShowDailyNoteExpeditions");
-            ShowExpeditions = showExpeditionsJson == null || Convert.ToBoolean(showExpeditionsJson) ? Visibility.Visible : Visibility.Collapsed;
+            bool showExpeditions = (showExpeditionsJson == null || Convert.ToBoolean(showExpeditionsJson)) && activeCount < 3;
+            if (showExpeditions) activeCount++;
+            ShowExpeditions = showExpeditions ? Visibility.Visible : Visibility.Collapsed;
 
             var showTransformerJson = await _localSettingsService.ReadSettingAsync("ShowDailyNoteTransformer");
-            ShowTransformer = showTransformerJson == null || Convert.ToBoolean(showTransformerJson) ? Visibility.Visible : Visibility.Collapsed;
+            bool showTransformer = (showTransformerJson == null || Convert.ToBoolean(showTransformerJson)) && activeCount < 3;
+            ShowTransformer = showTransformer ? Visibility.Visible : Visibility.Collapsed;
         }
 
         private async Task LoadUserPreferencesAsync()

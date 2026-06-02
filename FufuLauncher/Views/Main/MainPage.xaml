@@ -116,6 +116,8 @@
             </Grid.ColumnDefinitions>
             
             <StackPanel Grid.Column="0" 
+                        Width="360"
+                        HorizontalAlignment="Left"
                         Margin="24,0,0,18"
                         VerticalAlignment="Bottom"
                         Spacing="12">
@@ -317,8 +319,8 @@
                                 </Grid.ColumnDefinitions>
 
                                 <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center" Margin="0,0,12,0">
-                                    <TextBlock Text="{Binding CheckinStatusText}" FontSize="12" TextWrapping="Wrap" Foreground="White"/>
-                                    <TextBlock Text="{Binding CheckinSummary}" FontSize="11" Foreground="White" Opacity="0.6" TextWrapping="Wrap"/>
+                                    <TextBlock Text="{Binding CheckinStatusText}" FontSize="12" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" MaxLines="2" Foreground="White"/>
+                                    <TextBlock Text="{Binding CheckinSummary}" FontSize="11" Foreground="White" Opacity="0.6" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" MaxLines="2"/>
                                 </StackPanel>
 
                                 <Button Grid.Column="1" 

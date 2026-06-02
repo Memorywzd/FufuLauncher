@@ -50,33 +50,6 @@ namespace FufuLauncher.Services.Background
         private static readonly HttpClient _httpClient;
 
         private readonly SemaphoreSlim _loadLock = new(1, 1);
-        
-        private int _downloadingCount = 0;
-        private readonly object _downloadStateLock = new object();
-        
-        private void NotifyDownloadStarted()
-        {
-            lock (_downloadStateLock)
-            {
-                _downloadingCount++;
-                if (_downloadingCount == 1)
-                {
-                    WeakReferenceMessenger.Default.Send(new BackgroundDownloadStateMessage(true));
-                }
-            }
-        }
-
-        private void NotifyDownloadFinished()
-        {
-            lock (_downloadStateLock)
-            {
-                _downloadingCount--;
-                if (_downloadingCount == 0)
-                {
-                    WeakReferenceMessenger.Default.Send(new BackgroundDownloadStateMessage(false));
-                }
-            }
-        }
 
         public async Task<BackgroundRenderResult> GetSpecificOnlineBackgroundAsync(string url, bool isVideo)
         {
@@ -276,7 +249,7 @@ namespace FufuLauncher.Services.Background
                 }
             }
 
-            NotifyDownloadStarted();
+            
             try
             {
                 Debug.WriteLine($"BackgroundRenderer: 开始下载视频: {videoUrl}");
@@ -290,7 +263,7 @@ namespace FufuLauncher.Services.Background
             }
             finally
             {
-                NotifyDownloadFinished();
+                
             }
 
             var storageFile = await StorageFile.GetFileFromPathAsync(cachedFilePath);
@@ -325,7 +298,7 @@ private async Task<ImageSource> ProcessImageBackground(string imageUrl)
         }
     }
 
-    NotifyDownloadStarted();
+    
     byte[] data;
     try
     {
@@ -346,7 +319,7 @@ private async Task<ImageSource> ProcessImageBackground(string imageUrl)
     }
     finally
     {
-        NotifyDownloadFinished();
+        
     }
 
     var bitmapImage = new BitmapImage();
@@ -426,7 +399,7 @@ private async Task<ImageSource> ProcessImageBackground(string imageUrl)
                         return;
                     }
 
-                    NotifyDownloadStarted();
+                    
                     try
                     {
                         Debug.WriteLine($"BackgroundRenderer: 预加载下载中: {url}");
@@ -439,7 +412,7 @@ private async Task<ImageSource> ProcessImageBackground(string imageUrl)
                     }
                     finally
                     {
-                        NotifyDownloadFinished();
+                        
                     }
                 }
                 catch (Exception ex)

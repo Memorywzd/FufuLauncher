@@ -225,7 +225,7 @@
                             <TextBlock Text="便签卡片显示项" 
                                        Style="{ThemeResource BodyStrongTextBlockStyle}"
                                        FontSize="14"/>
-                            <TextBlock Text="选择要在便签卡片中显示的项目"
+                            <TextBlock Text="选择要在便签卡片中显示的项目，最多选择3个！"
                                        Style="{ThemeResource CaptionTextBlockStyle}"
                                        Opacity="0.7"
                                        Margin="0,2,0,12"/>

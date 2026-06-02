@@ -79,8 +79,8 @@ namespace FufuLauncher.ViewModels
         [ObservableProperty] private bool _showDailyNoteResin = true;
         [ObservableProperty] private bool _showDailyNoteDailyTasks = true;
         [ObservableProperty] private bool _showDailyNoteHomeCoin = true;
-        [ObservableProperty] private bool _showDailyNoteExpeditions = true;
-        [ObservableProperty] private bool _showDailyNoteTransformer = true;
+        [ObservableProperty] private bool _showDailyNoteExpeditions = false;
+        [ObservableProperty] private bool _showDailyNoteTransformer = false;
 
         [ObservableProperty] private string _gameNewsCardTextColor = "#FFFFFF";
         [ObservableProperty] private double _gameNewsCardTextOpacity = 1.0;
@@ -361,8 +361,22 @@ namespace FufuLauncher.ViewModels
         {
             try
             {
-                var updateWindow = new Views.UpdateWindow();
-                updateWindow.Activate();
+                string updaterPath = Path.Combine(AppContext.BaseDirectory, "UpdateFufuLauncher.exe");
+                
+                if (File.Exists(updaterPath))
+                {
+                    var startInfo = new ProcessStartInfo
+                    {
+                        FileName = updaterPath,
+                        UseShellExecute = true,
+                        Verb = "runas"
+                    };
+                    Process.Start(startInfo);
+                }
+                else
+                {
+                    Debug.WriteLine("未找到 UpdateFufuLauncher.exe");
+                }
             }
             catch (Exception ex)
             {
@@ -440,6 +454,8 @@ namespace FufuLauncher.ViewModels
                 _isLoadingLaunchParams = false;
             }
         }
+
+        private bool _isUpdatingDailyNote;
 
         private async Task LoadUserPreferencesAsync()
         {
@@ -560,20 +576,29 @@ namespace FufuLauncher.ViewModels
             var hideDailyNoteCardJson = await _localSettingsService.ReadSettingAsync("IsHideDailyNoteCardEnabled");
             IsHideDailyNoteCardEnabled = hideDailyNoteCardJson == null || Convert.ToBoolean(hideDailyNoteCardJson);
 
+            _isUpdatingDailyNote = true;
+            int activeCount = 0;
+
             var showResinJson = await _localSettingsService.ReadSettingAsync("ShowDailyNoteResin");
             ShowDailyNoteResin = showResinJson == null || Convert.ToBoolean(showResinJson);
+            if (ShowDailyNoteResin) activeCount++;
 
             var showDailyTasksJson = await _localSettingsService.ReadSettingAsync("ShowDailyNoteDailyTasks");
-            ShowDailyNoteDailyTasks = showDailyTasksJson == null || Convert.ToBoolean(showDailyTasksJson);
+            ShowDailyNoteDailyTasks = (showDailyTasksJson == null || Convert.ToBoolean(showDailyTasksJson)) && activeCount < 3;
+            if (ShowDailyNoteDailyTasks) activeCount++;
 
             var showHomeCoinJson = await _localSettingsService.ReadSettingAsync("ShowDailyNoteHomeCoin");
-            ShowDailyNoteHomeCoin = showHomeCoinJson == null || Convert.ToBoolean(showHomeCoinJson);
+            ShowDailyNoteHomeCoin = (showHomeCoinJson == null || Convert.ToBoolean(showHomeCoinJson)) && activeCount < 3;
+            if (ShowDailyNoteHomeCoin) activeCount++;
 
             var showExpeditionsJson = await _localSettingsService.ReadSettingAsync("ShowDailyNoteExpeditions");
-            ShowDailyNoteExpeditions = showExpeditionsJson == null || Convert.ToBoolean(showExpeditionsJson);
+            ShowDailyNoteExpeditions = (showExpeditionsJson == null || Convert.ToBoolean(showExpeditionsJson)) && activeCount < 3;
+            if (ShowDailyNoteExpeditions) activeCount++;
 
             var showTransformerJson = await _localSettingsService.ReadSettingAsync("ShowDailyNoteTransformer");
-            ShowDailyNoteTransformer = showTransformerJson == null || Convert.ToBoolean(showTransformerJson);
+            ShowDailyNoteTransformer = (showTransformerJson == null || Convert.ToBoolean(showTransformerJson)) && activeCount < 3;
+    
+            _isUpdatingDailyNote = false;
 
             var panelOpacityJson = await _localSettingsService.ReadSettingAsync("PanelBackgroundOpacity");
             try
@@ -595,6 +620,45 @@ namespace FufuLauncher.ViewModels
             }
 
         }
+        
+        private void CheckAndLimitDailyNoteItems(string settingName, Action revertAction)
+        {
+            if (_isUpdatingDailyNote) return;
+
+            int activeCount = 0;
+            if (ShowDailyNoteResin) activeCount++;
+            if (ShowDailyNoteDailyTasks) activeCount++;
+            if (ShowDailyNoteHomeCoin) activeCount++;
+            if (ShowDailyNoteExpeditions) activeCount++;
+            if (ShowDailyNoteTransformer) activeCount++;
+
+            if (activeCount > 3)
+            {
+                _isUpdatingDailyNote = true;
+                revertAction();
+                _isUpdatingDailyNote = false;
+                return;
+            }
+
+            var propertyValue = settingName switch
+            {
+                "ShowDailyNoteResin" => ShowDailyNoteResin,
+                "ShowDailyNoteDailyTasks" => ShowDailyNoteDailyTasks,
+                "ShowDailyNoteHomeCoin" => ShowDailyNoteHomeCoin,
+                "ShowDailyNoteExpeditions" => ShowDailyNoteExpeditions,
+                "ShowDailyNoteTransformer" => ShowDailyNoteTransformer,
+                _ => false
+            };
+
+            _ = _localSettingsService.SaveSettingAsync(settingName, propertyValue);
+            WeakReferenceMessenger.Default.Send(new CardVisibilityChangedMessage());
+        }
+
+        partial void OnShowDailyNoteResinChanged(bool value) => CheckAndLimitDailyNoteItems("ShowDailyNoteResin", () => ShowDailyNoteResin = false);
+        partial void OnShowDailyNoteDailyTasksChanged(bool value) => CheckAndLimitDailyNoteItems("ShowDailyNoteDailyTasks", () => ShowDailyNoteDailyTasks = false);
+        partial void OnShowDailyNoteHomeCoinChanged(bool value) => CheckAndLimitDailyNoteItems("ShowDailyNoteHomeCoin", () => ShowDailyNoteHomeCoin = false);
+        partial void OnShowDailyNoteExpeditionsChanged(bool value) => CheckAndLimitDailyNoteItems("ShowDailyNoteExpeditions", () => ShowDailyNoteExpeditions = false);
+        partial void OnShowDailyNoteTransformerChanged(bool value) => CheckAndLimitDailyNoteItems("ShowDailyNoteTransformer", () => ShowDailyNoteTransformer = false);
         
         partial void OnCustomGameExeNameChanged(string value)
         {
@@ -925,36 +989,6 @@ namespace FufuLauncher.ViewModels
         partial void OnIsHideDailyNoteCardEnabledChanged(bool value)
         {
             _ = _localSettingsService.SaveSettingAsync("IsHideDailyNoteCardEnabled", value);
-            WeakReferenceMessenger.Default.Send(new CardVisibilityChangedMessage());
-        }
-
-        partial void OnShowDailyNoteResinChanged(bool value)
-        {
-            _ = _localSettingsService.SaveSettingAsync("ShowDailyNoteResin", value);
-            WeakReferenceMessenger.Default.Send(new CardVisibilityChangedMessage());
-        }
-
-        partial void OnShowDailyNoteDailyTasksChanged(bool value)
-        {
-            _ = _localSettingsService.SaveSettingAsync("ShowDailyNoteDailyTasks", value);
-            WeakReferenceMessenger.Default.Send(new CardVisibilityChangedMessage());
-        }
-
-        partial void OnShowDailyNoteHomeCoinChanged(bool value)
-        {
-            _ = _localSettingsService.SaveSettingAsync("ShowDailyNoteHomeCoin", value);
-            WeakReferenceMessenger.Default.Send(new CardVisibilityChangedMessage());
-        }
-
-        partial void OnShowDailyNoteExpeditionsChanged(bool value)
-        {
-            _ = _localSettingsService.SaveSettingAsync("ShowDailyNoteExpeditions", value);
-            WeakReferenceMessenger.Default.Send(new CardVisibilityChangedMessage());
-        }
-
-        partial void OnShowDailyNoteTransformerChanged(bool value)
-        {
-            _ = _localSettingsService.SaveSettingAsync("ShowDailyNoteTransformer", value);
             WeakReferenceMessenger.Default.Send(new CardVisibilityChangedMessage());
         }
 

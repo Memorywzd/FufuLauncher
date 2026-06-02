@@ -39,12 +39,8 @@ public sealed partial class MainWindow : WindowEx
     private bool _isExit;
     private bool _isOverlayShown;
     private bool _isAcrylicOverlayEnabled;
-    private Views.BackgroundInitWindow? _backgroundInitWindow;
 
     private bool _isVideoBackground;
-    
-    private DateTime _backgroundInitWindowShowTime;
-    private bool _isBackgroundDownloading;
     
     private DispatcherTimer _messageDismissTimer;
     private readonly NetworkMonitorService _networkMonitorService;
@@ -108,43 +104,6 @@ public sealed partial class MainWindow : WindowEx
         settings.ColorValuesChanged += Settings_ColorValuesChanged;
         _backgroundRenderer = App.GetService<IBackgroundRenderer>();
         _localSettingsService = App.GetService<ILocalSettingsService>();
-        
-        WeakReferenceMessenger.Default.Register<BackgroundDownloadStateMessage>(this, (_, m) =>
-        {
-            _isBackgroundDownloading = m.Value;
-
-            dispatcherQueue.TryEnqueue(async () =>
-            {
-                if (_isBackgroundDownloading)
-                {
-                    if (_backgroundInitWindow == null)
-                    {
-                        _backgroundInitWindow = new Views.BackgroundInitWindow();
-                        _backgroundInitWindowShowTime = DateTime.Now;
-                        _backgroundInitWindow.Activate();
-                    }
-                }
-                else
-                {
-                    if (_backgroundInitWindow != null)
-                    {
-                        var elapsed = DateTime.Now - _backgroundInitWindowShowTime;
-                        var minDuration = TimeSpan.FromSeconds(1);
-                        
-                        if (elapsed < minDuration)
-                        {
-                            await Task.Delay(minDuration - elapsed);
-                        }
-                        
-                        if (!_isBackgroundDownloading)
-                        {
-                            _backgroundInitWindow?.Close();
-                            _backgroundInitWindow = null;
-                        }
-                    }
-                }
-            });
-        });
 
         WeakReferenceMessenger.Default.Register<AgreementAcceptedMessage>(this, (_, _) =>
         {
