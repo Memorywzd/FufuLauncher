@@ -149,12 +149,6 @@ namespace MihoyoBBS
             get;
             set;
         } = true;
-
-        public List<string> BlackList
-        {
-            get;
-            set;
-        } = new List<string>();
     }
 
     public class ApiResponse<T>
@@ -679,8 +673,8 @@ namespace MihoyoBBS
 
             return result;
         }
-        
-public async Task<string> SignAccountAsync(Config config, string targetUid = null)
+
+public async Task<string> SignAccountAsync(Config config, string targetUid = null, HashSet<string> disabledUids = null)
     {
         LastApiError = string.Empty;
         var returnData = $"{GameName}: ";
@@ -697,11 +691,11 @@ public async Task<string> SignAccountAsync(Config config, string targetUid = nul
 
         foreach (var account in AccountList)
         {
-            if (config.Games.Cn.Genshin.BlackList.Contains(account.GameUid))
+            if (disabledUids != null && disabledUids.Contains(account.GameUid))
             {
                 continue;
             }
-            
+
             if (!string.IsNullOrEmpty(targetUid) && account.GameUid != targetUid)
             {
                 continue;

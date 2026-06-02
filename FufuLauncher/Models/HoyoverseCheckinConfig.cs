@@ -69,9 +69,6 @@ public class GameConfig
 {
     [JsonPropertyName("Checkin")]
     public bool Checkin { get; set; } = true;
-
-    [JsonPropertyName("BlackList")]
-    public List<string> BlackList { get; set; } = new();
 }
 
 public class ApiResponse<T>
