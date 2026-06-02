@@ -96,7 +96,7 @@
 
     <StackPanel Spacing="12" Margin="0,32,0,0" Visibility="{x:Bind ViewModel.HasSavedAccounts, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
         <TextBlock Text="或选择已保存的账户登录" Foreground="{ThemeResource TextFillColorSecondaryBrush}" HorizontalAlignment="Center"/>
-        <ListView ItemsSource="{x:Bind ViewModel.SavedAccounts, Mode=OneWay}" SelectionMode="None" Width="280">
+        <ListView ItemsSource="{x:Bind ViewModel.SavedAccounts, Mode=OneWay}" SelectionMode="None" Width="320">
             <ListView.ItemTemplate>
                 <DataTemplate x:DataType="models:AccountInfo">
                     <Grid Margin="0,6">
@@ -104,13 +104,17 @@
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
                         <PersonPicture ProfilePicture="{x:Bind AvatarUrl}" Width="32" Height="32" Margin="0,0,12,0"/>
                         <StackPanel Grid.Column="1" VerticalAlignment="Center">
                             <TextBlock Text="{x:Bind Nickname}" FontSize="14" FontWeight="SemiBold"/>
                             <TextBlock Text="{x:Bind GameUid}" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                         </StackPanel>
-                        <Button Grid.Column="2" Content="登录" FontSize="12" Click="OnSwitchAccountClicked"/>
+                        <Button Grid.Column="2" Content="登录" FontSize="12" Click="OnSwitchAccountClicked" Margin="0,0,4,0"/>
+                        <Button Grid.Column="3" FontSize="12" Padding="8,4" Background="Transparent" Click="OnDeleteSavedAccountClicked" Tag="{Binding GameUid}">
+                            <FontIcon Glyph="&#xE74D;" FontSize="12" Foreground="{ThemeResource SystemFillColorCriticalBrush}"/>
+                        </Button>
                     </Grid>
                 </DataTemplate>
             </ListView.ItemTemplate>
@@ -332,6 +336,18 @@
                                     <StackPanel Spacing="8" Orientation="Horizontal" HorizontalAlignment="Center">
                                         <FontIcon Glyph="&#xE8C8;" FontSize="16"/>
                                         <TextBlock Text="复制 Cookie"/>
+                                    </StackPanel>
+                                </Button>
+
+                                <Button Style="{StaticResource ActionButtonStyle}"
+                                        Translation="0,0,32"
+                                        Click="OnDeleteCurrentAccountClicked">
+                                    <Button.Shadow>
+                                        <ThemeShadow />
+                                    </Button.Shadow>
+                                    <StackPanel Spacing="8" Orientation="Horizontal" HorizontalAlignment="Center">
+                                        <FontIcon Glyph="&#xE74D;" FontSize="16" Foreground="{ThemeResource SystemFillColorCriticalBrush}"/>
+                                        <TextBlock Text="删除账号" Foreground="{ThemeResource SystemFillColorCriticalBrush}"/>
                                     </StackPanel>
                                 </Button>
 

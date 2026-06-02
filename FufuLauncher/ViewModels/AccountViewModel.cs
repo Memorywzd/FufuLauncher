@@ -241,9 +241,9 @@ public partial class AccountViewModel : ObservableRecipient
         SavedAccounts.Clear();
         _accountFileMap.Clear();
         var baseDir = Helpers.AppPaths.DataDir;
-        
+
         var filesToTry = Directory.GetFiles(baseDir, "config*.json").ToList();
-        
+
         var activeFileObj = await _localSettingsService.ReadSettingAsync("ActiveConfigFile");
         string activeFile = activeFileObj?.ToString() ?? "config.json";
         string activeFilePath = Path.Combine(baseDir, activeFile);
@@ -253,6 +253,9 @@ public partial class AccountViewModel : ObservableRecipient
             if (!File.Exists(file)) continue;
             try
             {
+                var fileName = Path.GetFileName(file);
+                if (fileName.Equals("config.json", StringComparison.OrdinalIgnoreCase)) continue;
+
                 var json = await File.ReadAllTextAsync(file);
                 var config = JsonSerializer.Deserialize<HoyoverseCheckinConfig>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
                 if (string.IsNullOrEmpty(config?.Account?.Cookie)) continue;
@@ -263,11 +266,11 @@ public partial class AccountViewModel : ObservableRecipient
                 if (file.Equals(activeFilePath, StringComparison.OrdinalIgnoreCase)) continue;
                 if (_accountFileMap.ContainsKey(uid)) continue;
 
-                _accountFileMap[uid] = Path.GetFileName(file);
+                _accountFileMap[uid] = fileName;
 
                 var accountInfo = new AccountInfo { GameUid = uid, Nickname = $"用户 {uid}" };
                 var displayFile = Path.Combine(baseDir, $"display_{uid}.json");
-                
+
                 if (File.Exists(displayFile))
                 {
                     try
@@ -291,7 +294,7 @@ public partial class AccountViewModel : ObservableRecipient
             }
             catch { }
         }
-        
+
         OnPropertyChanged(nameof(HasSavedAccounts));
     }
 
@@ -306,8 +309,8 @@ public partial class AccountViewModel : ObservableRecipient
         {
             var isOsObj = await _localSettingsService.ReadSettingAsync("IsInternationalAccount");
             bool isOs = isOsObj is bool b && b;
-            
-            string backupName = isOs ? "config.lab.json" : $"config_{CurrentAccount.GameUid}.json";
+
+            string backupName = isOs ? $"config.lab_{CurrentAccount.GameUid}.json" : $"config_{CurrentAccount.GameUid}.json";
             File.Copy(mainConfigPath, Path.Combine(baseDir, backupName), true);
 
             var displayConfig = new UserDisplayConfig
@@ -548,7 +551,7 @@ public partial class AccountViewModel : ObservableRecipient
         try
         {
             var baseDir = Helpers.AppPaths.DataDir;
-            
+
             var isOsObj = await _localSettingsService.ReadSettingAsync("IsInternationalAccount");
             bool isOs = isOsObj is bool b && b;
 
@@ -558,7 +561,7 @@ public partial class AccountViewModel : ObservableRecipient
                 var displayPath = Path.Combine(baseDir, $"display_{CurrentAccount.GameUid}.json");
                 if (File.Exists(backupPath)) File.Delete(backupPath);
                 if (File.Exists(displayPath)) File.Delete(displayPath);
-                
+
                 if (isOs)
                 {
                     var labPath = Path.Combine(baseDir, "config.lab.json");
@@ -569,9 +572,9 @@ public partial class AccountViewModel : ObservableRecipient
                     }
                 }
             }
-            
+
             await _userConfigService.SaveDisplayConfigAsync(new UserDisplayConfig());
-            
+
             var configPath = Path.Combine(baseDir, "config.json");
             if (File.Exists(configPath))
             {
@@ -592,7 +595,7 @@ public partial class AccountViewModel : ObservableRecipient
                     await File.WriteAllTextAsync(configPath, newJson);
                 }
             }
-            
+
             await _localSettingsService.SaveSettingAsync("IsInternationalAccount", false);
 
             CurrentAccount = null;
@@ -608,5 +611,121 @@ public partial class AccountViewModel : ObservableRecipient
             StatusMessage = $"退出失败: {ex.Message}";
             Debug.WriteLine($"[Logout] 异常: {ex.Message}");
         }
+    }
+
+    public IAsyncRelayCommand DeleteAccountCommand => new AsyncRelayCommand(DeleteAccountAsync);
+
+    private async Task DeleteAccountAsync()
+    {
+        try
+        {
+            if (CurrentAccount == null)
+            {
+                StatusMessage = "没有可删除的账号";
+                return;
+            }
+
+            var uid = CurrentAccount.GameUid;
+            await DeleteAccountByUidAsync(uid);
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"删除失败: {ex.Message}";
+            Debug.WriteLine($"[DeleteAccount] 异常: {ex.Message}");
+        }
+    }
+
+    public IAsyncRelayCommand<AccountInfo> DeleteSavedAccountCommand => new AsyncRelayCommand<AccountInfo>(DeleteSavedAccountAsync);
+
+    private async Task DeleteSavedAccountAsync(AccountInfo? account)
+    {
+        if (account == null) return;
+        await DeleteAccountByUidAsync(account.GameUid);
+    }
+
+    private async Task DeleteAccountByUidAsync(string uid)
+    {
+        var baseDir = Helpers.AppPaths.DataDir;
+
+        var backupPath = Path.Combine(baseDir, $"config_{uid}.json");
+        var labBackupPath = Path.Combine(baseDir, $"config.lab_{uid}.json");
+        var displayPath = Path.Combine(baseDir, $"display_{uid}.json");
+        if (File.Exists(backupPath)) File.Delete(backupPath);
+        if (File.Exists(labBackupPath)) File.Delete(labBackupPath);
+        if (File.Exists(displayPath)) File.Delete(displayPath);
+
+        var gachaPath = Path.Combine(baseDir, "gacha_data.json");
+        if (File.Exists(gachaPath))
+        {
+            try
+            {
+                var gachaJson = await File.ReadAllTextAsync(gachaPath);
+                var gachaDict = JsonSerializer.Deserialize<Dictionary<string, object>>(gachaJson);
+                if (gachaDict != null && gachaDict.ContainsKey(uid))
+                {
+                    gachaDict.Remove(uid);
+                    await File.WriteAllTextAsync(gachaPath, JsonSerializer.Serialize(gachaDict, new JsonSerializerOptions { WriteIndented = true }));
+                }
+            }
+            catch { }
+        }
+
+        var cloudCredPath = Path.Combine(baseDir, "cloud_credentials.json");
+        if (File.Exists(cloudCredPath))
+        {
+            try
+            {
+                var credJson = await File.ReadAllTextAsync(cloudCredPath);
+                var credDict = JsonSerializer.Deserialize<Dictionary<string, string>>(credJson);
+                if (credDict != null && credDict.ContainsKey(uid))
+                {
+                    credDict.Remove(uid);
+                    await File.WriteAllTextAsync(cloudCredPath, JsonSerializer.Serialize(credDict, new JsonSerializerOptions { WriteIndented = true }));
+                }
+            }
+            catch { }
+        }
+
+        await LoadSavedAccountsListAsync();
+
+        if (CurrentAccount != null && CurrentAccount.GameUid == uid)
+        {
+            if (SavedAccounts.Count > 0)
+            {
+                await SwitchToAccountAsync(SavedAccounts[0]);
+            }
+            else
+            {
+                await _userConfigService.SaveDisplayConfigAsync(new UserDisplayConfig());
+
+                var configPath = Path.Combine(baseDir, "config.json");
+                if (File.Exists(configPath))
+                {
+                    var json = await File.ReadAllTextAsync(configPath);
+                    var config = JsonSerializer.Deserialize<HoyoverseCheckinConfig>(json, new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true
+                    });
+
+                    if (config?.Account != null)
+                    {
+                        config.Account.Cookie = "";
+                        config.Account.Stuid = "";
+                        config.Account.Stoken = "";
+                        config.Account.Mid = "";
+                        var newJson = JsonSerializer.Serialize(config, new JsonSerializerOptions { WriteIndented = true });
+                        await File.WriteAllTextAsync(configPath, newJson);
+                    }
+                }
+
+                await _localSettingsService.SaveSettingAsync("IsInternationalAccount", false);
+                CurrentAccount = null;
+                GameRolesInfo = null;
+                UserFullInfo = null;
+                LoginButtonText = "登录米游社";
+            }
+        }
+
+        StatusMessage = $"账号 {uid} 已删除";
     }
 }
