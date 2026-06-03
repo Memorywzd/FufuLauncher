@@ -67,6 +67,9 @@ namespace FufuLauncher.ViewModels
         [ObservableProperty] private bool _hasBackgroundSlideshowFolder;
         [ObservableProperty] private int _backgroundSlideshowInterval = 60; // seconds
 
+        [ObservableProperty] private string _appThemeColor = ""; // empty means default
+        [ObservableProperty] private Windows.UI.Color _appThemeColorObj = Windows.UI.Color.FromArgb(255, 0, 120, 215);
+
         [ObservableProperty] private double _panelBackgroundOpacity = 0.5;
         [ObservableProperty] private bool _isShortTermSupportEnabled;
         [ObservableProperty] private bool _isBetterGIIntegrationEnabled;
@@ -555,6 +558,7 @@ namespace FufuLauncher.ViewModels
                 OnPropertyChanged(nameof(BackgroundSlideshowFolder));
                 OnPropertyChanged(nameof(HasBackgroundSlideshowFolder));
                 OnPropertyChanged(nameof(BackgroundSlideshowInterval));
+                OnPropertyChanged(nameof(AppThemeColor));
                 OnPropertyChanged(nameof(CurrentWindowBackdrop));
                 OnPropertyChanged(nameof(IsShortTermSupportEnabled));
                 OnPropertyChanged(nameof(IsBetterGIIntegrationEnabled));
@@ -610,6 +614,16 @@ namespace FufuLauncher.ViewModels
             else
             {
                 CurrentWindowBackdrop = WindowBackdropType.None;
+            }
+
+            var appThemeColorJson = await _localSettingsService.ReadSettingAsync("AppThemeColor");
+            if (appThemeColorJson != null)
+            {
+                AppThemeColor = appThemeColorJson.ToString();
+            }
+            else
+            {
+                AppThemeColor = "";
             }
 
             var shortTermJson = await _localSettingsService.ReadSettingAsync("IsShortTermSupportEnabled");
@@ -782,6 +796,55 @@ namespace FufuLauncher.ViewModels
         partial void OnCustomGameExeNameChanged(string value)
         {
             _localSettingsService.SaveSettingAsync(GameExeManager.CustomExeNameKey, value);
+        }
+
+        partial void OnAppThemeColorChanged(string value)
+        {
+            _localSettingsService.SaveSettingAsync("AppThemeColor", value);
+            
+            try
+            {
+                if (!string.IsNullOrEmpty(value) && value.StartsWith("#") && (value.Length == 7 || value.Length == 9))
+                {
+                    string hex = value.Replace("#", "");
+                    byte a = 255;
+                    byte r = 0;
+                    byte g = 0;
+                    byte b = 0;
+                    if (hex.Length == 8)
+                    {
+                        a = Convert.ToByte(hex.Substring(0, 2), 16);
+                        r = Convert.ToByte(hex.Substring(2, 2), 16);
+                        g = Convert.ToByte(hex.Substring(4, 2), 16);
+                        b = Convert.ToByte(hex.Substring(6, 2), 16);
+                    }
+                    else if (hex.Length == 6)
+                    {
+                        r = Convert.ToByte(hex.Substring(0, 2), 16);
+                        g = Convert.ToByte(hex.Substring(2, 2), 16);
+                        b = Convert.ToByte(hex.Substring(4, 2), 16);
+                    }
+                    var color = Windows.UI.Color.FromArgb(a, r, g, b);
+                    if (_appThemeColorObj != color)
+                    {
+                        _appThemeColorObj = color;
+                        OnPropertyChanged(nameof(AppThemeColorObj));
+                    }
+                }
+            }
+            catch { }
+
+            WeakReferenceMessenger.Default.Send(new AcrylicSettingChangedMessage(true)); // reuse or create new msg
+            ThemeHelper.ApplyThemeColor(value);
+        }
+
+        partial void OnAppThemeColorObjChanged(Windows.UI.Color value)
+        {
+            string hex = $"#{value.A:X2}{value.R:X2}{value.G:X2}{value.B:X2}";
+            if (AppThemeColor != hex)
+            {
+                AppThemeColor = hex;
+            }
         }
 
         private async Task ResetGameExeNameAsync()

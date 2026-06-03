@@ -206,10 +206,26 @@ public sealed partial class MainPage : Page
     }
     
 private async void RefreshTokenButton_Click(object sender, RoutedEventArgs e)
-{
-    var tokenService = new FufuLauncher.Services.TokenRefreshService();
-    await tokenService.RefreshCookieAsync(true);
-}
+    {
+        var tokenService = new FufuLauncher.Services.TokenRefreshService();
+        await tokenService.RefreshCookieAsync(true);
+    }
+
+    private async void RefreshDailyNoteButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn)
+        {
+            btn.IsEnabled = false;
+            try
+            {
+                await ViewModel.LoadDailyNoteAsync();
+            }
+            finally
+            {
+                btn.IsEnabled = true;
+            }
+        }
+    }
 
 private async void ChangeUidButton_Click(object sender, RoutedEventArgs e)
 {

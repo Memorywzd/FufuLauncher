@@ -198,6 +198,23 @@
                         </StackPanel>
                         
                         <StackPanel Style="{StaticResource SettingItemStyle}" Margin="0,12,0,0">
+                            <TextBlock Text="自定义软件主题颜色" 
+                                        Style="{ThemeResource BodyStrongTextBlockStyle}"
+                                        FontSize="14"/>
+                             <TextBlock Text="选择或输入Hex颜色代码。留空并重启应用可恢复默认颜色"
+                                        Style="{ThemeResource CaptionTextBlockStyle}"
+                                        Opacity="0.7"
+                                        Margin="0,2,0,8"/>
+                            
+                            <StackPanel Orientation="Horizontal" Spacing="16">
+                                <TextBox Text="{x:Bind ViewModel.AppThemeColor, Mode=TwoWay}"
+                                         PlaceholderText="#FFB6C1"
+                                         Width="150"
+                                         VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </StackPanel>
+                        
+                        <StackPanel Style="{StaticResource SettingItemStyle}" Margin="0,12,0,0">
                             <TextBlock Text="主页卡片显示" 
                                        Style="{ThemeResource BodyStrongTextBlockStyle}"
                                        FontSize="14"/>

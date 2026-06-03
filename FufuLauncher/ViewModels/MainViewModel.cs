@@ -1112,7 +1112,7 @@ private async Task ExecuteCheckinAsync()
             }
         }
 
-        private async Task LoadDailyNoteAsync()
+        public async Task LoadDailyNoteAsync()
         {
             try
             {

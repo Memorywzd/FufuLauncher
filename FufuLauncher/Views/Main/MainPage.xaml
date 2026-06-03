@@ -364,8 +364,17 @@
                                 <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
                             
-                            <TextBlock Grid.Row="0" Text="原神便签" FontSize="14" FontWeight="SemiBold" 
-                                       Foreground="White" Margin="0,0,0,10" Opacity="0.9"/>
+                            <Grid Grid.Row="0" Margin="0,0,0,10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="原神便签" FontSize="14" FontWeight="SemiBold" 
+                                           Foreground="White" VerticalAlignment="Center" Opacity="0.9"/>
+                                <Button Grid.Column="1" Click="RefreshDailyNoteButton_Click" Width="24" Height="24" Padding="0" Background="#1AFFFFFF" BorderThickness="0" CornerRadius="4" ToolTipService.ToolTip="刷新便签">
+                                    <FontIcon Glyph="&#xE72C;" FontSize="11" Foreground="White"/>
+                                </Button>
+                            </Grid>
                             
                             <Grid Grid.Row="1" MinHeight="80">
                                 <TextBlock x:Name="DailyNoteEmptyText" 
