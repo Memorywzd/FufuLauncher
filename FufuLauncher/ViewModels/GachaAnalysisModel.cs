@@ -1235,15 +1235,37 @@ public partial class GachaAnalysisModel : ObservableObject
                 var stuid = account.TryGetProperty("Stuid", out var si) ? si.GetString() ?? "" : "";
                 var cookie = account.TryGetProperty("Cookie", out var ck) ? ck.GetString() ?? "" : "";
 
+                bool needSave = false;
+
                 if (string.IsNullOrEmpty(stoken) && !string.IsNullOrEmpty(cookie))
                 {
                     var stokenMatch = Regex.Match(cookie, @"stoken=([^;]+)");
-                    if (stokenMatch.Success) stoken = stokenMatch.Groups[1].Value;
+                    if (stokenMatch.Success) { stoken = stokenMatch.Groups[1].Value; needSave = true; }
                 }
                 if (string.IsNullOrEmpty(mid) && !string.IsNullOrEmpty(cookie))
                 {
                     var midMatch = Regex.Match(cookie, @"mid=([^;]+)");
-                    if (midMatch.Success) mid = midMatch.Groups[1].Value;
+                    if (midMatch.Success) { mid = midMatch.Groups[1].Value; needSave = true; }
+                }
+
+                if (needSave)
+                {
+                    try
+                    {
+                        var configObj = JsonSerializer.Deserialize<HoyoverseCheckinConfig>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                        if (configObj?.Account != null)
+                        {
+                            if (!string.IsNullOrEmpty(stoken)) configObj.Account.Stoken = stoken;
+                            if (!string.IsNullOrEmpty(mid)) configObj.Account.Mid = mid;
+                            var updatedJson = JsonSerializer.Serialize(configObj, new JsonSerializerOptions { WriteIndented = true });
+                            await File.WriteAllTextAsync(file, updatedJson);
+                            Debug.WriteLine($"[Gacha] 已回写 stoken/mid 到 {Path.GetFileName(file)}");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"[Gacha] 回写 stoken/mid 失败: {ex.Message}");
+                    }
                 }
 
                 return (stoken, mid, stuid, cookie, file);
