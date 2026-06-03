@@ -972,6 +972,34 @@ private async Task PerformFpsPluginRepairAsync(bool showUI)
         }
     }
     
+    private async void OnResetAllPresetsClick(object sender, RoutedEventArgs e)
+    {
+        var dialog = new ContentDialog
+        {
+            Title = "重置全部预设",
+            Content = "确定要移除当前插件的所有预设并重新下载恢复默认吗？此操作无法恢复！",
+            PrimaryButtonText = "确认重置",
+            CloseButtonText = "取消",
+            DefaultButton = ContentDialogButton.Close,
+            XamlRoot = XamlRoot
+        };
+
+        if (await dialog.ShowAsync() == ContentDialogResult.Primary)
+        {
+            ViewModel.ClearAllPresets();
+
+            if (ViewModel.SelectedPluginIndex == 0)
+            {
+                string urlLatest = "http://kr2-proxy.gitwarp.top:9980/https://github.com/CodeCubist/FufuLauncher--Plugins/blob/main/FuFuPlugin.zip";
+                await DownloadAndInstallPluginAsync(urlLatest);
+            }
+            else if (ViewModel.SelectedPluginIndex == 1)
+            {
+                await PerformFpsPluginRepairAsync(true);
+            }
+        }
+    }
+    
     private async void OnCropBatchApplyClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
     {
         var deferral = args.GetDeferral();

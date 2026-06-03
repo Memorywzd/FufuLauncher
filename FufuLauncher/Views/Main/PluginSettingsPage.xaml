@@ -384,7 +384,10 @@
                                 </ItemsControl>
                             </ScrollViewer>
 
-                            <Button Grid.Column="2" Content="新建预设" Click="OnCreateNewPresetClick" VerticalAlignment="Center" Margin="16,0,0,0"/>
+                            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="16,0,0,0" Spacing="8">
+                                <Button Content="新建预设" Click="OnCreateNewPresetClick"/>
+                                <Button Content="重置全部" Click="OnResetAllPresetsClick"/>
+                            </StackPanel>
                         </Grid>
 
                         <GridView ItemsSource="{x:Bind ViewModel.Settings, Mode=OneWay}"

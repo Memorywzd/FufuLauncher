@@ -1005,7 +1005,7 @@ public void LoadConfiguration()
 
                 if (activeModel == null)
                 {
-                    activeModel = CreateNewPreset($"默认预设_{DateTime.Now:yyyyMMdd_HHmmss}", currentIniData, currentHash);
+                    activeModel = CreateNewPreset("默认预设", currentIniData, currentHash);
                 }
 
                 CurrentPreset = activeModel;
@@ -1031,6 +1031,32 @@ public void LoadConfiguration()
             WeakReferenceMessenger.Default.Send(new NotificationMessage(
                 "预设目录访问失败",
                 $"无法访问预设目录\n详细信息: {ex.Message}",
+                NotificationType.Error,
+                6000
+            ));
+        }
+    }
+    
+    public void ClearAllPresets()
+    {
+        try
+        {
+            if (Directory.Exists(_presetsDir))
+            {
+                var files = Directory.GetFiles(_presetsDir, "*.json");
+                foreach (var file in files)
+                {
+                    File.Delete(file);
+                }
+            }
+            AvailablePresets.Clear();
+            CurrentPreset = null;
+        }
+        catch (Exception ex)
+        {
+            WeakReferenceMessenger.Default.Send(new NotificationMessage(
+                "清除失败",
+                $"无法清除预设文件\n详细信息: {ex.Message}",
                 NotificationType.Error,
                 6000
             ));
