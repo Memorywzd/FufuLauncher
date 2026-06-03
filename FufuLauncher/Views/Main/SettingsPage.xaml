@@ -804,7 +804,7 @@
                                                VerticalAlignment="Center"
                                                Margin="0,16,0,0">
                                         <ToolTipService.ToolTip>
-                                            <ToolTip Content="由于米游社逐步删除了互动获取米游币渠道，本功能大概并不能让获取米游币变得更多，等待后续官方更新新策略"/>
+                                            <ToolTip Content="由于米游社逐步删除了互动获取米游币渠道，下方选项大概并不能让获取米游币变得更多，等待后续官方更新新策略"/>
                                         </ToolTipService.ToolTip>
                                     </TextBlock>
                                 </StackPanel>
@@ -855,8 +855,7 @@
                                        Margin="0,-16,0,0"/>
                         </StackPanel>
 
-                        <!-- 签到账号 -->
-                        <TextBlock Text="签到账号"
+                        <TextBlock Text="账号列表"
                                    Style="{ThemeResource BodyStrongTextBlockStyle}"
                                    FontSize="14"
                                    Margin="0,20,0,8"/>

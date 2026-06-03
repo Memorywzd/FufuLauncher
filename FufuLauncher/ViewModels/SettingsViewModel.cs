@@ -1032,20 +1032,12 @@ namespace FufuLauncher.ViewModels
                 var baseDir = Helpers.AppPaths.DataDir;
                 var seenUids = new HashSet<string>();
 
-                UserDisplayConfig activeDisplayConfig = null;
-                try
-                {
-                    var userConfigService = App.GetService<IUserConfigService>();
-                    activeDisplayConfig = await userConfigService.LoadDisplayConfigAsync();
-                }
-                catch { }
-
                 foreach (var file in Directory.GetFiles(baseDir, "config*.json"))
                 {
                     try
                     {
                         var json = await File.ReadAllTextAsync(file);
-                        var config = JsonSerializer.Deserialize<MihoyoBBS.Config>(json);
+                        var config = JsonSerializer.Deserialize<FufuLauncher.Models.HoyoverseCheckinConfig>(json);
                         if (config?.Account?.Cookie == null) continue;
 
                         var match = Regex.Match(config.Account.Cookie, @"(?:account_id_v2|ltuid_v2|ltuid|account_id|stuid)=(\d+)");
@@ -1053,25 +1045,8 @@ namespace FufuLauncher.ViewModels
                         var uid = match.Groups[1].Value;
                         if (!seenUids.Add(uid)) continue;
 
-                        string nickname = $"用户 {uid}";
-                        if (activeDisplayConfig != null && uid == activeDisplayConfig.GameUid && !string.IsNullOrEmpty(activeDisplayConfig.Nickname))
-                        {
-                            nickname = activeDisplayConfig.Nickname;
-                        }
-                        else
-                        {
-                            var displayFile = Path.Combine(baseDir, $"display_{uid}.json");
-                            if (File.Exists(displayFile))
-                            {
-                                try
-                                {
-                                    var displayConfig = JsonSerializer.Deserialize<UserDisplayConfig>(await File.ReadAllTextAsync(displayFile));
-                                    if (displayConfig != null && !string.IsNullOrEmpty(displayConfig.Nickname))
-                                        nickname = displayConfig.Nickname;
-                                }
-                                catch { }
-                            }
-                        }
+                        string nickname = config.Display?.Nickname ?? $"用户 {uid}";
+                        if (string.IsNullOrEmpty(nickname)) nickname = $"用户 {uid}";
 
                         accounts.Add(new CheckinAccountItem
                         {
