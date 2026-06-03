@@ -1220,7 +1220,7 @@ public partial class GachaAnalysisModel : ObservableObject
             return;
         }
 
-        string stoken, mid, stuid, gameUid;
+        string stoken = "", mid = "", stuid = "", gameUid = "";
         try
         {
             var json = await File.ReadAllTextAsync(configPath);
@@ -1229,6 +1229,24 @@ public partial class GachaAnalysisModel : ObservableObject
             stoken = account.TryGetProperty("Stoken", out var st) ? st.GetString() ?? "" : "";
             mid = account.TryGetProperty("Mid", out var mi) ? mi.GetString() ?? "" : "";
             stuid = account.TryGetProperty("Stuid", out var si) ? si.GetString() ?? "" : "";
+            
+            var cookieStr = account.TryGetProperty("Cookie", out var ck) ? ck.GetString() ?? "" : "";
+            if (!string.IsNullOrEmpty(cookieStr))
+            {
+                var cookies = cookieStr.Split(';', StringSplitOptions.RemoveEmptyEntries);
+                foreach (var cookie in cookies)
+                {
+                    var kvp = cookie.Trim();
+                    if (string.IsNullOrEmpty(stoken) && kvp.StartsWith("stoken="))
+                    {
+                        stoken = kvp.Substring(7);
+                    }
+                    if (string.IsNullOrEmpty(mid) && kvp.StartsWith("mid="))
+                    {
+                        mid = kvp.Substring(4);
+                    }
+                }
+            }
 
             var userConfigService = App.GetService<Services.IUserConfigService>();
             var displayConfig = await userConfigService.LoadDisplayConfigAsync();
