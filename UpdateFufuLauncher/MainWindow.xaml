@@ -10,6 +10,7 @@
         RenderOptions.BitmapScalingMode="HighQuality"
         RenderOptions.EdgeMode="Unspecified"
         FontFamily="Segoe UI Variable, Segoe UI, Microsoft YaHei"
+        ResizeMode="CanMinimize"
         SourceInitialized="Window_SourceInitialized"
         Loaded="Window_Loaded">
 
@@ -159,6 +160,11 @@
             <StackPanel x:Name="LoadingPanel" VerticalAlignment="Center" HorizontalAlignment="Center">
                 <ui:ProgressRing IsActive="True" Width="70" Height="70" Margin="0,0,0,32" Foreground="White"/>
                 <TextBlock x:Name="TestStatusText" Text="准备校验节点..." TextAlignment="Center" FontSize="15" Foreground="#E0E0E0" TextWrapping="Wrap"/>
+            </StackPanel>
+
+            <StackPanel x:Name="NoUpdatePanel" VerticalAlignment="Center" HorizontalAlignment="Center" Visibility="Collapsed">
+                <TextBlock Text="当前已是最新版本，无需更新" FontSize="16" Foreground="#E0E0E0" TextAlignment="Center" Margin="0,0,0,24"/>
+                <Button Content="关闭" Click="CloseWindow_Click" Style="{StaticResource PrimaryActionBtnStyle}" Width="120" HorizontalAlignment="Center"/>
             </StackPanel>
 
             <Grid x:Name="SelectionPanel" Visibility="Collapsed">
