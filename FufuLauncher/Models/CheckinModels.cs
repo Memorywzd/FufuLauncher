@@ -21,14 +21,23 @@ public class UnifiedCheckinResult
     public string SummaryMessage { get; set; } = "";
     public string GameSignDays { get; set; } = "";
     public string GameRewardItem { get; set; } = "";
+    public List<AccountCheckinDetail> AccountResults { get; set; } = new();
 
     public string GetDetailedSummary()
     {
         var sb = new System.Text.StringBuilder();
+        foreach (var account in AccountResults)
+        {
+            sb.AppendLine($"[{account.Nickname}]");
+            foreach (var item in account.Items)
+            {
+                string status = item.Success == true ? "完成" :
+                                item.Success == false ? "失败" : "跳过";
+                string extra = string.IsNullOrEmpty(item.Message) ? "" : $" - {item.Message}";
+                sb.AppendLine($"  {item.TypeName}: {status}{extra}");
+            }
+        }
         sb.AppendLine(SummaryMessage);
-        if (GameResult.Executed) sb.AppendLine($"├─ {GameResult.GetSummary()}");
-        if (CommunityResult.Executed) sb.AppendLine($"├─ {CommunityResult.GetSummary()}");
-        if (CloudGameResult.Executed) sb.AppendLine($"└─ {CloudGameResult.GetSummary()}");
         return sb.ToString().TrimEnd();
     }
 }
@@ -46,23 +55,19 @@ public class CheckinTypeResult
 
     public string GetSummary()
     {
-        var icon = Success ? "✅" : "❌";
         var countMsg = SuccessCount > 0 ? $"{SuccessCount}个账号成功" : "";
         var failMsg = FailCount > 0 ? $"{FailCount}个失败" : "";
         var sep = string.IsNullOrEmpty(countMsg) || string.IsNullOrEmpty(failMsg) ? "" : "，";
-        var msg = $"{icon} {string.Join("，", new[] { countMsg, failMsg }.Where(s => !string.IsNullOrEmpty(s)))}";
-        if (!string.IsNullOrEmpty(Message) && Success) msg += $" | {Message}";
-        if (!string.IsNullOrEmpty(Message) && !Success) msg += $" | {Message}";
+        var msg = string.Join("，", new[] { countMsg, failMsg }.Where(s => !string.IsNullOrEmpty(s)));
+        if (!string.IsNullOrEmpty(Message)) msg += $" | {Message}";
         return msg;
     }
 }
 
-public class AccountCheckinResult
+public class AccountCheckinDetail
 {
-    public string Uid { get; set; } = "";
     public string Nickname { get; set; } = "";
-    public bool Success { get; set; }
-    public string Message { get; set; } = "";
+    public List<(string TypeName, bool? Success, string Message)> Items { get; set; } = new();
 }
 
 public class AccountCredentials

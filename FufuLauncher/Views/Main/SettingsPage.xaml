@@ -1,4 +1,5 @@
 <Page x:Class="FufuLauncher.Views.SettingsPage"
+      x:Name="SettingsPageRoot"
       xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
       xmlns:helpers="using:FufuLauncher.Helpers"
@@ -840,7 +841,7 @@
                                         </ToolTipService.ToolTip>
                                     </TextBlock>
                                 </StackPanel>
-                                <TextBlock Text="领取云游戏签到奖励，需添加云游戏登录凭证"
+                                <TextBlock Text="领取云游戏签到奖励，需在下方账号列表右侧添加云游戏登录凭证"
                                            Style="{ThemeResource CaptionTextBlockStyle}"
                                            Opacity="0.7"
                                            Margin="0,-16,0,0"/>
@@ -849,7 +850,16 @@
                                               OffContent="已禁用"
                                               OnContent="已启用"
                                               IsOn="{x:Bind ViewModel.IsAutoCheckinEnabled, Mode=TwoWay}"/>
-                                <TextBlock Text="开启后，将在应用启动时自动检测并在未签到时执行一键签到"
+                                <TextBlock Text="开启后，将在应用启动时自动检测并在未签到时执行签到"
+                                           Style="{ThemeResource CaptionTextBlockStyle}"
+                                           Opacity="0.7"
+                                           Margin="0,-16,0,0"/>
+
+                                <ToggleSwitch Header="批量签到"
+                                              OffContent="已禁用"
+                                              OnContent="已启用"
+                                              IsOn="{x:Bind ViewModel.IsBatchCheckinEnabled, Mode=TwoWay}"/>
+                                <TextBlock Text="打开此开关则可为所有勾选的账号执行指定的签到任务，否则仅为当前账号执行"
                                            Style="{ThemeResource CaptionTextBlockStyle}"
                                            Opacity="0.7"
                                            Margin="0,-16,0,0"/>
@@ -888,6 +898,7 @@
                                                             <ColumnDefinition Width="Auto"/>
                                                         </Grid.ColumnDefinitions>
                                                         <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                                                  IsEnabled="{Binding DataContext.IsBatchCheckinEnabled, ElementName=SettingsPageRoot, Mode=OneWay}"
                                                                   VerticalAlignment="Center"/>
                                                         <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                                             <TextBlock Text="{Binding Nickname}" FontSize="14"/>
@@ -907,7 +918,7 @@
                                                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                                                           Visibility="{Binding HasCloudCredential, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}"/>
                                                                 <FontIcon Glyph="&#xE753;" FontSize="14"
-                                                                          Foreground="#FF4CC2FF"
+                                                                          Foreground="{ThemeResource SystemAccentColor}"
                                                                           Visibility="{Binding HasCloudCredential, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
                                                             </Grid>
                                                         </Button>

@@ -199,7 +199,8 @@ namespace FufuLauncher.ViewModels
         
 
         [ObservableProperty] private bool _isGameCheckinEnabled = true;
-        [ObservableProperty] private bool _isCommunityCheckinEnabled;
+        [ObservableProperty] private bool _isBatchCheckinEnabled;
+        [ObservableProperty] private bool _isCommunityCheckinEnabled = true;
         [ObservableProperty] private bool _isCommunityLikeEnabled;
         [ObservableProperty] private bool _isCommunityReadEnabled;
         [ObservableProperty] private bool _isCommunityShareEnabled;
@@ -226,6 +227,8 @@ namespace FufuLauncher.ViewModels
             => _ = _localSettingsService.SaveSettingAsync("IsCommunityShareEnabled", value);
         partial void OnIsCloudGameCheckinEnabledChanged(bool value)
             => _ = _localSettingsService.SaveSettingAsync("IsCloudGameCheckinEnabled", value);
+        partial void OnIsBatchCheckinEnabledChanged(bool value)
+            => _ = _localSettingsService.SaveSettingAsync("IsBatchCheckinEnabled", value);
 
         public IAsyncRelayCommand ClearWebView2CacheCommand { get; }
         public ICommand SwitchThemeCommand
@@ -915,7 +918,7 @@ namespace FufuLauncher.ViewModels
             IsGameCheckinEnabled = gameCheckinJson == null || Convert.ToBoolean(gameCheckinJson);
 
             var communityCheckinJson = await _localSettingsService.ReadSettingAsync("IsCommunityCheckinEnabled");
-            IsCommunityCheckinEnabled = communityCheckinJson != null && Convert.ToBoolean(communityCheckinJson);
+            IsCommunityCheckinEnabled = communityCheckinJson == null || Convert.ToBoolean(communityCheckinJson);
 
             var communityLikeJson = await _localSettingsService.ReadSettingAsync("IsCommunityLikeEnabled");
             IsCommunityLikeEnabled = communityLikeJson != null && Convert.ToBoolean(communityLikeJson);
@@ -928,6 +931,9 @@ namespace FufuLauncher.ViewModels
 
             var cloudGameCheckinJson = await _localSettingsService.ReadSettingAsync("IsCloudGameCheckinEnabled");
             IsCloudGameCheckinEnabled = cloudGameCheckinJson != null && Convert.ToBoolean(cloudGameCheckinJson);
+
+            var batchCheckinJson = await _localSettingsService.ReadSettingAsync("IsBatchCheckinEnabled");
+            IsBatchCheckinEnabled = batchCheckinJson != null && Convert.ToBoolean(batchCheckinJson);
         }
         
         private void CheckAndLimitDailyNoteItems(string settingName, Action revertAction)

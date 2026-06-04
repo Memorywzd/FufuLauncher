@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Text.Json;
@@ -124,11 +124,12 @@ namespace FufuLauncher.ViewModels
 
         [ObservableProperty] private string _checkinStatusText = "正在加载状态...";
         [ObservableProperty] private bool _isCheckinButtonEnabled = true;
-        [ObservableProperty] private string _checkinButtonText = "一键签到";
+        [ObservableProperty] private string _checkinButtonText = "立即签到";
         [ObservableProperty] private string _checkinSummary = "";
         
-        [ObservableProperty] private string _checkinStateGlyph = "\uE730"; 
+        [ObservableProperty] private string _checkinStateGlyph = "\uE730";
         [ObservableProperty] private SolidColorBrush _checkinStateBrush = new(Microsoft.UI.Colors.Gray);
+        [ObservableProperty] private string _checkinStateTooltip = "\u6E38\u620F\u7B7E\u5230\u72B6\u6001\u52A0\u8F7D\u4E2D";
         
         [ObservableProperty] private string _launchButtonText = "请选择游戏路径";
         [ObservableProperty] private bool _isLaunchButtonEnabled = true;
@@ -871,23 +872,24 @@ private void BackgroundVideoPlayer_MediaFailed(MediaPlayer sender, MediaPlayerFa
 
         private void UpdateCheckinIconState(string statusText)
         {
-            bool isSigned = !string.IsNullOrEmpty(statusText) && 
+            bool isSigned = !string.IsNullOrEmpty(statusText) &&
                             (statusText.Contains("成功") || statusText.Contains("已"));
-
-            CheckinStateGlyph = "\uE73E"; 
 
             if (isSigned)
             {
+                CheckinStateGlyph = "";
                 CheckinStateBrush = new SolidColorBrush(Microsoft.UI.Colors.LightGreen);
-                IsCheckinButtonEnabled = false;
-                CheckinButtonText = "已签到";
+                CheckinStateTooltip = "游戏已签到";
             }
             else
             {
+                CheckinStateGlyph = "";
                 CheckinStateBrush = new SolidColorBrush(Microsoft.UI.Colors.Gray) { Opacity = 0.8 };
-                IsCheckinButtonEnabled = true;
-                CheckinButtonText = "一键签到";
+                CheckinStateTooltip = "游戏未签到";
             }
+
+            IsCheckinButtonEnabled = true;
+            CheckinButtonText = "立即签到";
         }
         
         private async Task LoadCheckinStatusAsync()
@@ -991,7 +993,15 @@ private async Task ExecuteCheckinAsync()
         }
         else
         {
-            var unifiedResult = await _unifiedCheckinService.ExecuteAllCheckinsAsync();
+            var progress = new Progress<string>(msg =>
+            {
+                _dispatcherQueue.TryEnqueue(() =>
+                {
+                    CheckinButtonText = msg;
+                });
+            });
+
+            var unifiedResult = await _unifiedCheckinService.ExecuteAllCheckinsAsync(progress);
 
             CheckinStatusText = unifiedResult.OverallSuccess ? "签到完成" : "签到部分失败";
             CheckinSummary = unifiedResult.SummaryMessage;

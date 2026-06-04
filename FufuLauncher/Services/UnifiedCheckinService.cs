@@ -27,21 +27,19 @@ public class UnifiedCheckinService : IUnifiedCheckinService
         _cloudGameCheckinService = cloudGameCheckinService;
     }
 
-    public async Task<UnifiedCheckinResult> ExecuteAllCheckinsAsync()
+    public async Task<UnifiedCheckinResult> ExecuteAllCheckinsAsync(IProgress<string>? progress = null)
     {
         var result = new UnifiedCheckinResult();
 
-        // 1. Load settings
         var gameEnabled = await GetBoolSettingAsync("IsGameCheckinEnabled", true);
-        var communityEnabled = await GetBoolSettingAsync("IsCommunityCheckinEnabled", false);
+        var communityEnabled = await GetBoolSettingAsync("IsCommunityCheckinEnabled", true);
         var cloudGameEnabled = await GetBoolSettingAsync("IsCloudGameCheckinEnabled", false);
         var communityLike = await GetBoolSettingAsync("IsCommunityLikeEnabled", false);
         var communityRead = await GetBoolSettingAsync("IsCommunityReadEnabled", false);
         var communityShare = await GetBoolSettingAsync("IsCommunityShareEnabled", false);
+        var isBatchCheckinEnabled = await GetBoolSettingAsync("IsBatchCheckinEnabled", false);
 
-        // 2. Load accounts and credentials
         var accounts = await LoadAllAccountsAsync();
-        var disabledUids = await LoadDisabledUidsAsync();
 
         if (accounts.Count == 0)
         {
@@ -51,17 +49,30 @@ public class UnifiedCheckinService : IUnifiedCheckinService
             return result;
         }
 
-        // Filter disabled accounts
-        var activeAccounts = accounts.Where(a => !disabledUids.Contains(a.Uid)).ToList();
+        var disabledUids = await LoadDisabledUidsAsync();
+        List<AccountCredentials> activeAccounts;
+        if (isBatchCheckinEnabled)
+        {
+            activeAccounts = accounts.Where(a => !disabledUids.Contains(a.Uid)).ToList();
+        }
+        else
+        {
+            var activeFileObj = await _localSettingsService.ReadSettingAsync("ActiveConfigFile");
+            string activeFile = activeFileObj?.ToString() ?? "config.json";
+            var activeAccount = accounts.FirstOrDefault(a => a.ConfigPath.EndsWith(activeFile));
+            activeAccounts = activeAccount != null ? new List<AccountCredentials> { activeAccount } : new List<AccountCredentials>();
+        }
+
         if (activeAccounts.Count == 0)
         {
-            result.SummaryMessage = "所有账号已被禁用";
-            result.GameResult.Message = "所有账号已被禁用";
+            result.SummaryMessage = isBatchCheckinEnabled ? "所有账号已被禁用" : "未找到当前账号";
+            result.GameResult.Message = result.SummaryMessage;
             result.GameResult.Executed = true;
             return result;
         }
 
-        // 3. Game Check-in
+        void Report(string msg) => progress?.Report(msg);
+
         if (gameEnabled)
         {
             result.GameResult.Executed = true;
@@ -69,26 +80,45 @@ public class UnifiedCheckinService : IUnifiedCheckinService
             {
                 foreach (var account in activeAccounts)
                 {
+                    Report($"[{account.Nickname}] 正在游戏签到...");
                     try
                     {
                         var config = await LoadAccountConfigAsync(account.ConfigPath);
-                        if (config == null) continue;
+                        if (config == null)
+                        {
+                            result.GameResult.FailCount++;
+                            result.AccountResults.Add(new AccountCheckinDetail
+                            {
+                                Nickname = account.Nickname,
+                                Items = { ("游戏签到", false, "配置加载失败") }
+                            });
+                            continue;
+                        }
 
                         var genshin = new MihoyoBBS.Genshin();
                         await genshin.InitializeAsync(config);
                         var signResult = await genshin.SignAccountAsync(config, null, disabledUids);
 
-                        if (!signResult.Contains("失败") && !signResult.Contains("异常"))
+                        bool success = !signResult.Contains("失败") && !signResult.Contains("异常");
+                        if (success)
                             result.GameResult.SuccessCount++;
                         else
                             result.GameResult.FailCount++;
 
-                        result.GameResult.Details.Add(signResult);
+                        result.AccountResults.Add(new AccountCheckinDetail
+                        {
+                            Nickname = account.Nickname,
+                            Items = { ("游戏签到", success, success ? "完成" : signResult) }
+                        });
                     }
                     catch (Exception ex)
                     {
                         result.GameResult.FailCount++;
-                        result.GameResult.Details.Add($"{account.Nickname}({account.Uid}): {ex.Message}");
+                        result.AccountResults.Add(new AccountCheckinDetail
+                        {
+                            Nickname = account.Nickname,
+                            Items = { ("游戏签到", false, ex.Message) }
+                        });
                     }
                     await Task.Delay(new Random().Next(2000, 5000));
                 }
@@ -100,15 +130,9 @@ public class UnifiedCheckinService : IUnifiedCheckinService
                 result.GameRewardItem = rewardItem;
 
                 if (result.GameResult.Success)
-                {
                     result.GameResult.Message = $"连续{signDays}天 | 获得{rewardItem}";
-                }
                 else
-                {
-                    result.GameResult.Message = $"{result.GameResult.SuccessCount}个成功，{result.GameResult.FailCount}个失败";
-                }
-
-                result.GameResult.Details.Add($"游戏签到: {result.GameResult.SuccessCount}个账号 | 连续{signDays}天 | 获得{rewardItem}");
+                    result.GameResult.Message = $"{result.GameResult.SuccessCount}成功，{result.GameResult.FailCount}失败";
             }
             catch (Exception ex)
             {
@@ -118,7 +142,6 @@ public class UnifiedCheckinService : IUnifiedCheckinService
             }
         }
 
-        // 4. Community Check-in
         if (communityEnabled)
         {
             result.CommunityResult.Executed = true;
@@ -126,6 +149,7 @@ public class UnifiedCheckinService : IUnifiedCheckinService
             {
                 foreach (var account in activeAccounts)
                 {
+                    Report($"[{account.Nickname}] 正在社区签到...");
                     var communityResult = await _communityCheckinService.ExecuteCheckinAsync(
                         account, true, communityRead, communityLike, communityShare);
 
@@ -133,6 +157,17 @@ public class UnifiedCheckinService : IUnifiedCheckinService
                     result.CommunityResult.FailCount += communityResult.FailCount;
                     result.CommunityResult.SkippedCount += communityResult.SkippedCount;
                     result.CommunityResult.Details.AddRange(communityResult.Details);
+
+                    bool success = communityResult.FailCount == 0;
+                    var acctDetail = result.AccountResults.FirstOrDefault(a => a.Nickname == account.Nickname);
+                    if (acctDetail != null)
+                        acctDetail.Items.Add(("社区签到", success, success ? "完成" : "失败"));
+                    else
+                        result.AccountResults.Add(new AccountCheckinDetail
+                        {
+                            Nickname = account.Nickname,
+                            Items = { ("社区签到", success, success ? "完成" : "失败") }
+                        });
 
                     await Task.Delay(new Random().Next(2000, 5000));
                 }
@@ -156,7 +191,6 @@ public class UnifiedCheckinService : IUnifiedCheckinService
             }
         }
 
-        // 5. Cloud Game Check-in
         if (cloudGameEnabled)
         {
             result.CloudGameResult.Executed = true;
@@ -175,14 +209,29 @@ public class UnifiedCheckinService : IUnifiedCheckinService
                         if (string.IsNullOrEmpty(account.CloudComboToken))
                         {
                             result.CloudGameResult.SkippedCount++;
+                            var cloudDetail = result.AccountResults.FirstOrDefault(a => a.Nickname == account.Nickname);
+                            if (cloudDetail != null)
+                                cloudDetail.Items.Add(("云游戏签到", null, "未配置凭证"));
                             continue;
                         }
 
+                        Report($"[{account.Nickname}] 正在云游戏签到...");
                         var cloudResult = await _cloudGameCheckinService.ExecuteCheckinAsync(account.Uid, account.CloudComboToken);
                         result.CloudGameResult.SuccessCount += cloudResult.SuccessCount;
                         result.CloudGameResult.FailCount += cloudResult.FailCount;
                         result.CloudGameResult.SkippedCount += cloudResult.SkippedCount;
                         result.CloudGameResult.Details.AddRange(cloudResult.Details);
+
+                        bool success = cloudResult.FailCount == 0;
+                        var cloudDoneDetail = result.AccountResults.FirstOrDefault(a => a.Nickname == account.Nickname);
+                        if (cloudDoneDetail != null)
+                            cloudDoneDetail.Items.Add(("云游戏签到", success, success ? "完成" : "失败"));
+                        else
+                            result.AccountResults.Add(new AccountCheckinDetail
+                            {
+                                Nickname = account.Nickname,
+                                Items = { ("云游戏签到", success, success ? "完成" : "失败") }
+                            });
 
                         await Task.Delay(new Random().Next(2000, 5000));
                     }
@@ -207,23 +256,15 @@ public class UnifiedCheckinService : IUnifiedCheckinService
             }
         }
 
-        // 6. Build summary
-        int totalSuccess = result.GameResult.SuccessCount + result.CommunityResult.SuccessCount + result.CloudGameResult.SuccessCount;
-        int totalFail = result.GameResult.FailCount + result.CommunityResult.FailCount + result.CloudGameResult.FailCount;
-        int executedCount = (result.GameResult.Executed ? 1 : 0) + (result.CommunityResult.Executed ? 1 : 0) + (result.CloudGameResult.Executed ? 1 : 0);
+        int successAccounts = result.AccountResults.Count(a => a.Items.All(i => i.Success != false));
+        int failAccounts = result.AccountResults.Count(a => a.Items.Any(i => i.Success == false));
 
-        if (totalFail == 0)
-        {
-            result.SummaryMessage = $"签到完成 - {activeAccounts.Count}个账号全部成功";
-        }
-        else if (totalSuccess > 0)
-        {
-            result.SummaryMessage = $"签到完成 - 部分成功 ({totalSuccess}成功, {totalFail}失败)";
-        }
+        if (failAccounts == 0)
+            result.SummaryMessage = $"签到完成，{successAccounts}个账号全部成功";
+        else if (successAccounts > 0)
+            result.SummaryMessage = $"签到完成，{successAccounts}个成功，{failAccounts}个失败";
         else
-        {
-            result.SummaryMessage = $"签到失败 - 共{totalFail}个错误";
-        }
+            result.SummaryMessage = $"签到失败，共{failAccounts}个账号出错";
 
         Debug.WriteLine($"[统一签到] {result.SummaryMessage}");
         return result;
@@ -273,10 +314,12 @@ public class UnifiedCheckinService : IUnifiedCheckinService
                 var uid = match.Groups[1].Value;
                 if (!seenUids.Add(uid)) continue;
 
-                // Extract stoken and mid from cookie or account config
                 var stoken = ExtractCookieValue(cookie, "stoken") ?? config.Account.Stoken ?? "";
                 var mid = ExtractCookieValue(cookie, "mid") ?? config.Account.Mid ?? "";
                 var stuid = ExtractCookieValue(cookie, "stuid") ?? ExtractCookieValue(cookie, "account_id_v2") ?? config.Account.Stuid ?? uid;
+
+                string nickname = config.Display?.Nickname;
+                if (string.IsNullOrEmpty(nickname)) nickname = $"用户{uid}";
 
                 accounts.Add(new AccountCredentials
                 {
@@ -285,7 +328,7 @@ public class UnifiedCheckinService : IUnifiedCheckinService
                     Stuid = stuid,
                     Stoken = stoken,
                     Mid = mid,
-                    Nickname = $"用户{uid}",
+                    Nickname = nickname,
                     ConfigPath = file,
                     CloudComboToken = config.Account.CloudComboToken ?? ""
                 });

@@ -4,5 +4,5 @@ namespace FufuLauncher.Contracts.Services;
 
 public interface IUnifiedCheckinService
 {
-    Task<UnifiedCheckinResult> ExecuteAllCheckinsAsync();
+    Task<UnifiedCheckinResult> ExecuteAllCheckinsAsync(IProgress<string>? progress = null);
 }
