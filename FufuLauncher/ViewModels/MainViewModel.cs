@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Text.Json;
@@ -28,6 +28,7 @@ namespace FufuLauncher.ViewModels
         private readonly IBackgroundRenderer _backgroundRenderer;
         private readonly ILocalSettingsService _localSettingsService;
         private readonly IHoyoverseCheckinService _checkinService;
+        private readonly IUnifiedCheckinService _unifiedCheckinService;
         private readonly IGameLauncherService _gameLauncherService;
         private readonly INotificationService _notificationService;
         private readonly DailyNoteCardService _dailyNoteCardService;
@@ -123,11 +124,12 @@ namespace FufuLauncher.ViewModels
 
         [ObservableProperty] private string _checkinStatusText = "正在加载状态...";
         [ObservableProperty] private bool _isCheckinButtonEnabled = true;
-        [ObservableProperty] private string _checkinButtonText = "一键签到";
+        [ObservableProperty] private string _checkinButtonText = "立即签到";
         [ObservableProperty] private string _checkinSummary = "";
         
-        [ObservableProperty] private string _checkinStateGlyph = "\uE730"; 
+        [ObservableProperty] private string _checkinStateGlyph = "\uE730";
         [ObservableProperty] private SolidColorBrush _checkinStateBrush = new(Microsoft.UI.Colors.Gray);
+        [ObservableProperty] private string _checkinStateTooltip = "\u6E38\u620F\u7B7E\u5230\u72B6\u6001\u52A0\u8F7D\u4E2D";
         
         [ObservableProperty] private string _launchButtonText = "请选择游戏路径";
         [ObservableProperty] private bool _isLaunchButtonEnabled = true;
@@ -187,6 +189,7 @@ namespace FufuLauncher.ViewModels
             IBackgroundRenderer backgroundRenderer,
             ILocalSettingsService localSettingsService,
             IHoyoverseCheckinService checkinService,
+            IUnifiedCheckinService unifiedCheckinService,
             IGameLauncherService gameLauncherService,
             ILauncherService launcherService,
             INavigationService navigationService,
@@ -197,6 +200,7 @@ namespace FufuLauncher.ViewModels
             _backgroundRenderer = backgroundRenderer;
             _localSettingsService = localSettingsService;
             _checkinService = checkinService;
+            _unifiedCheckinService = unifiedCheckinService;
             _gameLauncherService = gameLauncherService;
             _notificationService = notificationService;
             _dailyNoteCardService = dailyNoteCardService;
@@ -868,23 +872,24 @@ private void BackgroundVideoPlayer_MediaFailed(MediaPlayer sender, MediaPlayerFa
 
         private void UpdateCheckinIconState(string statusText)
         {
-            bool isSigned = !string.IsNullOrEmpty(statusText) && 
+            bool isSigned = !string.IsNullOrEmpty(statusText) &&
                             (statusText.Contains("成功") || statusText.Contains("已"));
-
-            CheckinStateGlyph = "\uE73E"; 
 
             if (isSigned)
             {
+                CheckinStateGlyph = "";
                 CheckinStateBrush = new SolidColorBrush(Microsoft.UI.Colors.LightGreen);
-                IsCheckinButtonEnabled = false;
-                CheckinButtonText = "已签到";
+                CheckinStateTooltip = "游戏已签到";
             }
             else
             {
+                CheckinStateGlyph = "";
                 CheckinStateBrush = new SolidColorBrush(Microsoft.UI.Colors.Gray) { Opacity = 0.8 };
-                IsCheckinButtonEnabled = true;
-                CheckinButtonText = "一键签到";
+                CheckinStateTooltip = "游戏未签到";
             }
+
+            IsCheckinButtonEnabled = true;
+            CheckinButtonText = "立即签到";
         }
         
         private async Task LoadCheckinStatusAsync()
@@ -946,14 +951,13 @@ private async Task ExecuteCheckinAsync()
 {
     IsCheckinButtonEnabled = false;
     CheckinButtonText = "签到中...";
-    
+
     await RefreshSettingsAsync();
 
     try
     {
         if (_isInternationalAccount)
         {
-            
             string cookie = "";
             try
             {
@@ -976,7 +980,7 @@ private async Task ExecuteCheckinAsync()
                 CheckinStatusText = "缺少 Cookie";
                 return;
             }
-            
+
             await UpdateUI(() =>
             {
                 var win = new HoyolabCheckinWindow(cookie);
@@ -989,29 +993,21 @@ private async Task ExecuteCheckinAsync()
         }
         else
         {
-            var targetUidObj = await _localSettingsService.ReadSettingAsync("CustomCheckinUid");
-            string targetUid = targetUidObj?.ToString();
-
-            var (success, message) = await _checkinService.ExecuteCheckinAsync(targetUid);
-
-            int signDays = MihoyoBBS.GameCheckin.LastSignDays;
-            string rewardItem = MihoyoBBS.GameCheckin.LastRewardItem;
-
-            bool isActualSuccess = success;
-            if (success && (string.IsNullOrEmpty(rewardItem) || rewardItem == "无/未知"))
+            var progress = new Progress<string>(msg =>
             {
-                isActualSuccess = false;
-            }
+                _dispatcherQueue.TryEnqueue(() =>
+                {
+                    CheckinButtonText = msg;
+                });
+            });
 
-            CheckinStatusText = isActualSuccess ? "签到成功" : "签到失败";
-            CheckinSummary = isActualSuccess ? "所有绑定角色已签到完成" : message;
-            UpdateCheckinIconState(isActualSuccess ? "已签到" : "Fail");
+            var unifiedResult = await _unifiedCheckinService.ExecuteAllCheckinsAsync(progress);
 
-            if (isActualSuccess)
-            {
-                string formattedMsg = $"连续签到: {signDays}天 | 获得奖励: {rewardItem}";
-                _notificationService.Show("签到成功", formattedMsg, NotificationType.Success, 3000);
-            }
+            CheckinStatusText = unifiedResult.OverallSuccess ? "签到完成" : "签到部分失败";
+            CheckinSummary = unifiedResult.SummaryMessage;
+            UpdateCheckinIconState(unifiedResult.OverallSuccess ? "已签到" : "Fail");
+
+            _notificationService.Show("签到完成", unifiedResult.GetDetailedSummary(), unifiedResult.NotificationType, 5000);
         }
     }
     catch (Exception ex)

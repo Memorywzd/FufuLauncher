@@ -124,9 +124,6 @@ public class TokenRefreshService
                 var newJson = JsonSerializer.Serialize(config, options);
                 await File.WriteAllTextAsync(path, newJson);
 
-                var localSettingsService = new LocalSettingsService();
-                await localSettingsService.SaveSettingAsync("AccountConfig", config);
-
                 Debug.WriteLine("Cookie刷新成功");
                 WeakReferenceMessenger.Default.Send(new NotificationMessage("Cookie刷新", isManual ? "Cookie手动刷新已完成，新凭据已存盘" : "Cookie自动刷新已完成，新凭据已存盘，请重新启动软件", NotificationType.Success, 3000));
                 return;
@@ -169,7 +166,7 @@ public class TokenRefreshService
             var response = await _httpClient.SendAsync(request);
             var responseText = await response.Content.ReadAsStringAsync();
 
-            var result = JsonSerializer.Deserialize<MihoyoBBS.ApiResponse<MihoyoBBS.AccountInfoData>>(responseText, _jsonOptions);
+            var result = JsonSerializer.Deserialize<ApiResponse<AccountInfoData>>(responseText, _jsonOptions);
             
             if (result != null && result.RetCode == 0 && result.Data?.List != null && result.Data.List.Count > 0)
             {

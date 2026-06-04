@@ -5,15 +5,25 @@ namespace FufuLauncher.Models;
 public partial class AccountInfo : ObservableObject
 {
     [ObservableProperty] private string _nickname = "";
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(GameUidDisplay))]
+    private string _stuid = "";
     [ObservableProperty] private string _gameUid = "";
     [ObservableProperty] private string _server = "";
     [ObservableProperty] private string _avatarUrl = "ms-appx:///Assets/DefaultAvatar.png";
-    [ObservableProperty] private string _level = "";
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(LevelDisplay))]
+    private string _level = "";
     [ObservableProperty] private string _sign = "这个人很懒，什么都没有写...";
     [ObservableProperty] private string _ipRegion = "未知";
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(LevelDisplay))]
+    [NotifyPropertyChangedFor(nameof(GameUidDisplay))]
+    private bool _hasBoundRole = true;
+    [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(GenderIcon))]
     [NotifyPropertyChangedFor(nameof(GenderText))]
+    [NotifyPropertyChangedFor(nameof(GameUidDisplay))]
     private int _gender = 0;
     public string GenderIcon => _gender switch
     {
@@ -28,6 +38,10 @@ public partial class AccountInfo : ObservableObject
         2 => "女",
         _ => "保密"
     };
+
+    public string LevelDisplay => HasBoundRole && !string.IsNullOrEmpty(Level) ? Level : "暂无";
+
+    public string GameUidDisplay => string.IsNullOrEmpty(Stuid) ? "暂无" : Stuid;
 }
 
 public class UserDisplayConfig
@@ -40,4 +54,5 @@ public class UserDisplayConfig
     public string Sign { get; set; } = "";
     public string IpRegion { get; set; } = "";
     public int Gender { get; set; } = 0;
+    public bool HasBoundRole { get; set; } = true;
 }

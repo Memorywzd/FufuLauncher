@@ -1,5 +1,7 @@
 ﻿using System.Text.Json;
+using FufuLauncher.Contracts.Services;
 using FufuLauncher.Models;
+using MihoyoBBS;
 
 namespace FufuLauncher.Services;
 
@@ -7,32 +9,53 @@ public interface IUserConfigService
 {
     Task<UserDisplayConfig> LoadDisplayConfigAsync();
     Task SaveDisplayConfigAsync(UserDisplayConfig config);
-    Task<bool> DisplayConfigExistsAsync();
 }
 
 public class UserConfigService : IUserConfigService
 {
-    private readonly string _configPath;
+    private readonly ILocalSettingsService _localSettingsService;
 
-    public UserConfigService()
+    public UserConfigService(ILocalSettingsService localSettingsService)
     {
-        _configPath = Path.Combine(Helpers.AppPaths.DataDir, "user.config.json");
+        _localSettingsService = localSettingsService;
     }
 
     public async Task<UserDisplayConfig> LoadDisplayConfigAsync()
     {
         try
         {
-            if (!File.Exists(_configPath))
+            var activeFileObj = await _localSettingsService.ReadSettingAsync("ActiveConfigFile");
+            string activeFile = activeFileObj?.ToString() ?? "config.json";
+            var configPath = Path.Combine(Helpers.AppPaths.DataDir, activeFile);
+
+            if (!File.Exists(configPath))
             {
                 return new UserDisplayConfig();
             }
 
-            var json = await File.ReadAllTextAsync(_configPath);
-            return JsonSerializer.Deserialize<UserDisplayConfig>(json, new JsonSerializerOptions
+            var json = await File.ReadAllTextAsync(configPath);
+            var config = JsonSerializer.Deserialize<Config>(json, new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = true
-            }) ?? new UserDisplayConfig();
+            });
+
+            if (config?.Display == null)
+            {
+                return new UserDisplayConfig();
+            }
+
+            return new UserDisplayConfig
+            {
+                Nickname = config.Display.Nickname,
+                GameUid = config.Display.GameUid,
+                Server = config.Display.Server,
+                AvatarUrl = config.Display.AvatarUrl,
+                Level = config.Display.Level,
+                Sign = config.Display.Sign,
+                IpRegion = config.Display.IpRegion,
+                Gender = config.Display.Gender,
+                HasBoundRole = config.Display.HasBoundRole
+            };
         }
         catch
         {
@@ -40,24 +63,46 @@ public class UserConfigService : IUserConfigService
         }
     }
 
-    public async Task SaveDisplayConfigAsync(UserDisplayConfig config)
+    public async Task SaveDisplayConfigAsync(UserDisplayConfig display)
     {
         try
         {
-            var json = JsonSerializer.Serialize(config, new JsonSerializerOptions
+            var activeFileObj = await _localSettingsService.ReadSettingAsync("ActiveConfigFile");
+            string activeFile = activeFileObj?.ToString() ?? "config.json";
+            var configPath = Path.Combine(Helpers.AppPaths.DataDir, activeFile);
+
+            if (!File.Exists(configPath))
             {
-                WriteIndented = true
+                return;
+            }
+
+            var json = await File.ReadAllTextAsync(configPath);
+            var config = JsonSerializer.Deserialize<Config>(json, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
             });
-            await File.WriteAllTextAsync(_configPath, json);
+
+            if (config == null) return;
+
+            config.Display = new DisplayConfig
+            {
+                Nickname = display.Nickname,
+                GameUid = display.GameUid,
+                Server = display.Server,
+                AvatarUrl = display.AvatarUrl,
+                Level = display.Level,
+                Sign = display.Sign,
+                IpRegion = display.IpRegion,
+                Gender = display.Gender,
+                HasBoundRole = display.HasBoundRole
+            };
+
+            var newJson = JsonSerializer.Serialize(config, new JsonSerializerOptions { WriteIndented = true });
+            await File.WriteAllTextAsync(configPath, newJson);
         }
         catch (Exception ex)
         {
             throw new IOException($"保存用户显示配置失败: {ex.Message}");
         }
-    }
-
-    public Task<bool> DisplayConfigExistsAsync()
-    {
-        return Task.FromResult(File.Exists(_configPath));
     }
 }

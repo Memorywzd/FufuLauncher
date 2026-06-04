@@ -4,6 +4,7 @@ using FufuLauncher.Constants;
 using FufuLauncher.Contracts.Services;
 using FufuLauncher.Models;
 using Microsoft.Extensions.Logging;
+using MihoyoBBS;
 
 namespace FufuLauncher.Services;
 
@@ -173,31 +174,25 @@ public class UserInfoService : IUserInfoService
             string activeFile = activeFileObj?.ToString() ?? "config.json";
             var configPath = Path.Combine(AppContext.BaseDirectory, activeFile);
 
-            HoyoverseCheckinConfig oldConfig = new();
+            Config oldConfig = new();
 
             if (File.Exists(configPath))
             {
                 var json = await File.ReadAllTextAsync(configPath);
-                oldConfig = JsonSerializer.Deserialize<HoyoverseCheckinConfig>(json, new JsonSerializerOptions
+                oldConfig = JsonSerializer.Deserialize<Config>(json, new JsonSerializerOptions
                 {
                     PropertyNameCaseInsensitive = true
-                }) ?? new HoyoverseCheckinConfig();
+                }) ?? new Config();
             }
 
             oldConfig.Account.Cookie = cookie;
             oldConfig.Account.Stuid = stuid;
 
-            if (cookie.Contains("stoken="))
-            {
-                var match = Regex.Match(cookie, @"stoken=([^;]+)");
-                if (match.Success) oldConfig.Account.Stoken = match.Groups[1].Value;
-            }
+            var stokenMatch = Regex.Match(cookie, @"stoken=([^;]+)");
+            if (stokenMatch.Success) oldConfig.Account.Stoken = stokenMatch.Groups[1].Value;
 
-            if (cookie.Contains("mid="))
-            {
-                var match = Regex.Match(cookie, @"mid=([^;]+)");
-                if (match.Success) oldConfig.Account.Mid = match.Groups[1].Value;
-            }
+            var midMatch = Regex.Match(cookie, @"mid=([^;]+)");
+            if (midMatch.Success) oldConfig.Account.Mid = midMatch.Groups[1].Value;
 
             var newJson = JsonSerializer.Serialize(oldConfig, new JsonSerializerOptions
             {

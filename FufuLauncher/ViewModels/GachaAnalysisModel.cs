@@ -4,6 +4,7 @@ using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 using FufuLauncher.Constants;
 using FufuLauncher.Contracts.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -14,6 +15,7 @@ using FufuLauncher.Models;
 using FufuLauncher.Models.UIGF;
 using FufuLauncher.Services;
 using Microsoft.Data.Sqlite;
+using MihoyoBBS;
 
 namespace FufuLauncher.ViewModels;
 
@@ -54,6 +56,7 @@ public partial class GachaAnalysisModel : ObservableObject
     private List<GachaLogItem> _cachedStandardLogs = new();
     private List<ScrapedMetadata> _savedMetadata = new();
     private string _currentUid = "";
+    private string _uidBeforeAddNew = "";
     private int _refreshVersion;
     private bool _analysisDashboardDirty = true;
 
@@ -115,6 +118,7 @@ public partial class GachaAnalysisModel : ObservableObject
     public Action<string> OnErrorAction;
     public Func<IntPtr> GetWindowHandle;
     public Func<string, string, Task<bool>> OnUidMismatchAsync;
+    public Func<string, string, string, Task> OnShowConfirmDialogAsync;
 
     public GachaAnalysisModel(ILocalSettingsService localSettingsService)
     {
@@ -1177,7 +1181,10 @@ public partial class GachaAnalysisModel : ObservableObject
     private async Task AddNewUserAsync()
     {
         if (!string.IsNullOrEmpty(_currentUid))
+        {
             SaveGachaLogsToDb();
+            _uidBeforeAddNew = _currentUid;
+        }
 
         _currentUid = "";
         _cachedCharacterLogs.Clear();
@@ -1209,66 +1216,112 @@ public partial class GachaAnalysisModel : ObservableObject
         RequestMetadataScrapeAction?.Invoke();
     }
 
+    private async Task<(string stoken, string mid, string stuid, string cookie, string configPath)> FindAccountByGameUidAsync(string targetGameUid)
+    {
+        var baseDir = Helpers.AppPaths.DataDir;
+        var filesToTry = Directory.GetFiles(baseDir, "config*.json")
+            .Concat(Directory.GetFiles(baseDir, "config.lab*.json"))
+            .Distinct()
+            .ToList();
+
+        foreach (var file in filesToTry)
+        {
+            try
+            {
+                var json = await File.ReadAllTextAsync(file);
+                using var doc = JsonDocument.Parse(json);
+                if (!doc.RootElement.TryGetProperty("Display", out var display)) continue;
+                var displayGameUid = display.TryGetProperty("GameUid", out var gu) ? gu.GetString() ?? "" : "";
+                if (string.IsNullOrEmpty(displayGameUid)) continue;
+                if (displayGameUid != targetGameUid) continue;
+
+                var account = doc.RootElement.GetProperty("Account");
+                var stoken = account.TryGetProperty("Stoken", out var st) ? st.GetString() ?? "" : "";
+                var mid = account.TryGetProperty("Mid", out var mi) ? mi.GetString() ?? "" : "";
+                var stuid = account.TryGetProperty("Stuid", out var si) ? si.GetString() ?? "" : "";
+                var cookie = account.TryGetProperty("Cookie", out var ck) ? ck.GetString() ?? "" : "";
+
+                bool needSave = false;
+
+                if (string.IsNullOrEmpty(stoken) && !string.IsNullOrEmpty(cookie))
+                {
+                    var stokenMatch = Regex.Match(cookie, @"stoken=([^;]+)");
+                    if (stokenMatch.Success) { stoken = stokenMatch.Groups[1].Value; needSave = true; }
+                }
+                if (string.IsNullOrEmpty(mid) && !string.IsNullOrEmpty(cookie))
+                {
+                    var midMatch = Regex.Match(cookie, @"mid=([^;]+)");
+                    if (midMatch.Success) { mid = midMatch.Groups[1].Value; needSave = true; }
+                }
+
+                if (needSave)
+                {
+                    try
+                    {
+                        var configObj = JsonSerializer.Deserialize<Config>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                        if (configObj?.Account != null)
+                        {
+                            if (!string.IsNullOrEmpty(stoken)) configObj.Account.Stoken = stoken;
+                            if (!string.IsNullOrEmpty(mid)) configObj.Account.Mid = mid;
+                            var updatedJson = JsonSerializer.Serialize(configObj, new JsonSerializerOptions { WriteIndented = true });
+                            await File.WriteAllTextAsync(file, updatedJson);
+                            Debug.WriteLine($"[Gacha] 已回写 stoken/mid 到 {Path.GetFileName(file)}");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"[Gacha] 回写 stoken/mid 失败: {ex.Message}");
+                    }
+                }
+
+                return (stoken, mid, stuid, cookie, file);
+            }
+            catch { }
+        }
+
+        return (null, null, null, null, null);
+    }
+
     [RelayCommand]
     private async Task FetchFromMiYouSheAsync()
     {
-        var configPath = Helpers.AppPaths.ConfigFile;
-
-        if (!File.Exists(configPath))
+        string gameUid = _currentUid;
+        if (string.IsNullOrEmpty(gameUid))
         {
-            CrawlerStatus = "未找到登录配置，请先登录米游社账号";
+            try
+            {
+                var userConfigService = App.GetService<Services.IUserConfigService>();
+                var displayConfig = await userConfigService.LoadDisplayConfigAsync();
+                gameUid = displayConfig.GameUid ?? "";
+            }
+            catch { }
+        }
+
+        if (string.IsNullOrEmpty(gameUid))
+        {
+            CrawlerStatus = "当前账号未绑定游戏角色，无法获取祈愿记录";
             OnErrorAction?.Invoke(CrawlerStatus);
             return;
         }
 
-        string stoken = "", mid = "", stuid = "", gameUid = "";
-        try
-        {
-            var json = await File.ReadAllTextAsync(configPath);
-            using var doc = JsonDocument.Parse(json);
-            var account = doc.RootElement.GetProperty("Account");
-            stoken = account.TryGetProperty("Stoken", out var st) ? st.GetString() ?? "" : "";
-            mid = account.TryGetProperty("Mid", out var mi) ? mi.GetString() ?? "" : "";
-            stuid = account.TryGetProperty("Stuid", out var si) ? si.GetString() ?? "" : "";
-            
-            var cookieStr = account.TryGetProperty("Cookie", out var ck) ? ck.GetString() ?? "" : "";
-            if (!string.IsNullOrEmpty(cookieStr))
-            {
-                var cookies = cookieStr.Split(';', StringSplitOptions.RemoveEmptyEntries);
-                foreach (var cookie in cookies)
-                {
-                    var kvp = cookie.Trim();
-                    if (string.IsNullOrEmpty(stoken) && kvp.StartsWith("stoken="))
-                    {
-                        stoken = kvp.Substring(7);
-                    }
-                    if (string.IsNullOrEmpty(mid) && kvp.StartsWith("mid="))
-                    {
-                        mid = kvp.Substring(4);
-                    }
-                }
-            }
+        var (stoken, mid, stuid, cookie, _) = await FindAccountByGameUidAsync(gameUid);
 
-            var userConfigService = App.GetService<Services.IUserConfigService>();
-            var displayConfig = await userConfigService.LoadDisplayConfigAsync();
-            gameUid = displayConfig.GameUid ?? stuid;
-        }
-        catch
+        if (stoken == null)
         {
-            CrawlerStatus = "读取登录配置失败";
+            CrawlerStatus = $"请先登录 UID {gameUid} 对应的米游社账号后重试";
             OnErrorAction?.Invoke(CrawlerStatus);
             return;
         }
 
         if (string.IsNullOrEmpty(stoken))
         {
-            CrawlerStatus = "stoken 为空，请重新登录米游社账号";
+            CrawlerStatus = $"UID {gameUid} 对应账号的 stoken 已失效，请重新登录该账号后重试";
             OnErrorAction?.Invoke(CrawlerStatus);
             return;
         }
 
-        if (!await HandleUidMismatchAsync(gameUid)) { IsFetching = false; return; }
-
+        var previousUid = string.IsNullOrEmpty(_currentUid) ? _uidBeforeAddNew : _currentUid;
+        _uidBeforeAddNew = "";
         _currentUid = gameUid;
 
         IsFetching = true;
@@ -1319,6 +1372,50 @@ public partial class GachaAnalysisModel : ObservableObject
             FillMissingFieldsFromMetadata(charLogs, weaponLogs, chronicledLogs, noviceLogs, standardLogs);
 
             var total = charLogs.Count + weaponLogs.Count + chronicledLogs.Count + noviceLogs.Count + standardLogs.Count;
+
+            if (total == 0)
+            {
+                var hasExistingRecords = _cachedCharacterLogs.Count + _cachedWeaponLogs.Count + _cachedChronicledLogs.Count + _cachedNoviceLogs.Count + _cachedStandardLogs.Count > 0;
+
+                IsFetching = false;
+
+                if (hasExistingRecords)
+                {
+                    CrawlerStatus = $"UID {gameUid} 未获取到新记录，已保留现有数据";
+                    return;
+                }
+
+                _cachedCharacterLogs.Clear();
+                _cachedWeaponLogs.Clear();
+                _cachedChronicledLogs.Clear();
+                _cachedNoviceLogs.Clear();
+                _cachedStandardLogs.Clear();
+
+                if (!string.IsNullOrEmpty(previousUid))
+                {
+                    if (OnShowConfirmDialogAsync != null)
+                    {
+                        await OnShowConfirmDialogAsync(
+                            "无祈愿记录",
+                            $"UID {gameUid} 没有获取到祈愿记录，已切回 UID {previousUid}",
+                            "确定");
+                    }
+                    await SwitchToUidAsync(previousUid);
+                }
+                else
+                {
+                    if (OnShowConfirmDialogAsync != null)
+                    {
+                        await OnShowConfirmDialogAsync(
+                            "无祈愿记录",
+                            $"UID {gameUid} 没有获取到祈愿记录",
+                            "确定");
+                    }
+                    await AddNewUserAsync();
+                }
+                return;
+            }
+
             CrawlerStatus = $"获取完成，共 {total} 条记录，正在检查图片资源...";
 
             RefreshUIFromCache();

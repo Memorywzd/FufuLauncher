@@ -9,6 +9,7 @@ using Windows.Graphics.Imaging;
 using Windows.Storage.Streams;
 using Windows.UI;
 using FufuLauncher.Constants;
+using MihoyoBBS;
 
 namespace FufuLauncher.Views
 {
@@ -69,7 +70,7 @@ namespace FufuLauncher.Views
             ExtendsContentIntoTitleBar = true;
             SetTitleBar(AppTitleBar);
             
-            _userConfigPath = Path.Combine(Helpers.AppPaths.DataDir, "user.config.json");
+            _userConfigPath = Path.Combine(Helpers.AppPaths.DataDir, "config.json");
             
             string folder = Helpers.AppPaths.DataDir;
             
@@ -96,10 +97,10 @@ namespace FufuLauncher.Views
                 if (File.Exists(_userConfigPath))
                 {
                     string json = await File.ReadAllTextAsync(_userConfigPath);
-                    var config = JsonSerializer.Deserialize<UserConfig>(json);
-                    if (config != null && !string.IsNullOrEmpty(config.GameUid))
+                    var config = JsonSerializer.Deserialize<Config>(json);
+                    if (config?.Display != null && !string.IsNullOrEmpty(config.Display.GameUid))
                     {
-                        _myUid = config.GameUid;
+                        _myUid = config.Display.GameUid;
                     }
                 }
             }

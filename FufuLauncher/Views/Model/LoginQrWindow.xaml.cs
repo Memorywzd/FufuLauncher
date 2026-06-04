@@ -73,88 +73,6 @@ public sealed partial class LoginQrWindow : Window
             rootContent.Loaded -= RootContent_Loaded;
         }
 
-        try
-        {
-            var localSettingsService = App.GetService<ILocalSettingsService>();
-            var savedConfigObj = await localSettingsService.ReadSettingAsync("AccountConfig");
-            
-            if (savedConfigObj != null)
-            {
-                var dialog = new ContentDialog
-                {
-                    Title = "发现已保存的配置",
-                    Content = "本地数据库存在之前保存的账号配置，是否直接应用并完成登录？",
-                    PrimaryButtonText = "是，直接应用",
-                    CloseButtonText = "否，重新扫码",
-                    XamlRoot = Content?.XamlRoot
-                };
-
-                if (dialog.XamlRoot != null)
-                {
-                    var result = await dialog.ShowAsync();
-                    
-                    if (result == ContentDialogResult.Primary)
-                    {
-                        UpdateStatus("正在应用本地配置...", true);
-
-                        var options = new JsonSerializerOptions
-                        {
-                            WriteIndented = true,
-                            Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
-                        };
-
-                        Config config = null;
-                        if (savedConfigObj is JsonElement jsonElement)
-                        {
-                            config = JsonSerializer.Deserialize<Config>(jsonElement.GetRawText(), options);
-                        }
-                        else if (savedConfigObj is string jsonString)
-                        {
-                            config = JsonSerializer.Deserialize<Config>(jsonString, options);
-                        }
-                        else
-                        {
-                            var json = JsonSerializer.Serialize(savedConfigObj, options);
-                            config = JsonSerializer.Deserialize<Config>(json, options);
-                        }
-
-                        if (config != null)
-                        {
-                            var path = Helpers.AppPaths.ConfigFile;
-                            var dir = Path.GetDirectoryName(path);
-                            if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
-                                Directory.CreateDirectory(dir);
-
-                            var newJson = JsonSerializer.Serialize(config, options);
-                            await File.WriteAllTextAsync(path, newJson);
-
-                            Debug.WriteLine($"已应用本地配置并保存至: {path}");
-
-                            IsLoginSuccessful = true;
-                            UpdateStatus("应用成功", false, true);
-
-                            await Task.Delay(1500);
-                            Close();
-                            return; 
-                        }
-                    }
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"检查或应用本地配置失败: {ex.Message}");
-        
-            WeakReferenceMessenger.Default.Send(
-                new NotificationMessage(
-                    "应用配置失败",
-                    $"写入配置文件时发生错误: {ex.Message}",
-                    NotificationType.Error,
-                    4000
-                )
-            );
-        }
-
         UpdateGameAppIdFromSelection();
         await StartLoginFlowAsync();
     }
@@ -397,6 +315,18 @@ public sealed partial class LoginQrWindow : Window
                 if (match.Success) config.Account.Stuid = match.Groups[1].Value;
             }
 
+            if (cookieString.Contains("stoken="))
+            {
+                var stokenMatch = System.Text.RegularExpressions.Regex.Match(cookieString, @"stoken=([^;]+)");
+                if (stokenMatch.Success) config.Account.Stoken = stokenMatch.Groups[1].Value;
+            }
+
+            if (cookieString.Contains("mid="))
+            {
+                var midMatch = System.Text.RegularExpressions.Regex.Match(cookieString, @"mid=([^;]+)");
+                if (midMatch.Success) config.Account.Mid = midMatch.Groups[1].Value;
+            }
+
             var options = new JsonSerializerOptions
             {
                 WriteIndented = true,
@@ -409,7 +339,6 @@ public sealed partial class LoginQrWindow : Window
             try
             {
                 var localSettingsService = App.GetService<ILocalSettingsService>();
-                await localSettingsService.SaveSettingAsync("LabAccountConfig", config);
                 await localSettingsService.SaveSettingAsync("ActiveConfigFile", "config.lab.json");
                 await localSettingsService.SaveSettingAsync("IsInternationalAccount", true);
             }
@@ -1109,14 +1038,13 @@ private async Task ExchangeV2TokensAndSaveAsync(string stoken, string mid, strin
             try
             {
                 var localSettingsService = App.GetService<ILocalSettingsService>();
-                await localSettingsService.SaveSettingAsync("AccountConfig", config);
                 await localSettingsService.SaveSettingAsync("ActiveConfigFile", "config.json");
                 await localSettingsService.SaveSettingAsync("IsInternationalAccount", false);
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"配置数据库保存失败: {ex.Message}");
-                
+
                 WeakReferenceMessenger.Default.Send(
                     new NotificationMessage(
                         "保存状态异常",
@@ -1130,7 +1058,7 @@ private async Task ExchangeV2TokensAndSaveAsync(string stoken, string mid, strin
         catch (Exception ex)
         {
             Debug.WriteLine($"兼容配置保存失败: {ex.Message}");
-            
+
             WeakReferenceMessenger.Default.Send(
                 new NotificationMessage(
                     "写入配置失败",

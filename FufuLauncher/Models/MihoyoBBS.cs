@@ -49,6 +49,12 @@ namespace MihoyoBBS
             get;
             set;
         } = new();
+
+        public DisplayConfig Display
+        {
+            get;
+            set;
+        } = new();
     }
 
     public class AccountConfig
@@ -72,6 +78,12 @@ namespace MihoyoBBS
         } = "";
 
         public string Mid
+        {
+            get;
+            set;
+        } = "";
+
+        public string CloudComboToken
         {
             get;
             set;
@@ -149,12 +161,6 @@ namespace MihoyoBBS
             get;
             set;
         } = true;
-
-        public List<string> BlackList
-        {
-            get;
-            set;
-        } = new List<string>();
     }
 
     public class ApiResponse<T>
@@ -295,6 +301,72 @@ namespace MihoyoBBS
             get;
             set;
         }
+    }
+
+    public class DisplayConfig
+    {
+        [JsonPropertyName("Nickname")]
+        public string Nickname
+        {
+            get;
+            set;
+        } = "";
+
+        [JsonPropertyName("GameUid")]
+        public string GameUid
+        {
+            get;
+            set;
+        } = "";
+
+        [JsonPropertyName("Server")]
+        public string Server
+        {
+            get;
+            set;
+        } = "";
+
+        [JsonPropertyName("AvatarUrl")]
+        public string AvatarUrl
+        {
+            get;
+            set;
+        } = "ms-appx:///Assets/DefaultAvatar.png";
+
+        [JsonPropertyName("Level")]
+        public string Level
+        {
+            get;
+            set;
+        } = "";
+
+        [JsonPropertyName("Sign")]
+        public string Sign
+        {
+            get;
+            set;
+        } = "这个人很懒，什么都没有写...";
+
+        [JsonPropertyName("IpRegion")]
+        public string IpRegion
+        {
+            get;
+            set;
+        } = "未知";
+
+        [JsonPropertyName("Gender")]
+        public int Gender
+        {
+            get;
+            set;
+        } = 0;
+
+        [JsonPropertyName("HasBoundRole")]
+        public bool HasBoundRole
+        {
+            get;
+            set;
+        } = true;
     }
 
     public static class Tools
@@ -679,8 +751,8 @@ namespace MihoyoBBS
 
             return result;
         }
-        
-public async Task<string> SignAccountAsync(Config config, string targetUid = null)
+
+public async Task<string> SignAccountAsync(Config config, string targetUid = null, HashSet<string> disabledUids = null)
     {
         LastApiError = string.Empty;
         var returnData = $"{GameName}: ";
@@ -697,11 +769,11 @@ public async Task<string> SignAccountAsync(Config config, string targetUid = nul
 
         foreach (var account in AccountList)
         {
-            if (config.Games.Cn.Genshin.BlackList.Contains(account.GameUid))
+            if (disabledUids != null && disabledUids.Contains(account.GameUid))
             {
                 continue;
             }
-            
+
             if (!string.IsNullOrEmpty(targetUid) && account.GameUid != targetUid)
             {
                 continue;

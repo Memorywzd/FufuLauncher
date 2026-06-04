@@ -6,6 +6,13 @@ namespace FufuLauncher.Services;
 
 public class HoyoverseCheckinService : IHoyoverseCheckinService
 {
+    private readonly ILocalSettingsService _localSettingsService;
+
+    public HoyoverseCheckinService(ILocalSettingsService localSettingsService)
+    {
+        _localSettingsService = localSettingsService;
+    }
+
     private async Task<Config> LoadConfigWithLoggingAsync()
     {
         var path = Helpers.AppPaths.ConfigFile;
@@ -20,6 +27,21 @@ public class HoyoverseCheckinService : IHoyoverseCheckinService
         {
             return new Config();
         }
+    }
+
+    private async Task<HashSet<string>> GetDisabledUidsAsync()
+    {
+        var disabledUidsJson = await _localSettingsService.ReadSettingAsync("CheckinDisabledUids");
+        if (disabledUidsJson != null)
+        {
+            try
+            {
+                var list = JsonSerializer.Deserialize<List<string>>(disabledUidsJson.ToString() ?? "[]");
+                if (list != null) return new HashSet<string>(list);
+            }
+            catch { }
+        }
+        return new HashSet<string>();
     }
 
     public async Task<List<string>> GetBoundUidsAsync()
@@ -43,14 +65,14 @@ public class HoyoverseCheckinService : IHoyoverseCheckinService
 
         if (genshin.AccountList.Count == 0)
         {
-            string errorSummary = !string.IsNullOrEmpty(GameCheckin.LastApiError) 
-                ? $"初始化失败: {GameCheckin.LastApiError}" 
+            string errorSummary = !string.IsNullOrEmpty(GameCheckin.LastApiError)
+                ? $"初始化失败: {GameCheckin.LastApiError}"
                 : "请检查Cookie和绑定";
             return ("未检测到账号", errorSummary);
         }
 
-        var account = string.IsNullOrEmpty(targetUid) 
-            ? genshin.AccountList[0] 
+        var account = string.IsNullOrEmpty(targetUid)
+            ? genshin.AccountList[0]
             : genshin.AccountList.FirstOrDefault(a => a.GameUid == targetUid) ?? genshin.AccountList[0];
 
         var isSignData = await genshin.IsSignAsync(account.Region, account.GameUid, false).ConfigureAwait(false);
@@ -75,13 +97,14 @@ public class HoyoverseCheckinService : IHoyoverseCheckinService
         {
             return (false, "功能未启用");
         }
-        
+
         var genshin = new Genshin();
         await genshin.InitializeAsync(config).ConfigureAwait(false);
-        
-        var result = await genshin.SignAccountAsync(config, targetUid).ConfigureAwait(false);
+
+        var disabledUids = await GetDisabledUidsAsync();
+        var result = await genshin.SignAccountAsync(config, targetUid, disabledUids).ConfigureAwait(false);
         var isSuccess = !result.Contains("失败") && !result.Contains("异常");
-        
+
         var summary = string.Join(" ", result.Split('\n', StringSplitOptions.RemoveEmptyEntries));
 
         return (isSuccess, summary);

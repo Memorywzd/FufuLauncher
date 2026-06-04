@@ -322,6 +322,7 @@ public sealed partial class SettingsPage : Page
     private static readonly string[] _sectionTags =
         { "AppearanceItem", "HomeTextItem", "LanguageItem", "LaunchConfigItem",
           "BackgroundItem", "WindowEffectsItem", "StartupSoundItem",
+          "CheckinSettingsItem",
           "AdvancedOptionsItem", "UpdateItem", "AboutItem", "SecurityAuthItem" };
 
     private void Page_Loaded(object sender, RoutedEventArgs e)
@@ -426,6 +427,39 @@ public sealed partial class SettingsPage : Page
         dialog.XamlRoot = this.XamlRoot;
         await dialog.ShowAsync();
     }
+
+    private void OnCloudCredentialClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button button && button.Tag is string uid)
+        {
+            var cloudWindow = new CloudCredentialWindow(uid);
+            cloudWindow.ExtendsContentIntoTitleBar = true;
+
+            IntPtr hWnd = WindowNative.GetWindowHandle(cloudWindow);
+            WindowId windowId = Win32Interop.GetWindowIdFromWindow(hWnd);
+            AppWindow appWindow = AppWindow.GetFromWindowId(windowId);
+
+            if (appWindow != null)
+            {
+                string iconPath = Path.Combine(AppContext.BaseDirectory, "Assets/WindowIcon.ico");
+                if (File.Exists(iconPath))
+                    appWindow.SetIcon(iconPath);
+
+                var size = new Windows.Graphics.SizeInt32(1280, 720);
+                appWindow.Resize(size);
+
+                var displayArea = DisplayArea.GetFromWindowId(windowId, DisplayAreaFallback.Primary);
+                if (displayArea != null)
+                {
+                    var centeredX = (displayArea.WorkArea.Width - size.Width) / 2;
+                    var centeredY = (displayArea.WorkArea.Height - size.Height) / 2;
+                    appWindow.Move(new Windows.Graphics.PointInt32(centeredX, centeredY));
+                }
+            }
+
+            cloudWindow.Activate();
+        }
+    }
     private void BringElementIntoView(FrameworkElement element)
     {
         if (element == null) return;
@@ -460,5 +494,24 @@ public sealed partial class SettingsPage : Page
         await Task.Delay(120);
 
         CheckUpdateButton?.Focus(FocusState.Programmatic);
+    }
+
+    public async Task NavigateToCheckinSettingsAsync()
+    {
+        var checkinNavItem = SettingsNavigationView.MenuItems
+            .OfType<NavigationViewItem>()
+            .FirstOrDefault(item => item.Tag?.ToString() == "CheckinSettingsItem");
+
+        if (checkinNavItem != null)
+        {
+            SettingsNavigationView.SelectedItem = checkinNavItem;
+        }
+
+        await Task.Delay(120);
+
+        if (CheckinSettingsItem != null)
+        {
+            BringElementIntoView(CheckinSettingsItem);
+        }
     }
 }

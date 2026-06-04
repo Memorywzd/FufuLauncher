@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Reflection;
+using System.Text.Json;
 using System.Windows.Input;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -16,6 +17,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using System.Text.RegularExpressions;
 using FufuLauncher.Helpers;
+using MihoyoBBS;
 
 namespace FufuLauncher.ViewModels
 {
@@ -195,6 +197,16 @@ namespace FufuLauncher.ViewModels
             SelectedMonitor = AvailableMonitors.FirstOrDefault(m => m.Index == LaunchArgsMonitorIndex) ?? AvailableMonitors.FirstOrDefault();
         }
         
+
+        [ObservableProperty] private bool _isGameCheckinEnabled = true;
+        [ObservableProperty] private bool _isBatchCheckinEnabled;
+        [ObservableProperty] private bool _isCommunityCheckinEnabled = true;
+        [ObservableProperty] private bool _isCommunityLikeEnabled;
+        [ObservableProperty] private bool _isCommunityReadEnabled;
+        [ObservableProperty] private bool _isCommunityShareEnabled;
+        [ObservableProperty] private bool _isCloudGameCheckinEnabled;
+        [ObservableProperty] private ObservableCollection<CheckinAccountItem> _checkinAccounts = new();
+        [ObservableProperty] private bool _isLoadingCheckinAccounts;
         public IAsyncRelayCommand ResetGameExeNameCommand { get; }
 
         partial void OnIsAutoCheckinEnabledChanged(bool value)
@@ -202,6 +214,21 @@ namespace FufuLauncher.ViewModels
             Debug.WriteLine($"SettingsViewModel: 自动签到设置变更为 {value}");
             _ = _localSettingsService.SaveSettingAsync("IsAutoCheckinEnabled", value);
         }
+
+        partial void OnIsGameCheckinEnabledChanged(bool value)
+            => _ = _localSettingsService.SaveSettingAsync("IsGameCheckinEnabled", value);
+        partial void OnIsCommunityCheckinEnabledChanged(bool value)
+            => _ = _localSettingsService.SaveSettingAsync("IsCommunityCheckinEnabled", value);
+        partial void OnIsCommunityLikeEnabledChanged(bool value)
+            => _ = _localSettingsService.SaveSettingAsync("IsCommunityLikeEnabled", value);
+        partial void OnIsCommunityReadEnabledChanged(bool value)
+            => _ = _localSettingsService.SaveSettingAsync("IsCommunityReadEnabled", value);
+        partial void OnIsCommunityShareEnabledChanged(bool value)
+            => _ = _localSettingsService.SaveSettingAsync("IsCommunityShareEnabled", value);
+        partial void OnIsCloudGameCheckinEnabledChanged(bool value)
+            => _ = _localSettingsService.SaveSettingAsync("IsCloudGameCheckinEnabled", value);
+        partial void OnIsBatchCheckinEnabledChanged(bool value)
+            => _ = _localSettingsService.SaveSettingAsync("IsBatchCheckinEnabled", value);
 
         public IAsyncRelayCommand ClearWebView2CacheCommand { get; }
         public ICommand SwitchThemeCommand
@@ -285,6 +312,18 @@ namespace FufuLauncher.ViewModels
             UpdateWebView2CacheSize();
             ClearCustomBackgroundCommand = new AsyncRelayCommand(ClearCustomBackgroundAsync);
             ResetGameExeNameCommand = new AsyncRelayCommand(ResetGameExeNameAsync);
+
+            WeakReferenceMessenger.Default.Register<CloudCredentialUpdatedMessage>(this, (r, m) =>
+            {
+                if (CheckinAccounts != null)
+                {
+                    var account = CheckinAccounts.FirstOrDefault(a => a.Uid == m.Value);
+                    if (account != null)
+                    {
+                        account.HasCloudCredential = true;
+                    }
+                }
+            });
 
             SwitchThemeCommand = new RelayCommand<ElementTheme>(
                 async (param) =>
@@ -672,6 +711,8 @@ namespace FufuLauncher.ViewModels
                 _isLoadingLaunchParams = false;
                 _isInitializing = false;
             }
+
+            await LoadCheckinAccountsAsync();
         }
 
         private bool _isUpdatingDailyNote;
@@ -875,6 +916,26 @@ namespace FufuLauncher.ViewModels
                 GlobalBackgroundImageOpacity = 1.0;
             }
 
+            var gameCheckinJson = await _localSettingsService.ReadSettingAsync("IsGameCheckinEnabled");
+            IsGameCheckinEnabled = gameCheckinJson == null || Convert.ToBoolean(gameCheckinJson);
+
+            var communityCheckinJson = await _localSettingsService.ReadSettingAsync("IsCommunityCheckinEnabled");
+            IsCommunityCheckinEnabled = communityCheckinJson == null || Convert.ToBoolean(communityCheckinJson);
+
+            var communityLikeJson = await _localSettingsService.ReadSettingAsync("IsCommunityLikeEnabled");
+            IsCommunityLikeEnabled = communityLikeJson != null && Convert.ToBoolean(communityLikeJson);
+
+            var communityReadJson = await _localSettingsService.ReadSettingAsync("IsCommunityReadEnabled");
+            IsCommunityReadEnabled = communityReadJson != null && Convert.ToBoolean(communityReadJson);
+
+            var communityShareJson = await _localSettingsService.ReadSettingAsync("IsCommunityShareEnabled");
+            IsCommunityShareEnabled = communityShareJson != null && Convert.ToBoolean(communityShareJson);
+
+            var cloudGameCheckinJson = await _localSettingsService.ReadSettingAsync("IsCloudGameCheckinEnabled");
+            IsCloudGameCheckinEnabled = cloudGameCheckinJson != null && Convert.ToBoolean(cloudGameCheckinJson);
+
+            var batchCheckinJson = await _localSettingsService.ReadSettingAsync("IsBatchCheckinEnabled");
+            IsBatchCheckinEnabled = batchCheckinJson != null && Convert.ToBoolean(batchCheckinJson);
         }
         
         private void CheckAndLimitDailyNoteItems(string settingName, Action revertAction)
@@ -967,6 +1028,103 @@ namespace FufuLauncher.ViewModels
             if (AppThemeColor != hex)
             {
                 AppThemeColor = hex;
+            }
+        }
+
+        private async Task LoadCheckinAccountsAsync()
+        {
+            try
+            {
+                var disabledUidsJson = await _localSettingsService.ReadSettingAsync("CheckinDisabledUids");
+                var disabledUids = new HashSet<string>();
+                if (disabledUidsJson != null)
+                {
+                    try
+                    {
+                        var list = JsonSerializer.Deserialize<List<string>>(disabledUidsJson.ToString() ?? "[]");
+                        if (list != null) disabledUids = new HashSet<string>(list);
+                    }
+                    catch { }
+                }
+
+                var accounts = new ObservableCollection<CheckinAccountItem>();
+                var baseDir = Helpers.AppPaths.DataDir;
+                var seenUids = new HashSet<string>();
+
+                foreach (var file in Directory.GetFiles(baseDir, "config*.json"))
+                {
+                    try
+                    {
+                        var json = await File.ReadAllTextAsync(file);
+                        var config = JsonSerializer.Deserialize<Config>(json);
+                        if (config?.Account?.Cookie == null) continue;
+
+                        var match = Regex.Match(config.Account.Cookie, @"(?:account_id_v2|ltuid_v2|ltuid|account_id|stuid)=(\d+)");
+                        if (!match.Success) continue;
+                        var uid = match.Groups[1].Value;
+                        if (!seenUids.Add(uid)) continue;
+
+                        string nickname = config.Display?.Nickname ?? $"用户 {uid}";
+                        if (string.IsNullOrEmpty(nickname)) nickname = $"用户 {uid}";
+
+                        accounts.Add(new CheckinAccountItem
+                        {
+                            Uid = uid,
+                            Nickname = nickname,
+                            IsSelected = !disabledUids.Contains(uid),
+                            HasCloudCredential = !string.IsNullOrEmpty(config.Account.CloudComboToken)
+                        });
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"读取账号配置失败 {file}: {ex.Message}");
+                    }
+                }
+
+                CheckinAccounts = accounts;
+
+                foreach (var account in CheckinAccounts)
+                {
+                    account.PropertyChanged += async (s, e) =>
+                    {
+                        if (e.PropertyName == nameof(CheckinAccountItem.IsSelected))
+                        {
+                            var disabled = CheckinAccounts.Where(a => !a.IsSelected).Select(a => a.Uid).ToList();
+                            await _localSettingsService.SaveSettingAsync("CheckinDisabledUids",
+                                JsonSerializer.Serialize(disabled));
+                        }
+                    };
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"LoadCheckinAccountsAsync 异常: {ex.Message}");
+            }
+        }
+
+        public static void SaveCloudCredential(string uid, string credential)
+        {
+            try
+            {
+                var baseDir = Helpers.AppPaths.DataDir;
+                foreach (var file in Directory.GetFiles(baseDir, "config*.json"))
+                {
+                    var json = File.ReadAllText(file);
+                    var config = System.Text.Json.JsonSerializer.Deserialize<Config>(json);
+                    if (config?.Account?.Cookie == null) continue;
+                    var match = System.Text.RegularExpressions.Regex.Match(config.Account.Cookie, @"(?:account_id_v2|ltuid_v2|ltuid|account_id|stuid)=(\d+)");
+                    if (match.Success && match.Groups[1].Value == uid)
+                    {
+                        config.Account.CloudComboToken = credential;
+                        var options = new System.Text.Json.JsonSerializerOptions { WriteIndented = true };
+                        File.WriteAllText(file, System.Text.Json.JsonSerializer.Serialize(config, options));
+                    }
+                }
+                WeakReferenceMessenger.Default.Send(new CloudCredentialUpdatedMessage(uid));
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"保存云游戏凭证失败: {ex.Message}");
             }
         }
 
