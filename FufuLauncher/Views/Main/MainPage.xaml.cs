@@ -406,8 +406,7 @@ private async void OpenCheckinSettings_Click(object sender, RoutedEventArgs e)
             EasingFunction = easing,
             EnableDependentAnimation = true
         };
-        var cardHost = InfoCardGrid.Parent as Grid;
-        Storyboard.SetTarget(heightAnim, cardHost);
+        Storyboard.SetTarget(heightAnim, InfoCardContainer);
         Storyboard.SetTargetProperty(heightAnim, "Height");
         sb.Children.Add(heightAnim);
 

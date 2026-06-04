@@ -123,7 +123,8 @@
                         VerticalAlignment="Bottom"
                         Spacing="12">
                 
-                <Grid Height="{Binding InfoCardHeight, Mode=OneWay}"
+                <Grid x:Name="InfoCardContainer"
+                      Height="{Binding InfoCardHeight, Mode=OneWay}"
                       Translation="0,0,32"
                       Visibility="{x:Bind ViewModel.GameNewsCardVisibility, Mode=OneWay}"
                       PointerEntered="InfoCard_PointerEntered"
