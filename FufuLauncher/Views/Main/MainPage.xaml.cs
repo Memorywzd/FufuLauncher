@@ -248,8 +248,8 @@ private void OnToggleWidgetFlyoutModeClick(object sender, RoutedEventArgs e)
     ToolTipService.SetToolTip(BtnWidgetAchievement, _isWidgetFlyoutEnabled ? "成就追踪：追踪游戏内成就的完成进度，支持导出与导入" : "成就追踪");
     ToolTipService.SetToolTip(BtnWidgetInventory, _isWidgetFlyoutEnabled ? "背包物品：查看当前账号游戏内背包中的材料" : "背包物品");
     ToolTipService.SetToolTip(BtnWidgetPlayerRole, _isWidgetFlyoutEnabled ? "角色练度查询：查询已拥有角色的等级、命座、武器及圣遗物搭配情况" : "角色练度查询");
-    ToolTipService.SetToolTip(BtnWidgetDailyNote, _isWidgetFlyoutEnabled ? "旅行便签：独立窗口显示当前开放的角色材料秘境等实时数据。" : "旅行便签");
-    ToolTipService.SetToolTip(BtnWidgetVideo, _isWidgetFlyoutEnabled ? "视频资源库：可查看各类游戏角色PV或者游戏内过场动画。" : "视频资源库");
+    ToolTipService.SetToolTip(BtnWidgetDailyNote, _isWidgetFlyoutEnabled ? "旅行便签：独立窗口显示当前开放的角色材料秘境等实时数据" : "旅行便签");
+    ToolTipService.SetToolTip(BtnWidgetVideo, _isWidgetFlyoutEnabled ? "视频资源库：可查看各类游戏角色PV或者游戏内过场动画" : "视频资源库");
     ToolTipService.SetToolTip(BtnWidgetBBS, _isWidgetFlyoutEnabled ? "战绩信息：查询深渊、幻想真境剧诗等详细战绩数据" : "战绩信息");
 }
 
