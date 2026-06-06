@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
 using System.Runtime.InteropServices;
@@ -42,7 +42,7 @@ namespace Updater
             public int AnimationId;
         }
         
-        private const string AppVersion = "1.2.2.0";
+        private const string AppVersion = "1.2.2.1";
 
         private static readonly HttpClient _httpClient = new(new HttpClientHandler
         {
@@ -327,9 +327,11 @@ namespace Updater
             {
                 ChunkCount = 4, 
                 ParallelDownload = true,
-                MaxTryAgainOnFailure = 3,
-                ClearPackageOnCompletionWithFailure = false 
+                MaxTryAgainOnFailure = 5,
+                ClearPackageOnCompletionWithFailure = false,
+                CustomHttpClientFactory = () => new HttpClient { Timeout = TimeSpan.FromMinutes(30) }
             };
+
 
             _downloader = new DownloadService(downloadOpt);
             
