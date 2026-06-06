@@ -163,7 +163,7 @@
                                         <TranslateTransform x:Name="BannerCurrentTranslate" X="0"/>
                                     </Grid.RenderTransform>
                                     <Image x:Name="BannerCurrentImage"
-                                            Stretch="Fill"
+                                           Stretch="Fill"
                                             HorizontalAlignment="Center"
                                             VerticalAlignment="Center"
                                             RenderTransformOrigin="0.5,0.5">
@@ -559,7 +559,7 @@
                                         <DataTemplate x:DataType="bg:BackgroundUrlInfo">
                                             <Grid Width="140" Height="80" CornerRadius="4" Margin="4">
                                                 <Image Source="{x:Bind ThumbnailUrl}" Stretch="UniformToFill"/>
-                                                <Border Background="#99000000" VerticalAlignment="Bottom" Padding="4,2">
+                                                <Border Background="Transparent" VerticalAlignment="Bottom" Padding="4,2">
                                                     <TextBlock Text="{x:Bind TypeText}" Foreground="White" FontSize="10" HorizontalAlignment="Center"/>
                                                 </Border>
                                             </Grid>
@@ -603,29 +603,41 @@
                     </Border.Shadow>
                     <StackPanel Spacing="8">
                         <TextBlock Text="小工具" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" Foreground="White" Opacity="0.9"/>
-                        <VariableSizedWrapGrid Orientation="Horizontal" ItemWidth="42" ItemHeight="42" MaximumRowsOrColumns="5">
-                            <Button Click="OnOpenGachaAnalysisClick" Width="36" Height="36" Background="#1AFFFFFF" BorderThickness="0" CornerRadius="8" Padding="8" Margin="3" ToolTipService.ToolTip="抽卡记录分析" Visibility="{x:Bind ViewModel.WidgetGachaVisibility, Mode=OneWay}">
-                                <Image Source="https://act-upload.mihoyo.com/ys-obc/2025/01/21/73740358/4e65638b8b81ca7556f0fd42612d0be2_6482084243159257686.png"/>
-                            </Button>
-                            <Button Click="OnOpenAchievementsClick" Width="36" Height="36" Background="#1AFFFFFF" BorderThickness="0" CornerRadius="8" Padding="8" Margin="3" ToolTipService.ToolTip="成就追踪" Visibility="{x:Bind ViewModel.WidgetAchievementVisibility, Mode=OneWay}">
-                                <Image Source="https://act-upload.mihoyo.com/ys-obc/2025/01/21/73740358/b097c597c8e957e5c29ebba956be7b77_3600296528699504897.png"/>
-                            </Button>
-                            <Button Click="OnOpenInventoryClick" Width="36" Height="36" Background="#1AFFFFFF" BorderThickness="0" CornerRadius="8" Padding="8" Margin="3" ToolTipService.ToolTip="背包物品" Visibility="{x:Bind ViewModel.WidgetInventoryVisibility, Mode=OneWay}">
-                                <Image Source="https://act-upload.mihoyo.com/ys-obc/2025/01/21/73740358/746e735b9968d0a7496393809653bf9b_3827123919585554136.png"/>
-                            </Button>
-                            <Button Click="OnOpenPlayerRolesClick" Width="36" Height="36" Background="#1AFFFFFF" BorderThickness="0" CornerRadius="8" Padding="8" Margin="3" ToolTipService.ToolTip="角色练度查询" Visibility="{x:Bind ViewModel.WidgetPlayerRoleVisibility, Mode=OneWay}">
-                                <Image Source="https://act-upload.mihoyo.com/ys-obc/2025/01/21/73740358/816696c690ea7d95d8c13e67f794c807_6317738625095616930.png"/>
-                            </Button>
-                            <Button Click="OnOpenDailyNoteClick" Width="36" Height="36" Background="#1AFFFFFF" BorderThickness="0" CornerRadius="8" Padding="8" Margin="3" ToolTipService.ToolTip="旅行便签" Visibility="{x:Bind ViewModel.WidgetDailyNoteWindowVisibility, Mode=OneWay}">
-                                <Image Source="https://act-upload.mihoyo.com/ys-obc/2025/01/21/73740358/35990ccaac57819dbaf39a47db133a59_6427418972247587857.png"/>
-                            </Button>
-                            <Button Click="OnOpenVideoResourcesClick" Width="36" Height="36" Background="#1AFFFFFF" BorderThickness="0" CornerRadius="8" Padding="8" Margin="3" ToolTipService.ToolTip="视频资源库" Visibility="{x:Bind ViewModel.WidgetVideoVisibility, Mode=OneWay}">
-                                <Image Source="https://act-upload.mihoyo.com/ys-obc/2025/01/21/73740358/6ba109a0c67067ce3f16c18147c91f03_2613518829063232490.png"/>
-                            </Button>
-                            <Button Click="BBSButton_Click" Width="36" Height="36" Background="#1AFFFFFF" BorderThickness="0" CornerRadius="8" Padding="8" Margin="3" ToolTipService.ToolTip="战绩信息" Visibility="{x:Bind ViewModel.WidgetBBSVisibility, Mode=OneWay}">
-                                <Image Source="https://act-upload.mihoyo.com/ys-obc/2025/01/21/73740358/aae53df95bd8d8f437729545e3a287ab_8614980669390833989.png"/>
-                            </Button>
-                        </VariableSizedWrapGrid>
+<VariableSizedWrapGrid Orientation="Horizontal" ItemWidth="42" ItemHeight="42" MaximumRowsOrColumns="5">
+    <Button x:Name="BtnWidgetGacha" Click="OnOpenGachaAnalysisClick" Width="36" Height="36" Background="#1AFFFFFF" BorderThickness="0" CornerRadius="8" Padding="8" Margin="3" ToolTipService.ToolTip="抽卡记录分析" Visibility="{x:Bind ViewModel.WidgetGachaVisibility, Mode=OneWay}">
+        <Image Source="https://act-upload.mihoyo.com/ys-obc/2025/01/21/73740358/4e65638b8b81ca7556f0fd42612d0be2_6482084243159257686.png"/>
+    </Button>
+    <Button x:Name="BtnWidgetAchievement" Click="OnOpenAchievementsClick" Width="36" Height="36" Background="#1AFFFFFF" BorderThickness="0" CornerRadius="8" Padding="8" Margin="3" ToolTipService.ToolTip="成就追踪" Visibility="{x:Bind ViewModel.WidgetAchievementVisibility, Mode=OneWay}">
+        <Image Source="https://act-upload.mihoyo.com/ys-obc/2025/01/21/73740358/b097c597c8e957e5c29ebba956be7b77_3600296528699504897.png"/>
+    </Button>
+    <Button x:Name="BtnWidgetInventory" Click="OnOpenInventoryClick" Width="36" Height="36" Background="#1AFFFFFF" BorderThickness="0" CornerRadius="8" Padding="8" Margin="3" ToolTipService.ToolTip="背包物品" Visibility="{x:Bind ViewModel.WidgetInventoryVisibility, Mode=OneWay}">
+        <Image Source="https://act-upload.mihoyo.com/ys-obc/2025/01/21/73740358/746e735b9968d0a7496393809653bf9b_3827123919585554136.png"/>
+    </Button>
+    <Button x:Name="BtnWidgetPlayerRole" Click="OnOpenPlayerRolesClick" Width="36" Height="36" Background="#1AFFFFFF" BorderThickness="0" CornerRadius="8" Padding="8" Margin="3" ToolTipService.ToolTip="角色练度查询" Visibility="{x:Bind ViewModel.WidgetPlayerRoleVisibility, Mode=OneWay}">
+        <Image Source="https://act-upload.mihoyo.com/ys-obc/2025/01/21/73740358/816696c690ea7d95d8c13e67f794c807_6317738625095616930.png"/>
+    </Button>
+    <Button x:Name="BtnWidgetDailyNote" Click="OnOpenDailyNoteClick" Width="36" Height="36" Background="#1AFFFFFF" BorderThickness="0" CornerRadius="8" Padding="8" Margin="3" ToolTipService.ToolTip="旅行便签" Visibility="{x:Bind ViewModel.WidgetDailyNoteWindowVisibility, Mode=OneWay}">
+        <Image Source="https://act-upload.mihoyo.com/ys-obc/2025/01/21/73740358/35990ccaac57819dbaf39a47db133a59_6427418972247587857.png"/>
+    </Button>
+    <Button x:Name="BtnWidgetVideo" Click="OnOpenVideoResourcesClick" Width="36" Height="36" Background="#1AFFFFFF" BorderThickness="0" CornerRadius="8" Padding="8" Margin="3" ToolTipService.ToolTip="视频资源库" Visibility="{x:Bind ViewModel.WidgetVideoVisibility, Mode=OneWay}">
+        <Image Source="https://act-upload.mihoyo.com/ys-obc/2025/01/21/73740358/6ba109a0c67067ce3f16c18147c91f03_2613518829063232490.png"/>
+    </Button>
+    <Button x:Name="BtnWidgetBBS" Click="BBSButton_Click" Width="36" Height="36" Background="#1AFFFFFF" BorderThickness="0" CornerRadius="8" Padding="8" Margin="3" ToolTipService.ToolTip="战绩信息" Visibility="{x:Bind ViewModel.WidgetBBSVisibility, Mode=OneWay}">
+        <Image Source="https://act-upload.mihoyo.com/ys-obc/2025/01/21/73740358/aae53df95bd8d8f437729545e3a287ab_8614980669390833989.png"/>
+    </Button>
+
+    <Button Click="OnWidgetSettingsClick" Width="36" Height="36" Background="#1AFFFFFF" BorderThickness="0" CornerRadius="8" Padding="8" Margin="3" ToolTipService.ToolTip="增加小工具">
+        <FontIcon Glyph="&#xE710;" FontSize="14" Foreground="White"/>
+    </Button>
+    
+    <Button Click="OnWidgetSettingsClick" Width="36" Height="36" Background="#1AFFFFFF" BorderThickness="0" CornerRadius="8" Padding="8" Margin="3" ToolTipService.ToolTip="移除小工具">
+        <FontIcon Glyph="&#xE738;" FontSize="14" Foreground="White"/>
+    </Button>
+    
+    <Button x:Name="WidgetEyeButton" Click="OnToggleWidgetFlyoutModeClick" Width="36" Height="36" Background="#1AFFFFFF" BorderThickness="0" CornerRadius="8" Padding="8" Margin="3" ToolTipService.ToolTip="切换详细功能提示">
+        <FontIcon x:Name="WidgetEyeIcon" Glyph="&#xE890;" FontSize="14" Foreground="White"/>
+    </Button>
+</VariableSizedWrapGrid>
                     </StackPanel>
                 </Border>
                 
