@@ -81,7 +81,7 @@ public class GenshinViewModel : INotifyPropertyChanged
     {
         get
         {
-            if (TravelersDiary?.Data.MonthData.GroupBy == null) return new List<IncomeSourceViewModel>();
+            if (TravelersDiary?.Data?.MonthData?.GroupBy == null) return new List<IncomeSourceViewModel>();
 
             return TravelersDiary.Data.MonthData.GroupBy
                 .Where(s => s.Num > 0)
@@ -164,7 +164,7 @@ public class GenshinViewModel : INotifyPropertyChanged
 
             StatusMessage = "分析旅行札记..."; 
             
-            TravelersDiary = await _genshinService.GetTravelersDiarySummaryAsync(Uid, cookie, DateTime.Now.Month);
+            TravelersDiary = await _genshinService.GetTravelersDiarySummaryAsync(Uid, cookie, role.region, DateTime.Now.Month);
 
             StatusMessage = $"";
         }

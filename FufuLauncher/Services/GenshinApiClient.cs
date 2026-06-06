@@ -11,38 +11,49 @@ namespace FufuLauncher.Services;
 public class GenshinApiClient
 {
     private readonly HttpClient _httpClient;
-    private const string AppVersion = "2.90.1";
-    private const string UserAgent = "Mozilla/5.0 (Linux; Android 13; Pixel 5 Build/TQ3A.230901.001; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/118.0.0.0 Mobile Safari/537.36 miHoYoBBS/2.90.1";
-    private const string ApiSalt2 = "xV8v4Qu54lUKrEYFZkJhB8cuOh9Asafs";
+    private const string CnAppVersion = "2.90.1";
+    private const string OsAppVersion = "3.13.0";
+    private const string CnUserAgent = "Mozilla/5.0 (Linux; Android 13; Pixel 5 Build/TQ3A.230901.001; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/118.0.0.0 Mobile Safari/537.36 miHoYoBBS/2.90.1";
+    private const string OsUserAgent = "Mozilla/5.0 (Linux; Android 13; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/118.0.0.0 Mobile Safari/537.36 miHoYoBBSOversea/3.13.0";
+    private const string CnSalt = "xV8v4Qu54lUKrEYFZkJhB8cuOh9Asafs";
+    private const string OsSalt = "h4c1d6ywfq5bsbnbhm1bzq7bxzzv6srt";
     private readonly string _deviceId = Guid.NewGuid().ToString("D");
 
     public GenshinApiClient(HttpClient? httpClient = null)
     {
         _httpClient = httpClient ?? new HttpClient();
-        _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(UserAgent);
     }
 
-    public async Task<TravelersDiarySummary> GetTravelersDiarySummaryAsync(string uid, string cookie, int month = 0, CancellationToken cancellationToken = default)
+    public async Task<TravelersDiarySummary> GetTravelersDiarySummaryAsync(string uid, string cookie, string region, int month = 0, CancellationToken cancellationToken = default)
     {
-        var region = "cn_gf01";
+        var isOs = region.StartsWith("os_");
 
-        var url = $"{ApiEndpoints.TravelersDiaryMonthInfoUrl}?month={month}&bind_uid={uid}&bind_region={region}&bbs_presentation_style=fullscreen&bbs_auth_required=true&utm_source=bbs&utm_medium=mys&utm_campaign=icon";
+        string url;
+        if (isOs)
+        {
+            url = $"{ApiEndpoints.TravelersDiaryMonthInfoOsUrl}?month={month}&region={region}&uid={uid}&lang=zh-cn";
+        }
+        else
+        {
+            url = $"{ApiEndpoints.TravelersDiaryMonthInfoUrl}?month={month}&bind_uid={uid}&bind_region={region}&bbs_presentation_style=fullscreen&bbs_auth_required=true&utm_source=bbs&utm_medium=mys&utm_campaign=icon";
+        }
 
-        var request = CreateRequest(HttpMethod.Get, url, cookie);
-        request.Headers.Add("X-Requested-With", "com.mihoyo.hyperion");
+        var request = CreateRequest(HttpMethod.Get, url, cookie, isOs);
+        request.Headers.Add("X-Requested-With", isOs ? "com.mihoyo.hoyolab" : "com.mihoyo.hyperion");
 
         return await SendAsync<TravelersDiarySummary>(request, cancellationToken);
     }
 
-    private HttpRequestMessage CreateRequest(HttpMethod method, string url, string cookie)
+    private HttpRequestMessage CreateRequest(HttpMethod method, string url, string cookie, bool isOs)
     {
         var request = new HttpRequestMessage(method, url);
         request.Headers.Add("Cookie", cookie);
-        request.Headers.Add("x-rpc-app_version", AppVersion);
+        request.Headers.Add("x-rpc-app_version", isOs ? OsAppVersion : CnAppVersion);
         request.Headers.Add("x-rpc-client_type", "5");
         request.Headers.Add("x-rpc-device_id", _deviceId);
-        request.Headers.Add("DS", CreateSecret2(url));
-        request.Headers.Add("Referer", "https://webstatic.mihoyo.com/");
+        request.Headers.Add("DS", CreateSecret2(url, isOs));
+        request.Headers.Add("Referer", isOs ? "https://act.hoyolab.com/" : "https://webstatic.mihoyo.com/");
+        request.Headers.UserAgent.ParseAdd(isOs ? OsUserAgent : CnUserAgent);
         return request;
     }
 
@@ -62,11 +73,12 @@ public class GenshinApiClient
         return JsonSerializer.Deserialize<T>(content, options) ?? Activator.CreateInstance<T>();
     }
 
-    private string CreateSecret2(string url)
+    private string CreateSecret2(string url, bool isOs)
     {
+        var salt = isOs ? OsSalt : CnSalt;
         var t = DateTimeOffset.Now.ToUnixTimeSeconds().ToString();
         var r = new Random().Next(100000, 200000).ToString();
-        var m = $"salt={ApiSalt2}&t={t}&r={r}&b=&q=";
+        var m = $"salt={salt}&t={t}&r={r}&b=&q=";
 
         using var md5 = MD5.Create();
         var hash = md5.ComputeHash(Encoding.UTF8.GetBytes(m));

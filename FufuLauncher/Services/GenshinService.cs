@@ -4,7 +4,7 @@ namespace FufuLauncher.Services;
 
 public interface IGenshinService
 {
-    Task<TravelersDiarySummary> GetTravelersDiarySummaryAsync(string uid, string cookie, int month = 0, CancellationToken cancellationToken = default);
+    Task<TravelersDiarySummary> GetTravelersDiarySummaryAsync(string uid, string cookie, string region, int month = 0, CancellationToken cancellationToken = default);
 }
 
 public class GenshinService : IGenshinService
@@ -16,8 +16,8 @@ public class GenshinService : IGenshinService
         _client = new GenshinApiClient();
     }
 
-    public async Task<TravelersDiarySummary> GetTravelersDiarySummaryAsync(string uid, string cookie, int month = 0, CancellationToken cancellationToken = default)
+    public async Task<TravelersDiarySummary> GetTravelersDiarySummaryAsync(string uid, string cookie, string region, int month = 0, CancellationToken cancellationToken = default)
     {
-        return await _client.GetTravelersDiarySummaryAsync(uid, cookie, month, cancellationToken);
+        return await _client.GetTravelersDiarySummaryAsync(uid, cookie, region, month, cancellationToken);
     }
 }

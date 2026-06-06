@@ -14,6 +14,7 @@
         public const string SpiralAbyssRankUrl = "http://154.44.25.230:8080/getAbyssRank";
         public const string RerunListUrl = "http://154.44.25.230:8080/getRerunList";
         public const string TravelersDiaryMonthInfoUrl = "https://hk4e-api.mihoyo.com/event/ys_ledger/monthInfo";
+        public const string TravelersDiaryMonthInfoOsUrl = "https://sg-hk4e-api.hoyolab.com/event/ysledgeros/month_info";
         public const string BackgroundCnApi = "https://hyp-api.mihoyo.com/hyp/hyp-connect/api/getAllGameBasicInfo?launcher_id=jGHBHlcOq1&language=zh-cn&game_id=1Z8W5NHUQb";
         public const string BackgroundOsApi = "https://sg-hyp-api.hoyoverse.com/hyp/hyp-connect/api/getAllGameBasicInfo?launcher_id=VYTpXlbWo8&game_id=gopR6Cufr3&language=zh-cn";
         public const string ContentCnApi = "https://hyp-api.mihoyo.com/hyp/hyp-connect/api/getGameContent?launcher_id=jGHBHlcOq1&game_id=1Z8W5NHUQb&language=zh-cn";
