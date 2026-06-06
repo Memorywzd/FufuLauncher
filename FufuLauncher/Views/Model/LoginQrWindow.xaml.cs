@@ -47,22 +47,23 @@ public sealed partial class LoginQrWindow : Window
     public LoginQrWindow()
     {
         InitializeComponent();
-        
+    
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(AppTitleBar);
-        
+    
         _deviceId = Guid.NewGuid().ToString("N").Substring(0, 16).ToUpper();
         _deviceFp = GenerateDeviceFingerprint();
-        _gameDevice = GenerateRandomString(64, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789");
         
+        _gameDevice = Guid.NewGuid().ToString("N"); 
+    
         var handler = new HttpClientHandler { UseCookies = false };
         _httpClient = new HttpClient(handler);
-        
+    
         if (Content is FrameworkElement rootContent)
         {
             rootContent.Loaded += RootContent_Loaded;
         }
-        
+    
         Closed += LoginQrWindow_Closed;
     }
 
@@ -73,8 +74,7 @@ public sealed partial class LoginQrWindow : Window
             rootContent.Loaded -= RootContent_Loaded;
         }
 
-        UpdateGameAppIdFromSelection();
-        await StartLoginFlowAsync();
+        await StartLoginFlowAsync(false);
     }
 
     private void LoginQrWindow_Closed(object sender, WindowEventArgs args)
@@ -86,7 +86,8 @@ public sealed partial class LoginQrWindow : Window
 
     private async void RefreshButton_Click(object sender, RoutedEventArgs e)
     {
-        await RestartLoginFlowAsync();
+        bool isGameLogin = GameLoginPanel != null && GameLoginPanel.Visibility == Visibility.Visible;
+        await RestartLoginFlowAsync(isGameLogin);
     }
     
     private async void ManualCookieButton_Click(object sender, RoutedEventArgs e)
@@ -160,40 +161,39 @@ public sealed partial class LoginQrWindow : Window
 
     private async void LoginMethodComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (GameSelectionComboBox != null)
+        if (GameLoginPanel != null)
         {
-            GameSelectionComboBox.Visibility = LoginMethodComboBox.SelectedIndex == 1 ? Visibility.Visible : Visibility.Collapsed;
+            GameLoginPanel.Visibility = Visibility.Collapsed;
         }
         
         if (WebLoginWarningTextBlock != null)
         {
-            WebLoginWarningTextBlock.Visibility = LoginMethodComboBox.SelectedIndex == 2 ? Visibility.Visible : Visibility.Collapsed;
+            WebLoginWarningTextBlock.Visibility = LoginMethodComboBox.SelectedIndex == 1 ? Visibility.Visible : Visibility.Collapsed;
         }
 
         if (QrCodeContainer != null && PassportWebView != null)
         {
-            if (LoginMethodComboBox.SelectedIndex == 2)
+            if (LoginMethodComboBox.SelectedIndex == 1)
             {
                 QrCodeContainer.Visibility = Visibility.Collapsed;
                 PassportWebViewBorder.Visibility = Visibility.Visible;
                 await StartWebPassportLoginAsync();
                 return;
             }
-            else if (LoginMethodComboBox.SelectedIndex == 3)
+
+            if (LoginMethodComboBox.SelectedIndex == 2)
             {
                 PassportWebViewBorder.Visibility = Visibility.Collapsed;
                 QrCodeContainer.Visibility = Visibility.Visible;
                 await StartHoYoLabWebLoginAsync();
                 return;
             }
-            else
-            {
-                PassportWebViewBorder.Visibility = Visibility.Collapsed;
-                QrCodeContainer.Visibility = Visibility.Visible;
-            }
+
+            PassportWebViewBorder.Visibility = Visibility.Collapsed;
+            QrCodeContainer.Visibility = Visibility.Visible;
         }
 
-        await RestartLoginFlowAsync();
+        await RestartLoginFlowAsync(false);
     }
     private async Task StartHoYoLabWebLoginAsync()
     {
@@ -380,33 +380,115 @@ public sealed partial class LoginQrWindow : Window
         }
     }
 
-    private void UpdateGameAppIdFromSelection()
-    {
-        if (GameSelectionComboBox?.SelectedItem is ComboBoxItem item && item.Tag != null)
-        {
-            _gameAppId = item.Tag.ToString();
-        }
-    }
-
-    private async Task RestartLoginFlowAsync()
+    private async Task RestartLoginFlowAsync(bool isGameLogin = false)
     {
         if (_pollingCts != null)
         {
             _pollingCts.Cancel();
         }
         UpdateStatus("", false, true); 
-        await StartLoginFlowAsync();
+        await StartLoginFlowAsync(isGameLogin);
     }
 
-    private async Task StartLoginFlowAsync()
+    private async Task StartLoginFlowAsync(bool isGameLogin = false)
     {
-        if (LoginMethodComboBox.SelectedIndex == 0)
+        if (isGameLogin)
+        {
+            await StartGameLoginFlowAsync();
+        }
+        else if (LoginMethodComboBox.SelectedIndex == 0)
         {
             await StartAppLoginFlowAsync();
         }
-        else
+    }
+    
+    private void RootGrid_PreviewKeyDown(object sender, Microsoft.UI.Xaml.Input.KeyRoutedEventArgs e)
+    {
+        bool isGameLoginVisible = GameLoginPanel != null && GameLoginPanel.Visibility == Visibility.Visible;
+
+        if (e.Key == Windows.System.VirtualKey.Tab)
         {
-            await StartGameLoginFlowAsync();
+            e.Handled = true;
+            if (isGameLoginVisible)
+            {
+                ExitGameLoginMode();
+            }
+            else
+            {
+                EnterGameLoginMode();
+            }
+        }
+        else if (e.Key == Windows.System.VirtualKey.Escape)
+        {
+            if (isGameLoginVisible)
+            {
+                e.Handled = true;
+                CancelGameLoginPolling();
+            }
+        }
+    }
+    
+    private void ExitGameLoginMode()
+    {
+        if (GameLoginPanel != null)
+        {
+            GameLoginPanel.Visibility = Visibility.Collapsed;
+        }
+        if (LoginMethodComboBox != null)
+        {
+            LoginMethodComboBox.Visibility = Visibility.Visible;
+        }
+        
+        LoginMethodComboBox_SelectionChanged(LoginMethodComboBox, null);
+    }
+
+    private void CancelGameLoginPolling()
+    {
+        if (_pollingCts != null && !_pollingCts.IsCancellationRequested)
+        {
+            _pollingCts.Cancel();
+            UpdateStatus("已强制终止扫码等待", false, false);
+        }
+    }
+
+    private async void EnterGameLoginMode()
+    {
+        if (LoginMethodComboBox != null)
+        {
+            LoginMethodComboBox.Visibility = Visibility.Collapsed;
+        }
+        if (GameLoginPanel != null)
+        {
+            GameLoginPanel.Visibility = Visibility.Visible;
+        }
+        if (PassportWebViewBorder != null)
+        {
+            PassportWebViewBorder.Visibility = Visibility.Collapsed;
+        }
+        if (WebLoginWarningTextBlock != null)
+        {
+            WebLoginWarningTextBlock.Visibility = Visibility.Collapsed;
+        }
+        if (QrCodeContainer != null)
+        {
+            QrCodeContainer.Visibility = Visibility.Visible;
+        }
+
+        UpdateGameAppIdFromSelection();
+        await RestartLoginFlowAsync(true);
+    }
+
+    private async void GameLoginButton_Click(object sender, RoutedEventArgs e)
+    {
+        UpdateGameAppIdFromSelection();
+        await RestartLoginFlowAsync(true);
+    }
+
+    private void UpdateGameAppIdFromSelection()
+    {
+        if (GameAppIdTextBox != null && !string.IsNullOrWhiteSpace(GameAppIdTextBox.Text))
+        {
+            _gameAppId = GameAppIdTextBox.Text.Trim();
         }
     }
 
@@ -567,7 +649,7 @@ public sealed partial class LoginQrWindow : Window
         
         var requestBody = new JsonObject
         {
-            ["app_id"] = _gameAppId,
+            ["app_id"] = int.Parse(_gameAppId), 
             ["device"] = _gameDevice
         };
         string bodyStr = requestBody.ToJsonString(_jsonOptions);
@@ -618,7 +700,7 @@ public sealed partial class LoginQrWindow : Window
         {
             var requestBody = new JsonObject
             {
-                ["app_id"] = _gameAppId,
+                ["app_id"] = int.Parse(_gameAppId),
                 ["device"] = _gameDevice,
                 ["ticket"] = _gameTicket
             };
@@ -732,8 +814,7 @@ public sealed partial class LoginQrWindow : Window
         request.Headers.TryAddWithoutValidation("x-rpc-device_id", _deviceId);
         request.Headers.TryAddWithoutValidation("x-rpc-device_name", "Xiaomi MI 6");
         request.Headers.TryAddWithoutValidation("x-rpc-device_model", "MI 6");
-        request.Headers.TryAddWithoutValidation("x-rpc-app_id", "bll8iq97cem8");
-        request.Headers.TryAddWithoutValidation("x-rpc-client_type", "4");
+        request.Headers.TryAddWithoutValidation("x-rpc-client_type", "3");
         request.Headers.TryAddWithoutValidation("User-Agent", "okhttp/4.9.3");
     }
 
