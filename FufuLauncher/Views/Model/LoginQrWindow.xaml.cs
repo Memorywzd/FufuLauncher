@@ -40,7 +40,7 @@ public sealed partial class LoginQrWindow : Window
     private CancellationTokenSource _pollingCts;
 
     private bool _hoYoLabCredentialsExtracted;
-    private int _isExtracting;                       
+                    
     private SemaphoreSlim _extractSemaphore = new SemaphoreSlim(1, 1);
     private DispatcherQueue _dispatcherQueue;
 
@@ -491,6 +491,7 @@ public sealed partial class LoginQrWindow : Window
         if (confirmedData != null)
         {
             await ProcessAndExchangeV2TokensAsync(confirmedData);
+            DispatcherQueue.TryEnqueue(() => Close());
         }
     }
     private async Task ProcessAndExchangeV2TokensAsync(JsonNode dataNode)
@@ -624,6 +625,7 @@ public sealed partial class LoginQrWindow : Window
                             string uid = rawNode["uid"]?.GetValue<string>();
                             string token = rawNode["token"]?.GetValue<string>();
                             await GetSTokenByGameTokenAsync(uid, token);
+                            DispatcherQueue.TryEnqueue(() => Close());
                             return;
                         }
                     }
@@ -781,7 +783,7 @@ private async Task ExchangeV2TokensAndSaveAsync(string stoken, string mid, strin
                     finalCookies["stoken"] = stoken;
                 }
 
-                SaveCredentials(finalCookies);
+                await SaveCredentialsAsync(finalCookies);
             }
             else
             {
@@ -987,12 +989,19 @@ private async Task ExchangeV2TokensAndSaveAsync(string stoken, string mid, strin
 
                 if (cookieDict.ContainsKey("cookie_token") || cookieDict.ContainsKey("cookie_token_v2"))
                 {
-                    PassportWebView.CoreWebView2.WebResourceResponseReceived -= CoreWebView2_WebResourceResponseReceived;
-
-                    DispatcherQueue.TryEnqueue(() =>
+                    DispatcherQueue.TryEnqueue(async () =>
                     {
-                        UpdateStatus("凭证提取成功，正在保存", true);
-                        SaveCredentials(cookieDict);
+                        try
+                        {
+                            UpdateStatus("凭证提取成功，正在保存", true);
+                            await SaveCredentialsAsync(cookieDict);
+                            UpdateStatus("登录成功", false, true);
+                            Close();
+                        }
+                        catch (Exception ex)
+                        {
+                            UpdateStatus($"保存失败: {ex.Message}", false);
+                        }
                     });
                 }
             }
@@ -1162,16 +1171,17 @@ private async Task ExchangeV2TokensAndSaveAsync(string stoken, string mid, strin
         }
         catch (ObjectDisposedException) { }
 
+        _hoYoLabCredentialsExtracted = true;
 
-        bool enqueued = _dispatcherQueue.TryEnqueue(() =>
+        bool enqueued = _dispatcherQueue.TryEnqueue(async () =>
         {
             try
             {
                 UpdateStatus("HoYoLAB凭证提取成功，正在保存...", true);
-                SaveLabCredentials(dict);
+                await SaveLabCredentialsAsync(dict);
 
 
-                _hoYoLabCredentialsExtracted = true;
+
                 IsLoginSuccessful = true;
                 UpdateStatus("登录成功", false, true);
                 Close();
@@ -1192,7 +1202,7 @@ private async Task ExchangeV2TokensAndSaveAsync(string stoken, string mid, strin
     #endregion
 
     #region Cookie 保存
-    private async void SaveLabCredentials(Dictionary<string, string> cookies)
+    private async Task SaveLabCredentialsAsync(Dictionary<string, string> cookies)
     {
         var cookieList = new List<string>();
         foreach (var kvp in cookies)
@@ -1205,8 +1215,7 @@ private async Task ExchangeV2TokensAndSaveAsync(string stoken, string mid, strin
 
         IsLoginSuccessful = true;
         UpdateStatus("HoYoLAB登录成功", false, true);
-
-        DispatcherQueue.TryEnqueue(() => Close());
+       
     }
     private async Task SaveLabConfigForLauncherAsync(string cookieString)
     {
@@ -1292,7 +1301,7 @@ private async Task ExchangeV2TokensAndSaveAsync(string stoken, string mid, strin
             );
         }
     }
-    private async void SaveCredentials(Dictionary<string, string> cookies)
+    private async Task SaveCredentialsAsync(Dictionary<string, string> cookies)
     {
         var cookieList = new List<string>();
         foreach (var kvp in cookies)
@@ -1305,8 +1314,7 @@ private async Task ExchangeV2TokensAndSaveAsync(string stoken, string mid, strin
 
         IsLoginSuccessful = true;
         UpdateStatus("登录成功", false, true);
-
-        DispatcherQueue.TryEnqueue(() => Close());
+       
     }
 
     private async Task SaveConfigForLauncherAsync(string cookieString)
