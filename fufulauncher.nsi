@@ -146,12 +146,15 @@ Function .onInit
 
     uninst:
         ClearErrors
-    
+
         ${GetParent} $R0 $R1
 
         ExecWait '$R0 _?=$R1'
         IfErrors no_remove_uninstaller
-       
+
+        ;卸载后将默认安装路径设为之前的安装目录
+        StrCpy $INSTDIR $R1
+
         Goto done
         
     no_remove_uninstaller:
