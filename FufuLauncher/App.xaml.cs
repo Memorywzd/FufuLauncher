@@ -3,8 +3,6 @@ using System.Runtime.InteropServices;
 using System.Text.Json;
 using FufuLauncher.Activation;
 using FufuLauncher.Contracts.Services;
-using FufuLauncher.Core.Contracts.Services;
-using FufuLauncher.Core.Services;
 using FufuLauncher.Helpers;
 using FufuLauncher.Models;
 using FufuLauncher.Services;

@@ -1,4 +1,4 @@
-﻿using FufuLauncher.Core;
+﻿using FufuLauncher.Services;
 using Microsoft.UI;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;

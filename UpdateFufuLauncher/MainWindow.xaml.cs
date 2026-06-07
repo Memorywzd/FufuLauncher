@@ -1,11 +1,17 @@
-﻿using System.Diagnostics;
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Net.Http;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Interop;
+using System.Windows.Threading;
 using Downloader;
 using Newtonsoft.Json.Linq;
 
@@ -42,7 +48,7 @@ namespace Updater
             public int AnimationId;
         }
         
-        private const string AppVersion = "1.2.2.0";
+        private const string AppVersion = "1.2.2.1";
 
         private static readonly HttpClient _httpClient = new(new HttpClientHandler
         {
@@ -58,6 +64,12 @@ namespace Updater
         private DownloadService _downloader;
         private Stopwatch _uiUpdateTimer = new();
 
+        private DispatcherTimer _stuckTimer;
+        private long _currentReceivedBytes = 0;
+        private long _lastReceivedBytes = 0;
+        private int _stuckTicks = 0;
+        private bool _isDownloading = false;
+
         private const string TestFileOfficialUrl = "https://raw.githubusercontent.com/moodlehq/moodle-exttests/master/test.html";
         private const string ExpectedTestFileMD5 = "47250a973d1b88d9445f94db4ef2c97a";
 
@@ -65,6 +77,39 @@ namespace Updater
         {
             InitializeComponent();
             _httpClient.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36");
+
+            _stuckTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
+            _stuckTimer.Tick += StuckTimer_Tick;
+        }
+
+        private void StuckTimer_Tick(object sender, EventArgs e)
+        {
+            if (!_isDownloading || _downloader == null || _downloader.IsCancelled) return;
+
+            long diff = _currentReceivedBytes - _lastReceivedBytes;
+            if (diff < 20480) 
+            {
+                _stuckTicks++;
+                if (_stuckTicks >= 10) 
+                {
+                    _stuckTimer.Stop();
+                    var result = MessageBox.Show("下载进度长期未动或网络极慢，建议取消当前下载并更换其他节点尝试\n\n是否立即取消下载？", "下载缓慢", MessageBoxButton.YesNo, MessageBoxImage.Information);
+                    if (result == MessageBoxResult.Yes)
+                    {
+                        CancelDownload_Click(null, null);
+                    }
+                    else
+                    {
+                        _stuckTicks = 0;
+                        _stuckTimer.Start();
+                    }
+                }
+            }
+            else
+            {
+                _stuckTicks = 0;
+            }
+            _lastReceivedBytes = _currentReceivedBytes;
         }
 
         private void Window_SourceInitialized(object sender, EventArgs e)
@@ -138,7 +183,7 @@ namespace Updater
                 if (!Version.TryParse(AppVersion, out Version currentVersion) || 
                     !Version.TryParse(remoteVersionStr, out Version remoteVersion))
                 {
-                    MessageBox.Show("版本号无法识别，请前往官网下载。\n此处不提供更新。", "版本异常", MessageBoxButton.OK, MessageBoxImage.Error);
+                    MessageBox.Show("版本号无法识别，请前往官网下载\n此处不提供更新", "版本异常", MessageBoxButton.OK, MessageBoxImage.Error);
                     Environment.Exit(0);
                     return;
                 }
@@ -186,7 +231,7 @@ namespace Updater
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"更新初始化失败，请检查网络\n\n详情: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show($"更新初始化失败，请检查网络，或者去下面下载\nhttps://wwaoi.lanzn.com/b00wnb99ef\n密码:6hnh\n错误详情: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
                 Environment.Exit(1);
             }
         }
@@ -327,16 +372,31 @@ namespace Updater
             {
                 ChunkCount = 4, 
                 ParallelDownload = true,
-                MaxTryAgainOnFailure = 3,
-                ClearPackageOnCompletionWithFailure = false 
+                MaxTryAgainOnFailure = 9999,
+                ClearPackageOnCompletionWithFailure = false,
+                CustomHttpClientFactory = () => new HttpClient(new HttpClientHandler
+                {
+                    ServerCertificateCustomValidationCallback = (sender, cert, chain, sslPolicyErrors) => true
+                }) 
+                { 
+                    Timeout = TimeSpan.FromSeconds(30) 
+                }
             };
 
             _downloader = new DownloadService(downloadOpt);
             
+            _currentReceivedBytes = 0;
+            _lastReceivedBytes = 0;
+            _stuckTicks = 0;
+            _isDownloading = true;
+
             _uiUpdateTimer.Restart();
+            _stuckTimer.Start();
 
             _downloader.DownloadProgressChanged += (s, e) =>
             {
+                _currentReceivedBytes = e.ReceivedBytesSize;
+
                 if (_uiUpdateTimer.ElapsedMilliseconds >= 100 || e.ProgressPercentage >= 100)
                 {
                     _uiUpdateTimer.Restart();
@@ -358,6 +418,8 @@ namespace Updater
             {
                 Dispatcher.InvokeAsync(() =>
                 {
+                    _isDownloading = false;
+                    _stuckTimer.Stop();
                     _uiUpdateTimer.Stop();
 
                     if (e.Cancelled)
@@ -366,7 +428,7 @@ namespace Updater
                     }
                     else if (e.Error != null)
                     {
-                        MessageBox.Show($"错误: {e.Error.Message}\n\n请选择其他节点继续下载", "失败", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        MessageBox.Show($"错误: {e.Error.Message}\n\n请选择其他节点继续下载\n或者去这里下载：https://wwaoi.lanzn.com/b00wnb99ef\n密码:6hnh", "失败", MessageBoxButton.OK, MessageBoxImage.Warning);
                         ResetToSelectionUI();
                     }
                     else

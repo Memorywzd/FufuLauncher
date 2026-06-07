@@ -1,6 +1,6 @@
-﻿using Newtonsoft.Json;
+using Newtonsoft.Json;
 
-namespace FufuLauncher.Core.Helpers;
+namespace FufuLauncher.Helpers;
 
 public static class Json
 {

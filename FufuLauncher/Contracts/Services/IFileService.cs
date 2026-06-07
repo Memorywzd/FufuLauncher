@@ -1,4 +1,4 @@
-﻿namespace FufuLauncher.Core.Contracts.Services;
+namespace FufuLauncher.Contracts.Services;
 
 public interface IFileService
 {

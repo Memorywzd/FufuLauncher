@@ -1,8 +1,8 @@
-﻿using System.Text;
-using FufuLauncher.Core.Contracts.Services;
+using System.Text;
+using FufuLauncher.Contracts.Services;
 using Newtonsoft.Json;
 
-namespace FufuLauncher.Core.Services;
+namespace FufuLauncher.Services;
 
 public class FileService : IFileService
 {

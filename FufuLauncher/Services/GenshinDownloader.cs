@@ -1,10 +1,10 @@
-﻿using System.Collections.Concurrent;
+using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using Newtonsoft.Json.Linq;
 using ProtoBuf;
 using ZstdSharp;
 
-namespace FufuLauncher.Core
+namespace FufuLauncher.Services
 {
 
     [ProtoContract]
@@ -24,7 +24,7 @@ namespace FufuLauncher.Core
         [ProtoMember(3)]
         public bool IsFolder { get; set; }
         [ProtoMember(4)]
-        public long Size { get; set; } 
+        public long Size { get; set; }
         [ProtoMember(5)]
         public string Checksum { get; set; }
     }
@@ -49,7 +49,7 @@ namespace FufuLauncher.Core
         private const string BuildApiUrl = "https://api-takumi.mihoyo.com/downloader/sophon_chunk/api/getBuild?branch=main&package_id=8xfMve0uwQ&password=CW8GbLNU8f&plat_app=ddxf5qt290cg";
         private readonly HttpClient _httpClient;
         private long _lastReportTicks = 0;
-        
+
         public event Action<string> Log;
         public event Action<long, long, int, int> ProgressChanged;
         public event Action<string> ErrorOccurred;
@@ -72,8 +72,8 @@ namespace FufuLauncher.Core
                 var targetAssets = new List<string>();
                 if (downloadBaseGame) targetAssets.Add("game");
                 else Log?.Invoke(">> 跳过游戏本体，仅下载语音包模式");
-                
-                targetAssets.Add(lang); 
+
+                targetAssets.Add(lang);
 
                 var filesToProcess = new ConcurrentBag<(FileEntry File, string UrlPrefix)>();
 
@@ -88,10 +88,10 @@ namespace FufuLauncher.Core
                     string chunkDownloadPrefix = config["chunk_download"]["url_prefix"].ToString();
 
                     Log?.Invoke($"正在获取清单文件: {asset}...");
-                    
+
                     byte[] manifestBytes = await DownloadAndDecompressManifestAsync(mDownloadPrefix, mId, mChecksum, token);
                     if (manifestBytes == null) throw new Exception($"清单下载失败: {asset}");
-                    
+
                     using var ms = new MemoryStream(manifestBytes);
                     var protoManifest = Serializer.Deserialize<Manifest>(ms);
                     foreach (var f in protoManifest.Files) filesToProcess.Add((f, chunkDownloadPrefix));
@@ -114,20 +114,20 @@ namespace FufuLauncher.Core
                     if (item.File.IsFolder) return;
 
                     string localPath = Path.Combine(stagingPath, item.File.Path);
-                    
+
                     Action<int> onChunkWritten = (size) =>
                     {
                         long current = Interlocked.Add(ref processedBytes, size);
                         ReportProgress(current, totalBytes, processedFiles, totalFiles);
                     };
-                    
+
                     bool success = await ProcessFileAsync(item.File, item.UrlPrefix, localPath, onChunkWritten, ct);
 
-                    if (!success) 
+                    if (!success)
                     {
                         Log?.Invoke($"文件无法修复或用户取消操作: {item.File.Path}");
                     }
-                    
+
                     Interlocked.Increment(ref processedFiles);
                     ReportProgress(Interlocked.Read(ref processedBytes), totalBytes, processedFiles, totalFiles, force: true);
                 });
@@ -136,11 +136,20 @@ namespace FufuLauncher.Core
                 MoveFilesRecursively(new DirectoryInfo(stagingPath), new DirectoryInfo(installPath));
                 try { Directory.Delete(stagingPath, true); } catch { }
 
-                await File.WriteAllTextAsync(Path.Combine(installPath, "gid_ver"), versionTag, token);
-                if (downloadBaseGame || !File.Exists(Path.Combine(installPath, "config.ini")))
+                string gidVerPath = Path.Combine(installPath, "gid_ver");
+                string configPath = Path.Combine(installPath, "config.ini");
+
+                await File.WriteAllTextAsync(gidVerPath, versionTag, token);
+
+                if (File.Exists(configPath))
                 {
-                    string configContent = $"[general]\ngame_version={versionTag}\nchannel=1\nsub_channel=1\ncps=mihoyo\n";
-                    await File.WriteAllTextAsync(Path.Combine(installPath, "config.ini"), configContent, token);
+                    var iniFile = new Helpers.IniFile(configPath);
+                    iniFile.WriteValue("General", "game_version", versionTag);
+                }
+                else
+                {
+                    string configContent = $"[General]\ngame_version={versionTag}\nchannel=1\nsub_channel=1\ncps=mihoyo\n";
+                    await File.WriteAllTextAsync(configPath, configContent, token);
                 }
 
                 Log?.Invoke("全部完成！");
@@ -155,7 +164,7 @@ namespace FufuLauncher.Core
             {
                 string dir = Path.GetDirectoryName(localPath);
                 if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
-                
+
                 if (File.Exists(localPath))
                 {
                     var info = new FileInfo(localPath);
@@ -170,21 +179,21 @@ namespace FufuLauncher.Core
                     }
                     File.Delete(localPath);
                 }
-                
+
                 using (var fs = new FileStream(localPath, FileMode.Create, FileAccess.Write, FileShare.None))
                 {
                     foreach (var chunk in file.Chunks)
                     {
                         token.ThrowIfCancellationRequested();
-                        
+
                         byte[] data = await DownloadChunkWithRetryAsync($"{urlPrefix}/{chunk.Id}", token);
                         if (data == null) return false;
-                        
+
                         await fs.WriteAsync(data, 0, data.Length, token);
                         onProgress?.Invoke(data.Length);
                     }
                 }
-                
+
                 string finalMd5 = await ComputeFileMd5Async(localPath, token);
                 if (!finalMd5.Equals(file.Checksum, StringComparison.OrdinalIgnoreCase))
                 {
@@ -236,7 +245,7 @@ namespace FufuLauncher.Core
                     byte[] data = decompressor.Unwrap(compressed).ToArray();
                     if (ComputeMd5(data).Equals(expectedMd5, StringComparison.OrdinalIgnoreCase))
                         return data;
-                    
+
                     Log?.Invoke($"Manifest MD5校验失败，重试中...");
                 }
                 catch { }
@@ -245,7 +254,7 @@ namespace FufuLauncher.Core
             }
             return null;
         }
-        
+
         private async Task<string> ComputeFileMd5Async(string filePath, CancellationToken token)
         {
             using var md5 = MD5.Create();
@@ -300,7 +309,7 @@ namespace FufuLauncher.Core
                 MoveFilesRecursively(dir, target.CreateSubdirectory(dir.Name));
             }
         }
-        
+
         private string FormatSize(long bytes) => $"{bytes / 1024.0 / 1024.0:F2} MB";
     }
 }

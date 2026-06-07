@@ -1,6 +1,4 @@
-﻿using FufuLauncher.Core.Helpers;
-
-using Windows.Storage;
+﻿using Windows.Storage;
 using Windows.Storage.Streams;
 
 namespace FufuLauncher.Helpers;

@@ -5,8 +5,7 @@ VisualStudioVersion = 18.3.11222.16
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FufuLauncher", "FufuLauncher\FufuLauncher.csproj", "{1B42D8C7-517E-F337-8B5A-D5ADF940F2BD}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FufuLauncher.Core", "FufuLauncher.Core\FufuLauncher.Core.csproj", "{40D8F100-B201-9EF4-A4AA-59E5D7C599E0}"
-EndProject
+
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MihoyoBBS", "MihoyoBBS\MihoyoBBS.csproj", "{7B00411A-05DF-47A7-86C5-972F1D6D2AAF}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UpdateFufuLauncher", "UpdateFufuLauncher\UpdateFufuLauncher.csproj", "{C9C2A501-D32E-47B4-9D80-24146E055418}"
@@ -39,20 +38,6 @@ Global
 		{1B42D8C7-517E-F337-8B5A-D5ADF940F2BD}.Release|x86.ActiveCfg = Release|x86
 		{1B42D8C7-517E-F337-8B5A-D5ADF940F2BD}.Release|x86.Build.0 = Release|x86
 		{1B42D8C7-517E-F337-8B5A-D5ADF940F2BD}.Release|x86.Deploy.0 = Release|x86
-		{40D8F100-B201-9EF4-A4AA-59E5D7C599E0}.Debug|arm64.ActiveCfg = Debug|arm64
-		{40D8F100-B201-9EF4-A4AA-59E5D7C599E0}.Debug|arm64.Build.0 = Debug|arm64
-		{40D8F100-B201-9EF4-A4AA-59E5D7C599E0}.Debug|x64.ActiveCfg = Debug|x64
-		{40D8F100-B201-9EF4-A4AA-59E5D7C599E0}.Debug|x64.Build.0 = Debug|x64
-		{40D8F100-B201-9EF4-A4AA-59E5D7C599E0}.Debug|x64.Deploy.0 = Debug|x64
-		{40D8F100-B201-9EF4-A4AA-59E5D7C599E0}.Debug|x86.ActiveCfg = Debug|x86
-		{40D8F100-B201-9EF4-A4AA-59E5D7C599E0}.Debug|x86.Build.0 = Debug|x86
-		{40D8F100-B201-9EF4-A4AA-59E5D7C599E0}.Release|arm64.ActiveCfg = Release|arm64
-		{40D8F100-B201-9EF4-A4AA-59E5D7C599E0}.Release|arm64.Build.0 = Release|arm64
-		{40D8F100-B201-9EF4-A4AA-59E5D7C599E0}.Release|x64.ActiveCfg = Release|x64
-		{40D8F100-B201-9EF4-A4AA-59E5D7C599E0}.Release|x64.Build.0 = Release|x64
-		{40D8F100-B201-9EF4-A4AA-59E5D7C599E0}.Release|x64.Deploy.0 = Release|x64
-		{40D8F100-B201-9EF4-A4AA-59E5D7C599E0}.Release|x86.ActiveCfg = Release|x86
-		{40D8F100-B201-9EF4-A4AA-59E5D7C599E0}.Release|x86.Build.0 = Release|x86
 		{7B00411A-05DF-47A7-86C5-972F1D6D2AAF}.Debug|arm64.ActiveCfg = Debug|Any CPU
 		{7B00411A-05DF-47A7-86C5-972F1D6D2AAF}.Debug|arm64.Build.0 = Debug|Any CPU
 		{7B00411A-05DF-47A7-86C5-972F1D6D2AAF}.Debug|x64.ActiveCfg = Debug|Any CPU
