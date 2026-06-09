@@ -40,7 +40,7 @@ namespace FufuLauncher
                 return;
             }
 
-            var key = "FufuLauncher_Main_Instance_Key";
+            var key = "gZ5gU1wF8cO0wB6vL1lF3uF0sY5nT0mN2mB8bQ8lT6uF2bH6gX6wX9hM1hR5gJ1iL1aZ4iZ0wL0vE6cE5uW7lZ5mZ6oO8pU8nH4t";
             var mainInstance = AppInstance.FindOrRegisterForKey(key);
 
             if (!mainInstance.IsCurrent)
