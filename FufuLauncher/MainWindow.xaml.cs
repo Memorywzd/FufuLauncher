@@ -679,8 +679,11 @@ public sealed partial class MainWindow : WindowEx
 
     private void UpdateBackgroundOverlayTheme()
     {
-        if (Content is FrameworkElement rootElement)
+        try
         {
+            if (_isExit) return;
+            if (Content is not FrameworkElement rootElement) return;
+
             var currentTheme = rootElement.ActualTheme;
             if (currentTheme == ElementTheme.Default)
                 currentTheme = Application.Current.RequestedTheme == ApplicationTheme.Dark ? ElementTheme.Dark : ElementTheme.Light;
@@ -707,6 +710,8 @@ public sealed partial class MainWindow : WindowEx
 
             ApplyFrameBackgroundOpacity(_frameBackgroundOpacity);
         }
+        catch (ObjectDisposedException) { }
+        catch (System.Runtime.InteropServices.COMException) { }
     }
     private async Task LoadAndApplyAcrylicSettingAsync()
     {
