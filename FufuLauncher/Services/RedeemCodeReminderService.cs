@@ -26,6 +26,22 @@ namespace FufuLauncher.Helpers
                     return; 
                 }
 
+                bool isOs = false;
+                var gamePathObj = await _localSettingsService.ReadSettingAsync("GameInstallationPath");
+                if (gamePathObj is string gamePath && !string.IsNullOrEmpty(gamePath))
+                {
+                    var dir = gamePath;
+                    if (System.IO.File.Exists(dir))
+                        dir = System.IO.Path.GetDirectoryName(dir) ?? dir;
+                    isOs = dir != null && System.IO.File.Exists(System.IO.Path.Combine(dir, "GenshinImpact.exe"));
+                }
+
+                if (isOs)
+                {
+                    await _localSettingsService.SaveSettingAsync("LastRedeemCodeReminderDate", todayStr);
+                    return;
+                }
+
                 using var client = new HttpClient();
                 client.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
                 var json = await client.GetStringAsync(ApiEndpoints.RedeemCodesUrl);
@@ -41,23 +57,23 @@ namespace FufuLauncher.Helpers
 
                 if (codesList != null && codesList.Count > 0)
                 {
-                    var todaysCodes = codesList.Where(c => 
-                        (!string.IsNullOrEmpty(c.Valid) && c.Valid.Contains(todayStr)) || 
+                    var todaysCodes = codesList.Where(c =>
+                        (!string.IsNullOrEmpty(c.Valid) && c.Valid.Contains(todayStr)) ||
                         (!string.IsNullOrEmpty(c.Time) && c.Time.Contains(todayStr))
                     ).ToList();
 
-                    if (todaysCodes.Any())
+                    if (todaysCodes.Count > 0)
                     {
                         var titles = string.Join("、", todaysCodes.Select(c => c.Title));
                         var codesContent = string.Join("\n", todaysCodes.SelectMany(c => c.Codes));
-                        
+
                         var msg = new NotificationMessage(
                             "兑换码失效提醒",
                             $"活动{titles}包含可用兑换码：\n{codesContent}\n请及时前往游戏内使用，否则将会在今天之后失效！",
                             NotificationType.Warning,
-                            0 
+                            0
                         );
-                        
+
                         showNotificationAction?.Invoke(msg);
                     }
                 }
