@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.ComponentModel;
 using System.Diagnostics;
 using FufuLauncher.ViewModels;
@@ -29,7 +29,8 @@ namespace FufuLauncher.Views
         private void ViewModel_PropertyChanged(object sender, PropertyChangedEventArgs e)
         {
             if (e.PropertyName == nameof(ViewModel.IsRecordingTriggerKey) ||
-                e.PropertyName == nameof(ViewModel.IsRecordingClickKey))
+                e.PropertyName == nameof(ViewModel.IsRecordingClickKey) ||
+                e.PropertyName == nameof(ViewModel.IsRecordingStopKey))
             {
                 UpdateKeyRegistration();
             }
@@ -43,7 +44,7 @@ namespace FufuLauncher.Views
                 {
                     content.KeyDown -= GlobalKeyDown;
                     
-                    if (ViewModel.IsRecordingTriggerKey || ViewModel.IsRecordingClickKey)
+                    if (ViewModel.IsRecordingTriggerKey || ViewModel.IsRecordingClickKey || ViewModel.IsRecordingStopKey)
                     {
                         content.KeyDown += GlobalKeyDown;
                         Debug.WriteLine("[OtherPage] 按键录制配置开启，全局按键事件已注册到Window.Content");
@@ -116,6 +117,11 @@ namespace FufuLauncher.Views
                     {
                         ViewModel.UpdateKey("Click", key);
                         Debug.WriteLine($"[OtherPage] 连点键设置完成: {key}");
+                    }
+                    else if (ViewModel.IsRecordingStopKey)
+                    {
+                        ViewModel.UpdateKey("Stop", key);
+                        Debug.WriteLine($"[OtherPage] 停止快捷键设置完成: {key}");
                     }
                     args.Handled = true;
                 }

@@ -687,6 +687,29 @@
                                 <ComboBoxItem Content="国际服 (提瓦特)"/>
                             </ComboBox>
 
+                            <StackPanel Margin="0,16,0,0" Spacing="8">
+                                <TextBlock Text="官方背景 API" 
+                                           Style="{ThemeResource BodyStrongTextBlockStyle}"
+                                           FontSize="14"/>
+                                <TextBlock Text="留空使用当前服务器的默认 API。自定义 API 需要返回与官方 getAllGameBasicInfo 一致的数据结构。"
+                                           Style="{ThemeResource CaptionTextBlockStyle}"
+                                           Opacity="0.7"
+                                           TextWrapping="Wrap"/>
+                                <TextBox Text="{x:Bind ViewModel.CustomBackgroundApiUrl, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                         PlaceholderText="输入自定义官方背景 API 地址"
+                                         MaxWidth="640"
+                                         HorizontalAlignment="Stretch"/>
+                                <TextBlock Text="{x:Bind ViewModel.CurrentBackgroundApiUrl, Mode=OneWay}"
+                                           Style="{ThemeResource CaptionTextBlockStyle}"
+                                           Opacity="0.7"
+                                           TextWrapping="Wrap"/>
+                                <Button Content="重置为默认 API"
+                                        Command="{x:Bind ViewModel.ResetBackgroundApiCommand}"
+                                        HorizontalAlignment="Left"
+                                        Padding="12,6"
+                                        CornerRadius="6"/>
+                            </StackPanel>
+
                             <TextBlock Text="获取官方背景资源" 
                                        Style="{ThemeResource BodyStrongTextBlockStyle}"
                                        FontSize="14"

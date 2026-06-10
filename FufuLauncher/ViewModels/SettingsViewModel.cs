@@ -17,6 +17,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using System.Text.RegularExpressions;
 using FufuLauncher.Helpers;
+using FufuLauncher.Constants;
 using MihoyoBBS;
 
 namespace FufuLauncher.ViewModels
@@ -130,6 +131,9 @@ namespace FufuLauncher.ViewModels
         [ObservableProperty] private bool _showWidgetBBS = true;
         
         [ObservableProperty] private AppProcessPriority _appProcessPriority;
+        
+        [ObservableProperty] private string _customBackgroundApiUrl = "";
+        [ObservableProperty] private string _currentBackgroundApiUrl = "";
         
         [ObservableProperty] private string _launchButtonOverlayColor = "#0078D7";
         
@@ -297,7 +301,29 @@ namespace FufuLauncher.ViewModels
         public IAsyncRelayCommand DownloadLatestBackgroundImageCommand { get; }
         public IAsyncRelayCommand DownloadLatestBackgroundVideoCommand { get; }
         
+        public IAsyncRelayCommand ResetBackgroundApiCommand { get; }
         public IAsyncRelayCommand ResetLaunchButtonOverlayColorCommand { get; }
+        
+        private async Task ResetBackgroundApiAsync()
+        {
+            CustomBackgroundApiUrl = string.Empty;
+            CurrentBackgroundApiUrl = GetDefaultBackgroundApiUrl(SelectedServer);
+            await _localSettingsService.SaveSettingAsync("CustomBackgroundApiUrl", string.Empty);
+            await _localSettingsService.SaveSettingAsync("BackgroundJsonHash", string.Empty);
+            await _localSettingsService.SaveSettingAsync("SelectedOnlineBackgroundUrl", string.Empty);
+            await _localSettingsService.SaveSettingAsync("SelectedOnlineBackgroundIsVideo", false);
+            WeakReferenceMessenger.Default.Send(new BackgroundRefreshMessage());
+        }
+        
+        private static string GetDefaultBackgroundApiUrl(ServerType server)
+        {
+            return server switch
+            {
+                ServerType.CN => ApiEndpoints.BackgroundCnApi,
+                ServerType.OS => ApiEndpoints.BackgroundOsApi,
+                _ => ApiEndpoints.BackgroundCnApi
+            };
+        }
         
         private async Task ResetLaunchButtonOverlayColorAsync()
         {
@@ -368,6 +394,7 @@ namespace FufuLauncher.ViewModels
             UpdateWebView2CacheSize();
             ClearCustomBackgroundCommand = new AsyncRelayCommand(ClearCustomBackgroundAsync);
             ResetGameExeNameCommand = new AsyncRelayCommand(ResetGameExeNameAsync);
+            ResetBackgroundApiCommand = new AsyncRelayCommand(ResetBackgroundApiAsync);
             
             ResetLaunchButtonOverlayColorCommand = new AsyncRelayCommand(ResetLaunchButtonOverlayColorAsync);
 
@@ -749,6 +776,8 @@ namespace FufuLauncher.ViewModels
                 OnPropertyChanged(nameof(BackgroundSlideshowFolder));
                 OnPropertyChanged(nameof(HasBackgroundSlideshowFolder));
                 OnPropertyChanged(nameof(BackgroundSlideshowInterval));
+                OnPropertyChanged(nameof(CustomBackgroundApiUrl));
+                OnPropertyChanged(nameof(CurrentBackgroundApiUrl));
                 OnPropertyChanged(nameof(AppThemeColor));
                 OnPropertyChanged(nameof(CurrentWindowBackdrop));
                 OnPropertyChanged(nameof(IsShortTermSupportEnabled));
@@ -781,6 +810,11 @@ namespace FufuLauncher.ViewModels
             var serverJson = await _localSettingsService.ReadSettingAsync(LocalSettingsService.BackgroundServerKey);
             int serverValue = serverJson != null ? Convert.ToInt32(serverJson) : 0;
             SelectedServer = (ServerType)serverValue;
+            var customBackgroundApiJson = await _localSettingsService.ReadSettingAsync("CustomBackgroundApiUrl");
+            CustomBackgroundApiUrl = customBackgroundApiJson?.ToString() ?? string.Empty;
+            CurrentBackgroundApiUrl = string.IsNullOrWhiteSpace(CustomBackgroundApiUrl)
+                ? GetDefaultBackgroundApiUrl(SelectedServer)
+                : CustomBackgroundApiUrl;
 
             var enabledJson = await _localSettingsService.ReadSettingAsync(LocalSettingsService.IsBackgroundEnabledKey);
             IsBackgroundEnabled = enabledJson == null ? true : Convert.ToBoolean(enabledJson);
@@ -1448,10 +1482,30 @@ namespace FufuLauncher.ViewModels
             }
         }
 
+        partial void OnCustomBackgroundApiUrlChanged(string value)
+        {
+            if (_isInitializing) return;
+            var normalized = value?.Trim() ?? string.Empty;
+            if (!string.IsNullOrEmpty(normalized) &&
+                (!Uri.TryCreate(normalized, UriKind.Absolute, out var uri) ||
+                 (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps)))
+            {
+                return;
+            }
+
+            _ = _localSettingsService.SaveSettingAsync("CustomBackgroundApiUrl", normalized);
+            CurrentBackgroundApiUrl = string.IsNullOrWhiteSpace(normalized) ? GetDefaultBackgroundApiUrl(SelectedServer) : normalized;
+            _ = _localSettingsService.SaveSettingAsync("BackgroundJsonHash", string.Empty);
+            _ = _localSettingsService.SaveSettingAsync("SelectedOnlineBackgroundUrl", string.Empty);
+            _ = _localSettingsService.SaveSettingAsync("SelectedOnlineBackgroundIsVideo", false);
+            WeakReferenceMessenger.Default.Send(new BackgroundRefreshMessage());
+        }
+
         partial void OnSelectedServerChanged(ServerType value)
         {
             if (_isInitializing) return;
             Debug.WriteLine($"SettingsViewModel: 保存服务器设置 {value}");
+            CurrentBackgroundApiUrl = string.IsNullOrWhiteSpace(CustomBackgroundApiUrl) ? GetDefaultBackgroundApiUrl(value) : CustomBackgroundApiUrl;
             _ = _localSettingsService.SaveSettingAsync(LocalSettingsService.BackgroundServerKey, (int)value);
             WeakReferenceMessenger.Default.Send(new BackgroundRefreshMessage());
         }

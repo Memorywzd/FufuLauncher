@@ -1,4 +1,4 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Text.Json;
@@ -19,6 +19,7 @@ using Windows.UI;
 using FufuLauncher.Views;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Windows.Media.Core;
+using Windows.Storage.Streams;
 
 namespace FufuLauncher.ViewModels
 {
@@ -47,6 +48,7 @@ namespace FufuLauncher.ViewModels
 
         [ObservableProperty] private ImageSource _backgroundImageSource;
         [ObservableProperty] private MediaPlayer _backgroundVideoPlayer;
+        private InMemoryRandomAccessStream _backgroundVideoStream;
         [ObservableProperty] private bool _isVideoBackground;
         [ObservableProperty] private bool _isBackgroundLoading;
 
@@ -611,7 +613,7 @@ private async Task LoadBackgroundAsync()
                 {
                     if (bgResult.IsVideo && bgResult.VideoSource != null)
                     {
-                        SetupVideoPlayer(bgResult.VideoSource);
+                        SetupVideoPlayer(bgResult.VideoSource, bgResult.VideoStream);
                     }
                     else if (!bgResult.IsVideo && bgResult.ImageSource != null)
                     {
@@ -649,8 +651,10 @@ private async Task LoadBackgroundAsync()
     }
 }
 
-private void SetupVideoPlayer(MediaSource source)
+private void SetupVideoPlayer(MediaSource source, InMemoryRandomAccessStream stream)
 {
+    _backgroundVideoStream = stream;
+
     if (BackgroundVideoPlayer == null)
     {
         BackgroundVideoPlayer = new MediaPlayer
@@ -679,6 +683,8 @@ private void ClearBackground()
         catch { }
         BackgroundVideoPlayer = null;
     }
+    _backgroundVideoStream?.Dispose();
+    _backgroundVideoStream = null;
     IsVideoBackground = false;
 }
 

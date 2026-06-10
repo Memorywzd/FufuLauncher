@@ -938,6 +938,7 @@ private async Task ApplyGlobalBackgroundAsync(BackgroundRenderResult? result)
         }
         else
         {
+            var wasVideoBackground = _isVideoBackground;
             _isVideoBackground = false;
             _globalBackgroundPlayer?.Pause();
             GlobalBackgroundVideo.Visibility = Visibility.Collapsed;
@@ -998,6 +999,11 @@ private async Task ApplyGlobalBackgroundAsync(BackgroundRenderResult? result)
                 }
             };
             fallbackTimer.Start();
+
+            if (wasVideoBackground)
+            {
+                FlushMemory();
+            }
         }
         
         UpdateBackgroundOverlayTheme();

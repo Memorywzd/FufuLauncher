@@ -42,16 +42,30 @@ namespace FufuLauncher.Services.Background
             }
         }
 
+        private async Task<string> ResolveBackgroundApiUrlAsync(ServerType server)
+        {
+            var localSettings = App.GetService<ILocalSettingsService>();
+            var customApiObj = await localSettings.ReadSettingAsync("CustomBackgroundApiUrl");
+            var customApi = customApiObj?.ToString()?.Trim();
+            if (!string.IsNullOrEmpty(customApi) && Uri.TryCreate(customApi, UriKind.Absolute, out var uri) &&
+                (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps))
+            {
+                return customApi;
+            }
+
+            return server switch
+            {
+                ServerType.CN => ApiEndpoints.BackgroundCnApi,
+                ServerType.OS => ApiEndpoints.BackgroundOsApi,
+                _ => ApiEndpoints.BackgroundCnApi
+            };
+        }
+
         public async Task<BackgroundUrlInfo> GetBackgroundUrlAsync(ServerType server, bool preferVideo)
         {
             try
             {
-                var apiUrl = server switch
-                {
-                    ServerType.CN => ApiEndpoints.BackgroundCnApi,
-                    ServerType.OS => ApiEndpoints.BackgroundOsApi,
-                    _ => ApiEndpoints.BackgroundCnApi
-                };
+                var apiUrl = await ResolveBackgroundApiUrlAsync(server);
 
                 var response = await _httpClient.GetStringAsync(apiUrl);
                 var currentHash = ComputeMD5(response);
@@ -127,12 +141,7 @@ namespace FufuLauncher.Services.Background
         {
             try
             {
-                var apiUrl = server switch
-                {
-                    ServerType.CN => ApiEndpoints.BackgroundCnApi,
-                    ServerType.OS => ApiEndpoints.BackgroundOsApi,
-                    _ => ApiEndpoints.BackgroundCnApi
-                };
+                var apiUrl = await ResolveBackgroundApiUrlAsync(server);
 
                 var response = await _httpClient.GetStringAsync(apiUrl);
                 
@@ -191,12 +200,7 @@ namespace FufuLauncher.Services.Background
         {
             try
             {
-                var apiUrl = server switch
-                {
-                    ServerType.CN => ApiEndpoints.BackgroundCnApi,
-                    ServerType.OS => ApiEndpoints.BackgroundOsApi,
-                    _ => ApiEndpoints.BackgroundCnApi
-                };
+                var apiUrl = await ResolveBackgroundApiUrlAsync(server);
 
                 var response = await _httpClient.GetStringAsync(apiUrl);
                 var options = new JsonSerializerOptions

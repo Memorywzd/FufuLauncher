@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.Security.Principal;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -27,10 +27,14 @@ namespace FufuLauncher.ViewModels
         [ObservableProperty] private string _statusMessage = string.Empty;
 
         [ObservableProperty] private bool _isAutoClickerEnabled;
+        [ObservableProperty] private bool _isMouseLeftClickerEnabled;
+        [ObservableProperty] private bool _isMouseRightClickerEnabled;
         [ObservableProperty] private string _triggerKey = "F";
         [ObservableProperty] private string _clickKey = "F";
+        [ObservableProperty] private string _stopKey = string.Empty;
         [ObservableProperty] private bool _isRecordingTriggerKey;
         [ObservableProperty] private bool _isRecordingClickKey;
+        [ObservableProperty] private bool _isRecordingStopKey;
         [ObservableProperty]
         private bool _isApplyButtonEnabled;
 
@@ -51,6 +55,10 @@ namespace FufuLauncher.ViewModels
         {
             get;
         }
+        public IRelayCommand RecordStopKeyCommand
+        {
+            get;
+        }
         public IAsyncRelayCommand ApplyProgramPathCommand
         {
             get;
@@ -66,8 +74,10 @@ namespace FufuLauncher.ViewModels
             SaveSettingsCommand = new AsyncRelayCommand(SaveSettingsAsync);
             RecordTriggerKeyCommand = new RelayCommand(StartRecordingTriggerKey);
             RecordClickKeyCommand = new RelayCommand(StartRecordingClickKey);
+            RecordStopKeyCommand = new RelayCommand(StartRecordingStopKey);
             ApplyProgramPathCommand = new AsyncRelayCommand(ApplyProgramPathAsync);
             OpenBrowserCommand = new RelayCommand(OpenBrowserWindow);
+            _autoClickerService.IsEnabledChanged += AutoClickerService_IsEnabledChanged;
             
             LoadSettings();
         }
@@ -204,16 +214,25 @@ namespace FufuLauncher.ViewModels
                 var autoClickerEnabled = _localSettingsService.ReadSettingAsync("AutoClickerEnabled").Result;
                 var triggerKey = _localSettingsService.ReadSettingAsync("AutoClickerTriggerKey").Result;
                 var clickKey = _localSettingsService.ReadSettingAsync("AutoClickerClickKey").Result;
+                var stopKey = _localSettingsService.ReadSettingAsync("AutoClickerStopKey").Result;
+                var mode = _localSettingsService.ReadSettingAsync("AutoClickerMode").Result;
 
-                Debug.WriteLine($"[OtherViewModel] 原始配置 - Enabled: {autoClickerEnabled}, TriggerKey: {triggerKey}, ClickKey: {clickKey}");
+                Debug.WriteLine($"[OtherViewModel] 原始配置 - Enabled: {autoClickerEnabled}, TriggerKey: {triggerKey}, ClickKey: {clickKey}, StopKey: {stopKey}, Mode: {mode}");
                 
                 _isInitializing = true;
-                IsAutoClickerEnabled = autoClickerEnabled != null && Convert.ToBoolean(autoClickerEnabled);
-                _autoClickerService.IsEnabled = IsAutoClickerEnabled;
-                _isInitializing = false;
-
                 TriggerKey = triggerKey?.ToString()?.Trim('"') ?? "F";
                 ClickKey = clickKey?.ToString()?.Trim('"') ?? "F";
+                StopKey = stopKey?.ToString()?.Trim('"') ?? string.Empty;
+
+                var modeStr = mode?.ToString()?.Trim('"') ?? AutoClickerMode.Keyboard.ToString();
+                if (!Enum.TryParse<AutoClickerMode>(modeStr, out var clickerMode))
+                {
+                    clickerMode = AutoClickerMode.Keyboard;
+                }
+
+                IsMouseLeftClickerEnabled = clickerMode == AutoClickerMode.MouseLeft;
+                IsMouseRightClickerEnabled = clickerMode == AutoClickerMode.MouseRight;
+                IsAutoClickerEnabled = autoClickerEnabled != null && Convert.ToBoolean(autoClickerEnabled);
 
                 if (Enum.TryParse<VirtualKey>(TriggerKey, out var tk))
                 {
@@ -227,10 +246,34 @@ namespace FufuLauncher.ViewModels
                     Debug.WriteLine($"[OtherViewModel] 连点键解析成功: {ck}");
                 }
 
-                Debug.WriteLine($"[OtherViewModel] 最终配置 - 启用: {IsAutoClickerEnabled}, 触发键: {TriggerKey}, 连点键: {ClickKey}");
+                if (!string.IsNullOrWhiteSpace(StopKey) && Enum.TryParse<VirtualKey>(StopKey, out var sk))
+                {
+                    _autoClickerService.StopKey = sk;
+                }
+                else
+                {
+                    _autoClickerService.StopKey = VirtualKey.None;
+                }
+
+                _autoClickerService.Mode = clickerMode;
+                _isInitializing = false;
+
+                if (IsAutoClickerEnabled && IsMouseModeEnabled() && !HasStopKey())
+                {
+                    IsAutoClickerEnabled = false;
+                    StatusMessage = "鼠标连点必须先设置键盘停止快捷键";
+                    _ = SaveSettingsAsync();
+                }
+                else
+                {
+                    _autoClickerService.IsEnabled = IsAutoClickerEnabled;
+                }
+
+                Debug.WriteLine($"[OtherViewModel] 最终配置 - 启用: {IsAutoClickerEnabled}, 模式: {GetCurrentMode()}, 触发键: {TriggerKey}, 连点键: {ClickKey}, 停止键: {StopKey}");
             }
             catch (Exception ex)
             {
+                _isInitializing = false;
                 Debug.WriteLine($"[OtherViewModel] 加载配置失败: {ex.Message}");
             }
         }
@@ -239,6 +282,7 @@ namespace FufuLauncher.ViewModels
         {
             IsRecordingTriggerKey = true;
             IsRecordingClickKey = false;
+            IsRecordingStopKey = false;
             Debug.WriteLine("[OtherViewModel] 开始录制触发键");
         }
 
@@ -246,7 +290,16 @@ namespace FufuLauncher.ViewModels
         {
             IsRecordingClickKey = true;
             IsRecordingTriggerKey = false;
+            IsRecordingStopKey = false;
             Debug.WriteLine("[OtherViewModel] 开始录制连点键");
+        }
+
+        private void StartRecordingStopKey()
+        {
+            IsRecordingStopKey = true;
+            IsRecordingTriggerKey = false;
+            IsRecordingClickKey = false;
+            Debug.WriteLine("[OtherViewModel] 开始录制停止快捷键");
         }
 
         private async Task BrowseProgramAsync()
@@ -355,7 +408,7 @@ namespace FufuLauncher.ViewModels
                     var dialog = new ContentDialog
                     {
                         Title = "风险提示",
-                        Content = "开启连点器功能将会安装全局键盘拦截钩子，这可能会导致您的所有按键操作出现轻微延迟\n\n您确定要开启此功能吗？",
+                        Content = "开启连点器功能将会安装全局键盘和鼠标拦截钩子，这可能会导致输入操作出现轻微延迟\n\n您确定要开启此功能吗？",
                         PrimaryButtonText = "确认开启",
                         CloseButtonText = "取消",
                         DefaultButton = ContentDialogButton.Close,
@@ -378,6 +431,13 @@ namespace FufuLauncher.ViewModels
 
             if (value)
             {
+                if (IsMouseModeEnabled() && !HasStopKey())
+                {
+                    StatusMessage = "请先设置键盘停止快捷键，再开启鼠标连点";
+                    RevertAutoClickerToggle(false);
+                    return;
+                }
+
                 Debug.WriteLine("[OtherViewModel] 拦截开启请求，弹出风险提示");
                 _ = HandleAutoClickerEnableRequestAsync();
             }
@@ -389,6 +449,34 @@ namespace FufuLauncher.ViewModels
             }
         }
 
+        partial void OnIsMouseLeftClickerEnabledChanged(bool value)
+        {
+            if (_isInitializing || _isReverting) return;
+
+            if (value)
+            {
+                _isReverting = true;
+                IsMouseRightClickerEnabled = false;
+                _isReverting = false;
+            }
+
+            ApplyClickerModeFromSelection();
+        }
+
+        partial void OnIsMouseRightClickerEnabledChanged(bool value)
+        {
+            if (_isInitializing || _isReverting) return;
+
+            if (value)
+            {
+                _isReverting = true;
+                IsMouseLeftClickerEnabled = false;
+                _isReverting = false;
+            }
+
+            ApplyClickerModeFromSelection();
+        }
+
         private async Task HandleAutoClickerEnableRequestAsync()
         {
             bool confirmed = await ShowLatencyWarningDialogAsync();
@@ -396,31 +484,22 @@ namespace FufuLauncher.ViewModels
             if (!confirmed)
             {
                 Debug.WriteLine("[OtherViewModel] 用户取消开启连点器");
-                _isReverting = true;
-                _dispatcherQueue.TryEnqueue(() =>
-                {
-                    IsAutoClickerEnabled = false;
-                    _isReverting = false;
-                });
+                RevertAutoClickerToggle(false);
                 return;
             }
             
             if (!IsAdministrator())
             {
                 Debug.WriteLine("[OtherViewModel] 尝试启用连点器，但没有管理员权限被拦截");
-                _isReverting = true;
-                _dispatcherQueue.TryEnqueue(() =>
-                {
-                    IsAutoClickerEnabled = false;
-                    _isReverting = false;
-                });
+                RevertAutoClickerToggle(false);
                 _ = ShowAdminRequiredDialogAsync();
                 return;
             }
-            
+
+            _autoClickerService.Mode = GetCurrentMode();
             _autoClickerService.IsEnabled = true;
             _ = SaveSettingsAsync();
-            Debug.WriteLine($"[OtherViewModel] 连点器启用状态切换: True");
+            Debug.WriteLine("[OtherViewModel] 连点器启用状态切换: True");
         }
 
         public void UpdateKey(string keyType, VirtualKey key)
@@ -438,11 +517,76 @@ namespace FufuLauncher.ViewModels
                 ClickKey = keyStr;
                 _autoClickerService.ClickKey = key;
             }
+            else if (keyType == "Stop")
+            {
+                StopKey = keyStr;
+                _autoClickerService.StopKey = key;
+            }
 
             IsRecordingTriggerKey = false;
             IsRecordingClickKey = false;
+            IsRecordingStopKey = false;
 
             _ = SaveSettingsAsync();
+        }
+
+        private void ApplyClickerModeFromSelection()
+        {
+            var mode = GetCurrentMode();
+            _autoClickerService.Mode = mode;
+
+            if (IsAutoClickerEnabled && mode != AutoClickerMode.Keyboard && !HasStopKey())
+            {
+                StatusMessage = "请先设置键盘停止快捷键，再开启鼠标连点";
+                RevertAutoClickerToggle(false);
+            }
+
+            _ = SaveSettingsAsync();
+        }
+
+        private AutoClickerMode GetCurrentMode()
+        {
+            if (IsMouseLeftClickerEnabled) return AutoClickerMode.MouseLeft;
+            if (IsMouseRightClickerEnabled) return AutoClickerMode.MouseRight;
+            return AutoClickerMode.Keyboard;
+        }
+
+        private bool IsMouseModeEnabled()
+        {
+            return IsMouseLeftClickerEnabled || IsMouseRightClickerEnabled;
+        }
+
+        private bool HasStopKey()
+        {
+            return !string.IsNullOrWhiteSpace(StopKey) && Enum.TryParse<VirtualKey>(StopKey, out var key) && key != VirtualKey.None;
+        }
+
+        private void RevertAutoClickerToggle(bool value)
+        {
+            _isReverting = true;
+            _dispatcherQueue.TryEnqueue(() =>
+            {
+                IsAutoClickerEnabled = value;
+                _isReverting = false;
+            });
+        }
+
+        private void AutoClickerService_IsEnabledChanged(object sender, bool value)
+        {
+            if (_isInitializing || _isReverting) return;
+
+            _dispatcherQueue.TryEnqueue(() =>
+            {
+                if (IsAutoClickerEnabled == value) return;
+
+                _isReverting = true;
+                IsAutoClickerEnabled = value;
+                _isReverting = false;
+                if (!value)
+                {
+                    StatusMessage = "连点器已通过停止快捷键关闭";
+                }
+            });
         }
 
         private async Task SaveSettingsAsync()
@@ -456,8 +600,10 @@ namespace FufuLauncher.ViewModels
 
                 await _localSettingsService.SaveSettingAsync("AutoClickerTriggerKey", TriggerKey);
                 await _localSettingsService.SaveSettingAsync("AutoClickerClickKey", ClickKey);
+                await _localSettingsService.SaveSettingAsync("AutoClickerStopKey", StopKey);
+                await _localSettingsService.SaveSettingAsync("AutoClickerMode", GetCurrentMode().ToString());
 
-                Debug.WriteLine($"[连点器] 配置保存成功 - 启用: {IsAutoClickerEnabled}, 触发键: {TriggerKey}, 连点键: {ClickKey}");
+                Debug.WriteLine($"[连点器] 配置保存成功 - 启用: {IsAutoClickerEnabled}, 模式: {GetCurrentMode()}, 触发键: {TriggerKey}, 连点键: {ClickKey}, 停止键: {StopKey}");
 
                 _ = Task.Delay(2000).ContinueWith(_ =>
                     _dispatcherQueue?.TryEnqueue(() => StatusMessage = string.Empty));

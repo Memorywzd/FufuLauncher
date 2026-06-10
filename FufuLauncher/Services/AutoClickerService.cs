@@ -6,13 +6,23 @@ using Windows.System;
 
 namespace FufuLauncher.Services
 {
+    public enum AutoClickerMode
+    {
+        Keyboard,
+        MouseLeft,
+        MouseRight
+    }
+
     public interface IAutoClickerService : IDisposable
     {
         bool IsEnabled { get; set; }
         VirtualKey TriggerKey { get; set; }
         VirtualKey ClickKey { get; set; }
+        VirtualKey StopKey { get; set; }
+        AutoClickerMode Mode { get; set; }
         bool IsAutoClicking { get; }
         event EventHandler<bool> IsAutoClickingChanged;
+        event EventHandler<bool> IsEnabledChanged;
         void Initialize();
         void Start();
         void Stop();
@@ -23,59 +33,103 @@ namespace FufuLauncher.Services
         private readonly ILocalSettingsService _settingsService;
         
         private const int WH_KEYBOARD_LL = 13;
+        private const int WH_MOUSE_LL = 14;
         private const int WM_KEYDOWN = 0x0100;
         private const int WM_KEYUP = 0x0101;
         private const int WM_SYSKEYDOWN = 0x0104;
         private const int WM_SYSKEYUP = 0x0105;
-        private IntPtr _hookId = IntPtr.Zero;
-        private LowLevelKeyboardProc _hookCallback;
+        private const int WM_LBUTTONDOWN = 0x0201;
+        private const int WM_LBUTTONUP = 0x0202;
+        private const int WM_RBUTTONDOWN = 0x0204;
+        private const int WM_RBUTTONUP = 0x0205;
+        private IntPtr _keyboardHookId = IntPtr.Zero;
+        private IntPtr _mouseHookId = IntPtr.Zero;
+        private readonly LowLevelKeyboardProc _keyboardHookCallback;
+        private readonly LowLevelMouseProc _mouseHookCallback;
         private CancellationTokenSource _clickCts;
         private bool _isTriggerKeyPressed;
+        private bool _isMouseTriggerPressed;
         private bool _isEnabled;
         private VirtualKey _triggerKey = VirtualKey.F8;
         private VirtualKey _clickKey = VirtualKey.F;
+        private VirtualKey _stopKey = VirtualKey.None;
+        private AutoClickerMode _mode = AutoClickerMode.Keyboard;
         
         private readonly object _stateLock = new object();
 
         private Thread _hookThread;
 
         public event EventHandler<bool> IsAutoClickingChanged;
+        public event EventHandler<bool> IsEnabledChanged;
 
         public bool IsEnabled
         {
-            get => _isEnabled; set
+            get => _isEnabled;
+            set
             {
-                // value = false;
-
-                if (_isEnabled != value) { 
-                    _isEnabled = value; 
-                    if (value) Start(); else Stop(); 
-                    _ = SaveSettingsAsync(); 
+                if (_isEnabled != value)
+                {
+                    _isEnabled = value;
+                    if (value) Start(); else Stop();
+                    IsEnabledChanged?.Invoke(this, value);
+                    _ = SaveSettingsAsync();
                 }
             }
         }
+
         public VirtualKey TriggerKey
         {
-            get => _triggerKey; set
+            get => _triggerKey;
+            set
             {
-                _triggerKey = value; _isTriggerKeyPressed = false; _ = SaveSettingsAsync();
+                _triggerKey = value;
+                _isTriggerKeyPressed = false;
+                _ = SaveSettingsAsync();
             }
         }
+
         public VirtualKey ClickKey
         {
-            get => _clickKey; set
+            get => _clickKey;
+            set
             {
-                _clickKey = value; _ = SaveSettingsAsync();
+                _clickKey = value;
+                _ = SaveSettingsAsync();
             }
         }
+
+        public VirtualKey StopKey
+        {
+            get => _stopKey;
+            set
+            {
+                _stopKey = value;
+                _ = SaveSettingsAsync();
+            }
+        }
+
+        public AutoClickerMode Mode
+        {
+            get => _mode;
+            set
+            {
+                if (_mode == value) return;
+
+                StopClicking();
+                _isTriggerKeyPressed = false;
+                _isMouseTriggerPressed = false;
+                _mode = value;
+                _ = SaveSettingsAsync();
+            }
+        }
+
         public bool IsAutoClicking { get; private set; }
 
         public AutoClickerService(ILocalSettingsService settingsService)
         {
             _settingsService = settingsService;
-            _hookCallback = HookCallback;
-            try {
-            } catch { }
+            _keyboardHookCallback = KeyboardHookCallback;
+            _mouseHookCallback = MouseHookCallback;
             Debug.WriteLine("[连点器服务] 初始化");
         }
 
@@ -92,18 +146,24 @@ namespace FufuLauncher.Services
                 var enabled = _settingsService.ReadSettingAsync("AutoClickerEnabled").Result;
                 var triggerKey = _settingsService.ReadSettingAsync("AutoClickerTriggerKey").Result;
                 var clickKey = _settingsService.ReadSettingAsync("AutoClickerClickKey").Result;
+                var stopKey = _settingsService.ReadSettingAsync("AutoClickerStopKey").Result;
+                var mode = _settingsService.ReadSettingAsync("AutoClickerMode").Result;
 
                 if (enabled != null) _isEnabled = Convert.ToBoolean(enabled);
-                
-                // _isEnabled = false; 
 
                 string triggerKeyStr = triggerKey?.ToString()?.Trim('"');
                 string clickKeyStr = clickKey?.ToString()?.Trim('"');
+                string stopKeyStr = stopKey?.ToString()?.Trim('"');
+                string modeStr = mode?.ToString()?.Trim('"');
 
                 if (!string.IsNullOrEmpty(triggerKeyStr) && Enum.TryParse(triggerKeyStr, out VirtualKey tk)) _triggerKey = tk;
                 if (!string.IsNullOrEmpty(clickKeyStr) && Enum.TryParse(clickKeyStr, out VirtualKey ck)) _clickKey = ck;
+                if (!string.IsNullOrEmpty(stopKeyStr) && Enum.TryParse(stopKeyStr, out VirtualKey sk)) _stopKey = sk;
+                if (!string.IsNullOrEmpty(modeStr) && Enum.TryParse(modeStr, out AutoClickerMode savedMode)) _mode = savedMode;
 
-                _isTriggerKeyPressed = false; IsAutoClicking = false;
+                _isTriggerKeyPressed = false;
+                _isMouseTriggerPressed = false;
+                IsAutoClicking = false;
                 if (_isEnabled) Start();
             }
             catch { }
@@ -116,6 +176,8 @@ namespace FufuLauncher.Services
                 await _settingsService.SaveSettingAsync("AutoClickerEnabled", _isEnabled);
                 await _settingsService.SaveSettingAsync("AutoClickerTriggerKey", _triggerKey.ToString());
                 await _settingsService.SaveSettingAsync("AutoClickerClickKey", _clickKey.ToString());
+                await _settingsService.SaveSettingAsync("AutoClickerStopKey", _stopKey.ToString());
+                await _settingsService.SaveSettingAsync("AutoClickerMode", _mode.ToString());
             }
             catch { }
         }
@@ -147,10 +209,12 @@ namespace FufuLauncher.Services
                 using var curProcess = Process.GetCurrentProcess();
                 using var curModule = curProcess.MainModule;
                 var moduleHandle = GetModuleHandle(curModule.ModuleName);
-                _hookId = SetWindowsHookEx(WH_KEYBOARD_LL, _hookCallback, moduleHandle, 0);
-                Debug.WriteLine(_hookId == IntPtr.Zero ? "[连点器] 钩子安装失败" : "[连点器] 钩子安装成功");
+                _keyboardHookId = SetWindowsHookEx(WH_KEYBOARD_LL, _keyboardHookCallback, moduleHandle, 0);
+                _mouseHookId = SetWindowsHookEx(WH_MOUSE_LL, _mouseHookCallback, moduleHandle, 0);
+                Debug.WriteLine(_keyboardHookId == IntPtr.Zero ? "[连点器] 键盘钩子安装失败" : "[连点器] 键盘钩子安装成功");
+                Debug.WriteLine(_mouseHookId == IntPtr.Zero ? "[连点器] 鼠标钩子安装失败" : "[连点器] 鼠标钩子安装成功");
 
-                if (_hookId != IntPtr.Zero)
+                if (_keyboardHookId != IntPtr.Zero || _mouseHookId != IntPtr.Zero)
                 {
                     MSG msg;
                     while (GetMessage(out msg, IntPtr.Zero, 0, 0) > 0)
@@ -159,8 +223,18 @@ namespace FufuLauncher.Services
                         DispatchMessage(ref msg);
                     }
 
-                    UnhookWindowsHookEx(_hookId);
-                    _hookId = IntPtr.Zero;
+                    if (_keyboardHookId != IntPtr.Zero)
+                    {
+                        UnhookWindowsHookEx(_keyboardHookId);
+                        _keyboardHookId = IntPtr.Zero;
+                    }
+
+                    if (_mouseHookId != IntPtr.Zero)
+                    {
+                        UnhookWindowsHookEx(_mouseHookId);
+                        _mouseHookId = IntPtr.Zero;
+                    }
+
                     Debug.WriteLine("[连点器] 钩子已卸载");
                 }
             }
@@ -176,35 +250,39 @@ namespace FufuLauncher.Services
             {
                 if (_hookThread != null && _hookThread.IsAlive)
                 {
-                    // 2. 发送 WM_QUIT (0x0012) 退出消息循环
                     PostThreadMessage((uint)_hookThread.ManagedThreadId, 0x0012, IntPtr.Zero, IntPtr.Zero);
                     _hookThread = null;
                 }
                 StopClicking();
                 _isTriggerKeyPressed = false;
+                _isMouseTriggerPressed = false;
             }
             catch { }
         }
 
-        private IntPtr HookCallback(int nCode, IntPtr wParam, IntPtr lParam)
+        private IntPtr KeyboardHookCallback(int nCode, IntPtr wParam, IntPtr lParam)
         {
             if (nCode >= 0 && _isEnabled)
             {
                 int vkCode = Marshal.ReadInt32(lParam);
                 int flags = Marshal.ReadInt32(lParam, 8);
-                
                 bool isInjected = (flags & 0x10) != 0;
-                
+
                 if (!isInjected)
                 {
                     var vk = (VirtualKey)vkCode;
+                    int wp = wParam.ToInt32();
+                    bool down = wp == WM_KEYDOWN || wp == WM_SYSKEYDOWN;
+                    bool up = wp == WM_KEYUP || wp == WM_SYSKEYUP;
 
-                    if (vk == _triggerKey)
+                    if (down && _stopKey != VirtualKey.None && vk == _stopKey)
                     {
-                        int wp = wParam.ToInt32();
-                        bool down = wp == WM_KEYDOWN || wp == WM_SYSKEYDOWN;
-                        bool up = wp == WM_KEYUP || wp == WM_SYSKEYUP;
+                        IsEnabled = false;
+                        return CallNextHookEx(IntPtr.Zero, nCode, wParam, lParam);
+                    }
 
+                    if (_mode == AutoClickerMode.Keyboard && vk == _triggerKey)
+                    {
                         if (down && !_isTriggerKeyPressed)
                         {
                             _isTriggerKeyPressed = true;
@@ -215,6 +293,36 @@ namespace FufuLauncher.Services
                             _isTriggerKeyPressed = false;
                             Task.Run(() => StopClicking());
                         }
+                    }
+                }
+            }
+            return CallNextHookEx(IntPtr.Zero, nCode, wParam, lParam);
+        }
+
+        private IntPtr MouseHookCallback(int nCode, IntPtr wParam, IntPtr lParam)
+        {
+            if (nCode >= 0 && _isEnabled && _mode != AutoClickerMode.Keyboard)
+            {
+                var mouseData = Marshal.PtrToStructure<MSLLHOOKSTRUCT>(lParam);
+                bool isInjected = (mouseData.flags & 0x1) != 0;
+
+                if (!isInjected)
+                {
+                    int message = wParam.ToInt32();
+                    bool targetDown = (_mode == AutoClickerMode.MouseLeft && message == WM_LBUTTONDOWN) ||
+                                      (_mode == AutoClickerMode.MouseRight && message == WM_RBUTTONDOWN);
+                    bool targetUp = (_mode == AutoClickerMode.MouseLeft && message == WM_LBUTTONUP) ||
+                                    (_mode == AutoClickerMode.MouseRight && message == WM_RBUTTONUP);
+
+                    if (targetDown && !_isMouseTriggerPressed)
+                    {
+                        _isMouseTriggerPressed = true;
+                        Task.Run(() => StartClicking());
+                    }
+                    else if (targetUp)
+                    {
+                        _isMouseTriggerPressed = false;
+                        Task.Run(() => StopClicking());
                     }
                 }
             }
@@ -256,8 +364,15 @@ namespace FufuLauncher.Services
             try 
             { 
                 while (!token.IsCancellationRequested) 
-                { 
-                    SendNativeInput(scanCode);
+                {
+                    if (_mode == AutoClickerMode.Keyboard)
+                    {
+                        SendKeyboardInput(scanCode);
+                    }
+                    else
+                    {
+                        SendMouseInput(_mode == AutoClickerMode.MouseLeft);
+                    }
                     await Task.Delay(50, token); 
                 } 
             } 
@@ -265,7 +380,7 @@ namespace FufuLauncher.Services
             catch (Exception ex) { Debug.WriteLine($"[连点器] 循环异常: {ex.Message}"); }
         }
         
-        private void SendNativeInput(ushort scanCode)
+        private void SendKeyboardInput(ushort scanCode)
         {
             var inputs = new INPUT[2];
             
@@ -286,6 +401,23 @@ namespace FufuLauncher.Services
             SendInput(2, inputs, Marshal.SizeOf(typeof(INPUT)));
         }
 
+        private void SendMouseInput(bool leftButton)
+        {
+            var inputs = new INPUT[2];
+            uint downFlag = leftButton ? MOUSEEVENTF_LEFTDOWN : MOUSEEVENTF_RIGHTDOWN;
+            uint upFlag = leftButton ? MOUSEEVENTF_LEFTUP : MOUSEEVENTF_RIGHTUP;
+
+            inputs[0].type = INPUT_MOUSE;
+            inputs[0].u.mi.dwFlags = downFlag;
+            inputs[0].u.mi.dwExtraInfo = IntPtr.Zero;
+
+            inputs[1].type = INPUT_MOUSE;
+            inputs[1].u.mi.dwFlags = upFlag;
+            inputs[1].u.mi.dwExtraInfo = IntPtr.Zero;
+
+            SendInput(2, inputs, Marshal.SizeOf(typeof(INPUT)));
+        }
+
         public void Dispose()
         {
             Stop();
@@ -295,24 +427,24 @@ namespace FufuLauncher.Services
         #region P/Invoke
         
         [StructLayout(LayoutKind.Sequential)]
-        private struct KBDLLHOOKSTRUCT
+        private struct MSLLHOOKSTRUCT
         {
-            public uint vkCode;
-            public uint scanCode;
+            public POINT pt;
+            public uint mouseData;
             public uint flags;
             public uint time;
             public IntPtr dwExtraInfo;
         }
 
         [StructLayout(LayoutKind.Sequential)]
-        struct INPUT
+        private struct INPUT
         {
             public uint type;
             public InputUnion u;
         }
 
         [StructLayout(LayoutKind.Explicit)]
-        struct InputUnion
+        private struct InputUnion
         {
             [FieldOffset(0)] public MOUSEINPUT mi;
             [FieldOffset(0)] public KEYBDINPUT ki;
@@ -320,7 +452,7 @@ namespace FufuLauncher.Services
         }
 
         [StructLayout(LayoutKind.Sequential)]
-        struct KEYBDINPUT
+        private struct KEYBDINPUT
         {
             public ushort wVk;
             public ushort wScan;
@@ -330,17 +462,36 @@ namespace FufuLauncher.Services
         }
 
         [StructLayout(LayoutKind.Sequential)]
-        struct MOUSEINPUT {int dx; int dy; uint mouseData; uint dwFlags; uint time; IntPtr dwExtraInfo; }
+        private struct MOUSEINPUT
+        {
+            public int dx;
+            public int dy;
+            public uint mouseData;
+            public uint dwFlags;
+            public uint time;
+            public IntPtr dwExtraInfo;
+        }
 
         [StructLayout(LayoutKind.Sequential)]
-        struct HARDWAREINPUT { uint uMsg; ushort wParamL; ushort wParamH; }
+        private struct HARDWAREINPUT
+        {
+            public uint uMsg;
+            public ushort wParamL;
+            public ushort wParamH;
+        }
 
+        private const int INPUT_MOUSE = 0;
         private const int INPUT_KEYBOARD = 1;
         private const uint KEYEVENTF_SCANCODE = 0x0008;
         private const uint KEYEVENTF_KEYUP = 0x0002;
+        private const uint MOUSEEVENTF_LEFTDOWN = 0x0002;
+        private const uint MOUSEEVENTF_LEFTUP = 0x0004;
+        private const uint MOUSEEVENTF_RIGHTDOWN = 0x0008;
+        private const uint MOUSEEVENTF_RIGHTUP = 0x0010;
         private const uint MAPVK_VK_TO_VSC = 0;
 
         private delegate IntPtr LowLevelKeyboardProc(int nCode, IntPtr wParam, IntPtr lParam);
+        private delegate IntPtr LowLevelMouseProc(int nCode, IntPtr wParam, IntPtr lParam);
 
         [StructLayout(LayoutKind.Sequential)]
         private struct POINT
@@ -374,6 +525,9 @@ namespace FufuLauncher.Services
 
         [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
         private static extern IntPtr SetWindowsHookEx(int idHook, LowLevelKeyboardProc lpfn, IntPtr hMod, uint dwThreadId);
+
+        [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+        private static extern IntPtr SetWindowsHookEx(int idHook, LowLevelMouseProc lpfn, IntPtr hMod, uint dwThreadId);
 
         [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
         private static extern bool UnhookWindowsHookEx(IntPtr hhk);

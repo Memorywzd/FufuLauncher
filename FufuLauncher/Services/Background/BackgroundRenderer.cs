@@ -1,7 +1,8 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Runtime.InteropServices.WindowsRuntime;
 using FufuLauncher.Models;
 using FufuLauncher.Constants;
 using FufuLauncher.Contracts.Services;
@@ -9,6 +10,7 @@ using FufuLauncher.Messages;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Windows.Media.Core;
+using Windows.Storage.Streams;
 using CommunityToolkit.Mvvm.Messaging;
 
 public class BackgroundItem
@@ -25,6 +27,7 @@ namespace FufuLauncher.Services.Background
     {
         public ImageSource ImageSource { get; set; }
         public MediaSource VideoSource { get; set; }
+        public InMemoryRandomAccessStream VideoStream { get; set; }
         public bool IsVideo { get; set; }
     }
 
@@ -121,24 +124,23 @@ namespace FufuLauncher.Services.Background
             }
         }
 
-        private Task<BackgroundRenderResult> LoadFromCacheOrNull(string url, bool isVideo)
+        private async Task<BackgroundRenderResult> LoadFromCacheOrNull(string url, bool isVideo)
         {
-            if (url == _currentBackgroundUrl && _cachedBackground != null)
-                return Task.FromResult(_cachedBackground);
+            if (!isVideo && url == _currentBackgroundUrl && _cachedBackground != null)
+                return _cachedBackground;
 
             var fileName = GetCacheFileName(url, isVideo ? ".mp4" : ".img");
             var cachedFilePath = Path.Combine(_cacheFolderPath, fileName);
 
             if (!File.Exists(cachedFilePath) || new FileInfo(cachedFilePath).Length <= 1024)
-                return Task.FromResult<BackgroundRenderResult>(null);
+                return null;
 
             try
             {
                 BackgroundRenderResult result;
                 if (isVideo)
                 {
-                    var source = MediaSource.CreateFromUri(new Uri(cachedFilePath));
-                    result = new BackgroundRenderResult { VideoSource = source, IsVideo = true };
+                    result = await CreateVideoResultAsync(cachedFilePath);
                 }
                 else
                 {
@@ -148,26 +150,60 @@ namespace FufuLauncher.Services.Background
 
                 _cachedBackground = result;
                 _currentBackgroundUrl = url;
-                return Task.FromResult(result);
+                return result;
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"BackgroundRenderer: 缓存文件加载失败({fileName}): {ex.Message}");
                 try { File.Delete(cachedFilePath); } catch { }
-                return Task.FromResult<BackgroundRenderResult>(null);
+                return null;
             }
+        }
+
+        private async Task<BackgroundRenderResult> CreateVideoResultAsync(string filePath)
+        {
+            var bytes = await File.ReadAllBytesAsync(filePath);
+            var stream = new InMemoryRandomAccessStream();
+            await stream.WriteAsync(bytes.AsBuffer());
+            stream.Seek(0);
+
+            var contentType = Path.GetExtension(filePath).ToLowerInvariant() switch
+            {
+                ".webm" => "video/webm",
+                ".mkv" => "video/x-matroska",
+                ".avi" => "video/x-msvideo",
+                ".mov" => "video/quicktime",
+                _ => "video/mp4"
+            };
+
+            var source = MediaSource.CreateFromStream(stream, contentType);
+            return new BackgroundRenderResult { VideoSource = source, VideoStream = stream, IsVideo = true };
+        }
+
+        private async Task<string> ResolveBackgroundApiUrlAsync(ServerType server)
+        {
+            var localSettings = App.GetService<ILocalSettingsService>();
+            var customApiObj = await localSettings.ReadSettingAsync("CustomBackgroundApiUrl");
+            var customApi = customApiObj?.ToString()?.Trim();
+            if (!string.IsNullOrEmpty(customApi) && Uri.TryCreate(customApi, UriKind.Absolute, out var uri) &&
+                (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps))
+            {
+                return customApi;
+            }
+
+            return server switch
+            {
+                ServerType.CN => ApiEndpoints.BackgroundCnApi,
+                ServerType.OS => ApiEndpoints.BackgroundOsApi,
+                _ => ApiEndpoints.BackgroundCnApi
+            };
         }
 
         private async Task<BackgroundRenderResult> FetchAndCacheAsync(ServerType server, bool preferVideo)
         {
             try
             {
-                var apiUrl = server switch
-                {
-                    ServerType.CN => ApiEndpoints.BackgroundCnApi,
-                    ServerType.OS => ApiEndpoints.BackgroundOsApi,
-                    _ => ApiEndpoints.BackgroundCnApi
-                };
+                var apiUrl = await ResolveBackgroundApiUrlAsync(server);
 
                 var response = await _httpClient.GetStringAsync(apiUrl);
                 await SaveApiCacheAsync(server, response);
@@ -226,12 +262,7 @@ namespace FufuLauncher.Services.Background
             {
                 try
                 {
-                    var apiUrl = server switch
-                    {
-                        ServerType.CN => ApiEndpoints.BackgroundCnApi,
-                        ServerType.OS => ApiEndpoints.BackgroundOsApi,
-                        _ => ApiEndpoints.BackgroundCnApi
-                    };
+                    var apiUrl = await ResolveBackgroundApiUrlAsync(server);
 
                     var response = await _httpClient.GetStringAsync(apiUrl);
                     var newHash = ComputeMD5(response);

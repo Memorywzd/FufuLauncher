@@ -18,8 +18,10 @@ namespace FufuLauncher.Views;
 public sealed partial class MainPage : Page
 {
     private const double BannerSwipeThreshold = 42;
-    private const double BannerAnimationMs = 460;
+    private const double BannerAnimationMs = 520;
+    private const double BannerInitialFadeMs = 560;
     private BannerItem _displayedBanner;
+    private BannerItem _pendingBanner;
     private bool _isBannerTransitioning;
     private bool _isBannerPointerPressed;
     private Windows.Foundation.Point _bannerPointerPressedPoint;
@@ -678,18 +680,19 @@ private void OnOpenGachaAnalysisClick(object sender, RoutedEventArgs e)
             BannerCurrentImage.Source = null;
             BannerIncomingImage.Source = null;
             _displayedBanner = null;
+            _pendingBanner = null;
+            ResetBannerLayers();
+            BannerCurrentLayer.Opacity = 0;
             return;
         }
 
         if (ViewModel.CurrentBanner == null)
         {
             ViewModel.CurrentBanner = ViewModel.Banners[0];
+            return;
         }
 
-        SetBannerImage(BannerCurrentImage, ViewModel.CurrentBanner);
-        _displayedBanner = ViewModel.CurrentBanner;
-        ResetBannerLayers();
-        FadeInInitialBanner();
+        TransitionToBanner(ViewModel.CurrentBanner);
     }
 
     private void TransitionToBanner(BannerItem targetBanner)
@@ -699,17 +702,20 @@ private void OnOpenGachaAnalysisClick(object sender, RoutedEventArgs e)
             return;
         }
 
-        if (_displayedBanner == null || BannerCurrentImage.Source == null)
+        if (_isBannerTransitioning)
         {
-            SetBannerImage(BannerCurrentImage, targetBanner);
-            _displayedBanner = targetBanner;
-            ResetBannerLayers();
-            FadeInInitialBanner();
+            _pendingBanner = targetBanner;
             return;
         }
 
-        if (_isBannerTransitioning || ReferenceEquals(_displayedBanner, targetBanner))
+        if (ReferenceEquals(_displayedBanner, targetBanner) && BannerCurrentImage.Source != null)
         {
+            return;
+        }
+
+        if (_displayedBanner == null || BannerCurrentImage.Source == null)
+        {
+            ShowInitialBanner(targetBanner);
             return;
         }
 
@@ -717,20 +723,58 @@ private void OnOpenGachaAnalysisClick(object sender, RoutedEventArgs e)
         StartBannerTransition(targetBanner, direction);
     }
 
+    private void ShowInitialBanner(BannerItem targetBanner)
+    {
+        _displayedBanner = targetBanner;
+        ResetBannerLayers();
+        BannerCurrentLayer.Opacity = 0;
+        BannerCurrentScale.ScaleX = 1.015;
+        BannerCurrentScale.ScaleY = 1.015;
+
+        RoutedEventHandler imageOpened = null;
+        ExceptionRoutedEventHandler imageFailed = null;
+        imageOpened = (_, _) =>
+        {
+            BannerCurrentImage.ImageOpened -= imageOpened;
+            BannerCurrentImage.ImageFailed -= imageFailed;
+            FadeInInitialBanner();
+        };
+        imageFailed = (_, _) =>
+        {
+            BannerCurrentImage.ImageOpened -= imageOpened;
+            BannerCurrentImage.ImageFailed -= imageFailed;
+            ResetBannerLayers();
+        };
+
+        BannerCurrentImage.ImageOpened += imageOpened;
+        BannerCurrentImage.ImageFailed += imageFailed;
+        SetBannerImage(BannerCurrentImage, targetBanner);
+    }
+
     private void FadeInInitialBanner()
     {
+        BannerCurrentTranslate.X = 0;
+        BannerIncomingTranslate.X = 0;
+        BannerIncomingLayer.Opacity = 0;
         BannerCurrentLayer.Opacity = 0;
-        BannerCurrentScale.ScaleX = 1.02;
-        BannerCurrentScale.ScaleY = 1.02;
+        BannerCurrentScale.ScaleX = 1.015;
+        BannerCurrentScale.ScaleY = 1.015;
 
         var storyboard = new Storyboard();
         var easing = new CubicEase { EasingMode = EasingMode.EaseOut };
-        var duration = new Duration(TimeSpan.FromMilliseconds(600));
+        var duration = new Duration(TimeSpan.FromMilliseconds(BannerInitialFadeMs));
 
         storyboard.Children.Add(CreateDoubleAnimation(BannerCurrentLayer, "Opacity", 1, duration, easing));
         storyboard.Children.Add(CreateDoubleAnimation(BannerCurrentScale, "ScaleX", 1, duration, easing));
         storyboard.Children.Add(CreateDoubleAnimation(BannerCurrentScale, "ScaleY", 1, duration, easing));
 
+        storyboard.Completed += (_, _) =>
+        {
+            if (!_isBannerTransitioning)
+            {
+                ResetBannerLayers();
+            }
+        };
         storyboard.Begin();
     }
 
@@ -752,27 +796,27 @@ private void OnOpenGachaAnalysisClick(object sender, RoutedEventArgs e)
     private void StartBannerTransition(BannerItem targetBanner, int direction)
     {
         var width = Math.Max(BannerViewport.ActualWidth, 1);
-        var offset = width * 0.28 * direction;
+        var offset = width * 0.18 * direction;
 
         SetBannerImage(BannerIncomingImage, targetBanner);
 
         BannerIncomingTranslate.X = offset;
         BannerIncomingLayer.Opacity = 0;
-        BannerIncomingScale.ScaleX = 1.035;
-        BannerIncomingScale.ScaleY = 1.035;
+        BannerIncomingScale.ScaleX = 1.015;
+        BannerIncomingScale.ScaleY = 1.015;
         BannerCurrentTranslate.X = 0;
         BannerCurrentLayer.Opacity = 1;
         BannerCurrentScale.ScaleX = 1;
         BannerCurrentScale.ScaleY = 1;
 
         var storyboard = new Storyboard();
-        var easing = new CubicEase { EasingMode = EasingMode.EaseOut };
+        var easing = new SineEase { EasingMode = EasingMode.EaseInOut };
         var duration = new Duration(TimeSpan.FromMilliseconds(BannerAnimationMs));
 
         storyboard.Children.Add(CreateDoubleAnimation(BannerCurrentTranslate, "X", -offset, duration, easing));
-        storyboard.Children.Add(CreateDoubleAnimation(BannerCurrentLayer, "Opacity", 0.2, duration, easing));
-        storyboard.Children.Add(CreateDoubleAnimation(BannerCurrentScale, "ScaleX", 0.97, duration, easing));
-        storyboard.Children.Add(CreateDoubleAnimation(BannerCurrentScale, "ScaleY", 0.97, duration, easing));
+        storyboard.Children.Add(CreateDoubleAnimation(BannerCurrentLayer, "Opacity", 0, duration, easing));
+        storyboard.Children.Add(CreateDoubleAnimation(BannerCurrentScale, "ScaleX", 0.985, duration, easing));
+        storyboard.Children.Add(CreateDoubleAnimation(BannerCurrentScale, "ScaleY", 0.985, duration, easing));
 
         storyboard.Children.Add(CreateDoubleAnimation(BannerIncomingTranslate, "X", 0, duration, easing));
         storyboard.Children.Add(CreateDoubleAnimation(BannerIncomingLayer, "Opacity", 1, duration, easing));
@@ -784,6 +828,17 @@ private void OnOpenGachaAnalysisClick(object sender, RoutedEventArgs e)
         {
             SwapBannerLayers(targetBanner);
             _isBannerTransitioning = false;
+
+            if (_pendingBanner != null && !ReferenceEquals(_pendingBanner, _displayedBanner))
+            {
+                var pendingBanner = _pendingBanner;
+                _pendingBanner = null;
+                TransitionToBanner(pendingBanner);
+            }
+            else
+            {
+                _pendingBanner = null;
+            }
         };
         storyboard.Begin();
     }

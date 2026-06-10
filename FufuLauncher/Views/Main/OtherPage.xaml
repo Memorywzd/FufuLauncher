@@ -150,6 +150,7 @@
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
 
                         <Grid Grid.Row="0">
@@ -162,8 +163,8 @@
                             <FontIcon Glyph="&#xE92E;" FontSize="20" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" Margin="0,0,16,0"/>
 
                             <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                <TextBlock Text="键盘连点器" Style="{StaticResource BodyStrongTextBlockStyle}"/>
-                                <TextBlock Text="长按触发键以模拟高频点击" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.6"/>
+                                <TextBlock Text="连点器" Style="{StaticResource BodyStrongTextBlockStyle}"/>
+                                <TextBlock Text="按住触发键、鼠标左键或鼠标右键以模拟高频点击" Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.6"/>
                             </StackPanel>
 
                             <ToggleSwitch Grid.Column="2" IsOn="{x:Bind ViewModel.IsAutoClickerEnabled, Mode=TwoWay}" Margin="0"/>
@@ -175,7 +176,7 @@
                                         IsEnabled="{x:Bind ViewModel.IsAutoClickerEnabled, Mode=OneWay}"
                                         HorizontalContentAlignment="Stretch"
                                         VerticalContentAlignment="Stretch">
-                            <Grid ColumnSpacing="32" RowSpacing="16">
+                            <Grid ColumnSpacing="24" RowSpacing="16">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="*"/>
@@ -183,9 +184,25 @@
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
                                 </Grid.RowDefinitions>
 
-                                <Grid Grid.Column="0" ColumnSpacing="8">
+                                <StackPanel Grid.Row="0" Grid.ColumnSpan="2" Spacing="8">
+                                    <TextBlock Text="连点模式" Style="{StaticResource BodyStrongTextBlockStyle}"/>
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <ToggleSwitch Header="鼠标左键"
+                                                      IsOn="{x:Bind ViewModel.IsMouseLeftClickerEnabled, Mode=TwoWay}"
+                                                      Margin="0"/>
+                                        <ToggleSwitch Header="鼠标右键"
+                                                      IsOn="{x:Bind ViewModel.IsMouseRightClickerEnabled, Mode=TwoWay}"
+                                                      Margin="0"/>
+                                    </StackPanel>
+                                    <TextBlock Text="两个鼠标模式只能开启一个。开启鼠标模式前必须设置停止快捷键。" FontSize="12" Opacity="0.6"/>
+                                </StackPanel>
+
+                                <Grid Grid.Row="1" Grid.ColumnSpan="2" ColumnSpacing="8">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
@@ -196,7 +213,7 @@
                                              IsReadOnly="True" 
                                              PlaceholderText="无"
                                              VerticalAlignment="Bottom"/>
-                                             
+                                              
                                     <Button Grid.Column="1"
                                             Content="&#xE765;" FontFamily="{ThemeResource SymbolThemeFontFamily}"
                                             ToolTipService.ToolTip="点击录制"
@@ -204,13 +221,32 @@
                                             VerticalAlignment="Bottom"/>
                                 </Grid>
 
-                                <Grid Grid.Column="1" ColumnSpacing="8">
+                                <Grid Grid.Row="2" Grid.ColumnSpan="2" ColumnSpacing="8">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
 
-                                    <TextBox Header="连点键 (目标按键)"
+                                    <TextBox Header="停止快捷键 (必须设置)"
+                                             Text="{x:Bind ViewModel.StopKey, Mode=TwoWay}" 
+                                             IsReadOnly="True" 
+                                             PlaceholderText="无"
+                                             VerticalAlignment="Bottom"/>
+                                                       
+                                    <Button Grid.Column="1" 
+                                            Content="&#xE765;" FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                            ToolTipService.ToolTip="点击录制"
+                                            Command="{x:Bind ViewModel.RecordStopKeyCommand}"
+                                            VerticalAlignment="Bottom"/>
+                                </Grid>
+
+                                <Grid Grid.Row="3" Grid.ColumnSpan="2" ColumnSpacing="8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <TextBox Header="键盘连点键 (仅键盘模式)"
                                              Text="{x:Bind ViewModel.ClickKey, Mode=TwoWay}" 
                                              IsReadOnly="True" 
                                              PlaceholderText="无"
@@ -223,12 +259,12 @@
                                             VerticalAlignment="Bottom"/>
                                 </Grid>
                                  
-                                <InfoBar Grid.Row="1" Grid.ColumnSpan="2"
+                                <InfoBar Grid.Row="4" Grid.ColumnSpan="2"
                                          Severity="Informational"
                                          IsClosable="False"
                                          IsOpen="True"
                                          Title="使用说明"
-                                         Message="点击右侧图标进行录制，然后按下键盘上任意键。设置完成后，切换到游戏窗口依然生效。"/>
+                                         Message="点击右侧图标进行录制，然后按下键盘上任意键。鼠标左键和右键模式互斥，且必须先设置停止快捷键。"/>
                             </Grid>
                         </ContentControl>
                     </Grid>
