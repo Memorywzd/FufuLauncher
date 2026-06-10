@@ -15,6 +15,10 @@ public partial class GachaDisplayItem : ObservableObject
     {
         get; set;
     }
+    public string PoolType
+    {
+        get; set;
+    }
     public int Rank
     {
         get; set;
@@ -70,7 +74,7 @@ public partial class GachaDisplayItem : ObservableObject
 
     [ObservableProperty] private PityStatus _pityStatus;
 
-    public int PityMaximum => Rank == 5 ? 90 : 10;
+    public int PityMaximum => Rank == 5 ? (PoolType == "302" ? 80 : 90) : 10;
 
     public SolidColorBrush ProgressBarColor => Rank switch
     {

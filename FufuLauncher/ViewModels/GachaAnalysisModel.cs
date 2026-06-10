@@ -748,14 +748,14 @@ public partial class GachaAnalysisModel : ObservableObject
                 var chronicledStats = _gachaService.AnalyzePool("500", chronicledLogs);
                 var standardStats = _gachaService.AnalyzePool("200", standardLogs);
 
-                var charFive = BuildDisplayCollection(charStats.FiveStarRecords, "角色", charPools);
-                var charFour = BuildDisplayCollection(charStats.FourStarRecords, "角色", charPools);
-                var weaponFive = BuildDisplayCollection(weaponStats.FiveStarRecords, "武器", weaponPools);
-                var weaponFour = BuildDisplayCollection(weaponStats.FourStarRecords, "武器", weaponPools);
-                var chronicledFive = BuildDisplayCollection(chronicledStats.FiveStarRecords, "集录");
-                var chronicledFour = BuildDisplayCollection(chronicledStats.FourStarRecords, "集录");
-                var standardFive = BuildDisplayCollection(standardStats.FiveStarRecords, "常驻");
-                var standardFour = BuildDisplayCollection(standardStats.FourStarRecords, "常驻");
+                var charFive = BuildDisplayCollection(charStats.FiveStarRecords, "角色", charPools, "301");
+                var charFour = BuildDisplayCollection(charStats.FourStarRecords, "角色", charPools, "301");
+                var weaponFive = BuildDisplayCollection(weaponStats.FiveStarRecords, "武器", weaponPools, "302");
+                var weaponFour = BuildDisplayCollection(weaponStats.FourStarRecords, "武器", weaponPools, "302");
+                var chronicledFive = BuildDisplayCollection(chronicledStats.FiveStarRecords, "集录", null, "500");
+                var chronicledFour = BuildDisplayCollection(chronicledStats.FourStarRecords, "集录", null, "500");
+                var standardFive = BuildDisplayCollection(standardStats.FiveStarRecords, "常驻", null, "200");
+                var standardFour = BuildDisplayCollection(standardStats.FourStarRecords, "常驻", null, "200");
 
                 App.MainWindow.DispatcherQueue.TryEnqueue(() =>
                 {
@@ -1907,7 +1907,7 @@ private async Task ImportUigfAsync()
         InvalidateAnalysisDashboard();
     }
 
-    private ObservableCollection<GachaDisplayItem> BuildDisplayCollection(List<FiveStarRecord> records, string typeHint, List<GachaPoolMetadata> pools = null)
+    private ObservableCollection<GachaDisplayItem> BuildDisplayCollection(List<FiveStarRecord> records, string typeHint, List<GachaPoolMetadata> pools = null, string poolType = "")
     {
         var pityStatuses = new PityStatus[records.Count];
         bool wasPreviousLost = false;
@@ -1947,6 +1947,7 @@ private async Task ImportUigfAsync()
                 Time = record.Time,
                 Rank = record.Rank,
                 Type = typeHint,
+                PoolType = poolType,
                 ImageUrl = "ms-appx:///Assets/StoreLogo.png",
                 PityStatus = pityStatuses[i]
             };
