@@ -159,48 +159,23 @@ public sealed partial class CommunityPage : Page
 
     private async Task<(string Mid, string Uid, string Nickname)> RetrieveUserDataAsync()
     {
+        string mid = string.Empty;
         string uid = string.Empty;
         string nickname = string.Empty;
-        string mid = string.Empty;
 
         try
         {
-            var userConfigService = App.GetService<IUserConfigService>();
-            var displayConfig = await userConfigService.LoadDisplayConfigAsync();
-            if (displayConfig != null)
-            {
-                uid = displayConfig.GameUid ?? string.Empty;
-                nickname = displayConfig.Nickname ?? string.Empty;
-            }
-            
-            var localSettingsService = App.GetService<ILocalSettingsService>();
-            var activeFileObj = await localSettingsService.ReadSettingAsync("ActiveConfigFile");
-            string activeFile = activeFileObj?.ToString() ?? "config.json";
-            string configPath = Path.Combine(Helpers.AppPaths.DataDir, activeFile);
+            var accountManager = App.GetService<AccountManager>();
+            var activeAccount = accountManager.GetActiveAccountEntry();
 
-            if (File.Exists(configPath))
+            if (activeAccount != null)
             {
-                string json = await File.ReadAllTextAsync(configPath);
-                
-                using (JsonDocument doc = JsonDocument.Parse(json))
-                {
-                    if (doc.RootElement.TryGetProperty("Account", out JsonElement accountElement))
-                    {
-                        if (accountElement.TryGetProperty("Mid", out JsonElement midElement))
-                        {
-                            mid = midElement.GetString() ?? string.Empty;
-                        }
-                        if (string.IsNullOrEmpty(mid) && accountElement.TryGetProperty("Cookie", out JsonElement cookieElement))
-                        {
-                            string cookie = cookieElement.GetString() ?? string.Empty;
-                            var match = System.Text.RegularExpressions.Regex.Match(cookie, @"mid=([^;]+)");
-                            if (match.Success)
-                            {
-                                mid = match.Groups[1].Value;
-                            }
-                        }
-                    }
-                }
+                uid = activeAccount.GameUid ?? string.Empty;
+                nickname = activeAccount.Nickname ?? string.Empty;
+
+                var cookies = await accountManager.LoadCookiesAsync(activeAccount.Id);
+                if (cookies != null && cookies.TryGetValue("mid", out var midValue))
+                    mid = midValue ?? string.Empty;
             }
         }
         catch (Exception ex)

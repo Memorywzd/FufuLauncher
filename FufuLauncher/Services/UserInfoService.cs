@@ -1,10 +1,9 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using FufuLauncher.Constants;
 using FufuLauncher.Contracts.Services;
 using FufuLauncher.Models;
 using Microsoft.Extensions.Logging;
-using MihoyoBBS;
 
 namespace FufuLauncher.Services;
 
@@ -12,16 +11,13 @@ public class UserInfoService : IUserInfoService
 {
     private readonly HttpClient _httpClient;
     private readonly ILogger<UserInfoService> _logger;
-    private readonly IUserConfigService _userConfigService;
     private readonly ILocalSettingsService _localSettingsService;
 
     public UserInfoService(
         ILogger<UserInfoService> logger,
-        IUserConfigService userConfigService,
         ILocalSettingsService localSettingsService)
     {
         _logger = logger;
-        _userConfigService = userConfigService;
         _localSettingsService = localSettingsService;
         _httpClient = new HttpClient(new HttpClientHandler
         {
@@ -39,7 +35,7 @@ public class UserInfoService : IUserInfoService
         _httpClient.DefaultRequestHeaders.TryAddWithoutValidation("x-rpc-client_type", "5");
         _httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Referer", "https://act.mihoyo.com/");
         _httpClient.DefaultRequestHeaders.TryAddWithoutValidation("Origin", "https://act.mihoyo.com");
-        _httpClient.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", 
+        _httpClient.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent",
             "Mozilla/5.0 (Linux; Android 12; Unspecified Device) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/103.0.5060.129 Mobile Safari/537.36 miHoYoBBS/2.93.1");
     }
 
@@ -66,7 +62,7 @@ public class UserInfoService : IUserInfoService
             return null;
         }
     }
-    
+
     private async Task<bool> IsInternationalAsync()
     {
         var isOsObj = await _localSettingsService.ReadSettingAsync("IsInternationalAccount");
@@ -84,10 +80,10 @@ public class UserInfoService : IUserInfoService
             {
                 var uid = ExtractCookieValue(cookie, "account_id_v2") ?? ExtractCookieValue(cookie, "ltuid_v2") ?? ExtractCookieValue(cookie, "account_id");
                 var url = $"https://bbs-api-os.hoyolab.com/game_record/card/wapi/getGameRecordCard?uid={uid}";
-            
+
                 var response = await _httpClient.GetAsync(url);
                 var json = await response.Content.ReadAsStringAsync();
-                
+
                 json = json.Replace("\"game_role_id\"", "\"game_uid\"");
                 return JsonSerializer.Deserialize<GameRolesResponse>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true })!;
             }
@@ -104,7 +100,7 @@ public class UserInfoService : IUserInfoService
             return new GameRolesResponse(-1, ex.Message, null);
         }
     }
-    
+
 
     public async Task<UserFullInfoResponse> GetUserFullInfoAsync(string cookie)
     {
@@ -112,9 +108,9 @@ public class UserInfoService : IUserInfoService
         {
             ApplyCommonHeaders(cookie);
             bool isOs = await IsInternationalAsync();
-        
+
             var url = isOs ? "https://bbs-api-os.hoyolab.com/community/painter/wapi/user/full" : ApiEndpoints.MiyousheUserFullInfoUrl;
-        
+
             var response = await _httpClient.GetAsync(url);
             var json = await response.Content.ReadAsStringAsync();
             return JsonSerializer.Deserialize<UserFullInfoResponse>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true })!;
@@ -129,81 +125,5 @@ public class UserInfoService : IUserInfoService
     public async Task<GameRecordCardResponse> GetGameRecordCardAsync(string stuid, string cookie)
     {
         return await Task.FromResult(new GameRecordCardResponse(-1, "功能已移除", null));
-    }
-
-    public async Task SaveUserDataAsync(string cookie, string stuid)
-    {
-        try
-        {
-            var rolesTask = GetUserGameRolesAsync(cookie);
-            var userInfoTask = GetUserFullInfoAsync(cookie);
-
-            await Task.WhenAll(rolesTask, userInfoTask);
-
-            var roles = await rolesTask;
-            var userInfo = await userInfoTask;
-
-            await SaveAuthConfigAsync(cookie, stuid);
-
-            if (roles?.data?.list?.FirstOrDefault() is { } role)
-            {
-                var displayConfig = new UserDisplayConfig
-                {
-                    Nickname = role.nickname,
-                    GameUid = role.game_uid,
-                    Server = role.region_name,
-                    AvatarUrl = userInfo?.data?.user_info?.avatar_url ?? "ms-appx:///Assets/DefaultAvatar.png",
-                    Level = role.level.ToString()
-                };
-
-                await _userConfigService.SaveDisplayConfigAsync(displayConfig);
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "保存用户数据失败");
-            throw;
-        }
-    }
-
-    private async Task SaveAuthConfigAsync(string cookie, string stuid)
-    {
-        try
-        {
-            var activeFileObj = await _localSettingsService.ReadSettingAsync("ActiveConfigFile");
-            string activeFile = activeFileObj?.ToString() ?? "config.json";
-            var configPath = Path.Combine(AppContext.BaseDirectory, activeFile);
-
-            Config oldConfig = new();
-
-            if (File.Exists(configPath))
-            {
-                var json = await File.ReadAllTextAsync(configPath);
-                oldConfig = JsonSerializer.Deserialize<Config>(json, new JsonSerializerOptions
-                {
-                    PropertyNameCaseInsensitive = true
-                }) ?? new Config();
-            }
-
-            oldConfig.Account.Cookie = cookie;
-            oldConfig.Account.Stuid = stuid;
-
-            var stokenMatch = Regex.Match(cookie, @"stoken=([^;]+)");
-            if (stokenMatch.Success) oldConfig.Account.Stoken = stokenMatch.Groups[1].Value;
-
-            var midMatch = Regex.Match(cookie, @"mid=([^;]+)");
-            if (midMatch.Success) oldConfig.Account.Mid = midMatch.Groups[1].Value;
-
-            var newJson = JsonSerializer.Serialize(oldConfig, new JsonSerializerOptions
-            {
-                WriteIndented = true
-            });
-
-            await File.WriteAllTextAsync(configPath, newJson);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "保存认证配置失败");
-        }
     }
 }

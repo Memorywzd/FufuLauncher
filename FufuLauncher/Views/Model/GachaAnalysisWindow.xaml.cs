@@ -756,9 +756,9 @@ namespace FufuLauncher.Views
                 return;
             }
 
-            var userConfigService = App.GetService<IUserConfigService>();
-            var displayConfig = await userConfigService.LoadDisplayConfigAsync();
-            var isLoggedIn = !string.IsNullOrEmpty(displayConfig.GameUid);
+            var accountManager = App.GetService<AccountManager>();
+            var activeAccount = accountManager.GetActiveAccountEntry();
+            var isLoggedIn = activeAccount != null && !string.IsNullOrEmpty(activeAccount.GameUid);
 
             if (!isLoggedIn)
             {

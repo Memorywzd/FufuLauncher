@@ -22,7 +22,6 @@ public partial class AccountViewModel : ObservableRecipient
     #region 字段
     private readonly ILocalSettingsService _localSettingsService;
     private readonly IUserInfoService _userInfoService;
-    private readonly IUserConfigService _userConfigService;
     private readonly INavigationService _navigationService;
     private readonly Microsoft.UI.Dispatching.DispatcherQueue _dispatcherQueue;
     private const int MaxAccounts = 4;
@@ -94,13 +93,11 @@ public partial class AccountViewModel : ObservableRecipient
     public AccountViewModel(
         ILocalSettingsService localSettingsService,
         IUserInfoService userInfoService,
-        IUserConfigService userConfigService,
         INavigationService navigationService,
         AccountManager accountManager)
     {
         _localSettingsService = localSettingsService;
         _userInfoService = userInfoService;
-        _userConfigService = userConfigService;
         _navigationService = navigationService;
         _dispatcherQueue = App.MainWindow.DispatcherQueue;
         _accountManager = accountManager;

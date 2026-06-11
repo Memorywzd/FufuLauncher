@@ -1300,9 +1300,9 @@ public partial class GachaAnalysisModel : ObservableObject
         {
             try
             {
-                var userConfigService = App.GetService<Services.IUserConfigService>();
-                var displayConfig = await userConfigService.LoadDisplayConfigAsync();
-                gameUid = displayConfig.GameUid ?? "";
+                var accountManager = App.GetService<AccountManager>();
+                var activeAccount = accountManager.GetActiveAccountEntry();
+                gameUid = activeAccount?.GameUid ?? "";
             }
             catch { }
         }
