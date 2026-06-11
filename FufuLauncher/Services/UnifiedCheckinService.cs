@@ -58,7 +58,7 @@ public class UnifiedCheckinService : IUnifiedCheckinService
             cookies.TryGetValue("mid", out var mid);
 
             
-            string cloudTokenKey = $"CloudComboToken_{entry.Id}";
+            string cloudTokenKey = $"CloudComboToken_{entry.Stuid}";
             var cloudTokenObj = await _localSettingsService.ReadSettingAsync(cloudTokenKey);
             string cloudComboToken = cloudTokenObj?.ToString() ?? "";
 
