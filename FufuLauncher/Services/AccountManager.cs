@@ -22,7 +22,12 @@ public class AccountManager
         _accountsFilePath = Path.Combine(_dataDir, "accounts.json");
 
         Directory.CreateDirectory(_cookiesDir);
-        LoadAccountList();
+        _accountList = new AccountList();
+    }
+
+    public async Task InitializeAsync()
+    {
+        await LoadAccountListAsync();
     }
 
     public string ActiveAccountId
@@ -32,7 +37,7 @@ public class AccountManager
         {
             _activeAccountId = value;
             var settings = App.GetService<ILocalSettingsService>();
-            _ = settings.SaveSettingAsync("ActiveAccountId", value);
+            settings?.SaveSettingAsync("ActiveAccountId", value).GetAwaiter().GetResult();
         }
     }
 
@@ -42,11 +47,11 @@ public class AccountManager
     public List<AccountEntry> GetAllAccounts() => _accountList.Accounts;
 
   
-    private void LoadAccountList()
+    private async Task LoadAccountListAsync()
     {
         if (File.Exists(_accountsFilePath))
         {
-            var json = File.ReadAllText(_accountsFilePath);
+            var json = await File.ReadAllTextAsync(_accountsFilePath);
             _accountList = JsonSerializer.Deserialize<AccountList>(json) ?? new AccountList();
         }
         else
@@ -54,20 +59,28 @@ public class AccountManager
             _accountList = new AccountList();
         }
 
-        
         var settings = App.GetService<ILocalSettingsService>();
-        var savedId = settings.ReadSettingAsync("ActiveAccountId").Result as string;
-        _activeAccountId = savedId ?? _accountList.Accounts.FirstOrDefault()?.Id;
+        try
+        {
+            var savedObj = await settings.ReadSettingAsync("ActiveAccountId");
+            var savedId = savedObj as string;
+            _activeAccountId = savedId ?? _accountList.Accounts.FirstOrDefault()?.Id;
+        }
+        catch
+        {
+            
+            _activeAccountId = _accountList.Accounts.FirstOrDefault()?.Id;
+        }
     }
 
     public void Logout()
     {
         ActiveAccountId = null; 
     }
-    private void SaveAccountList()
+    private async Task SaveAccountListAsync()
     {
         var json = JsonSerializer.Serialize(_accountList, new JsonSerializerOptions { WriteIndented = true });
-        File.WriteAllText(_accountsFilePath, json);
+        await File.WriteAllTextAsync(_accountsFilePath, json);
     }
 
 
@@ -99,7 +112,7 @@ public class AccountManager
             };
 
             _accountList.Accounts.Add(entry);
-            SaveAccountList();
+            await SaveAccountListAsync();
             return entry;
         }
         finally
@@ -134,7 +147,7 @@ public class AccountManager
             if (File.Exists(path)) File.Delete(path);
 
             _accountList.Accounts.Remove(entry);
-            SaveAccountList();
+            await SaveAccountListAsync();
 
             if (_activeAccountId == accountId)
             {
@@ -158,7 +171,7 @@ public class AccountManager
         if (entry != null)
         {
             entry.LastLoginTime = DateTime.Now;
-            SaveAccountList();
+            await SaveAccountListAsync();
         }
         return true;
     }
@@ -174,7 +187,7 @@ public class AccountManager
             {
                 entry.Nickname = nickname;
                 entry.AvatarUrl = avatarUrl;
-                SaveAccountList();
+                await SaveAccountListAsync();
             }
         }
         finally

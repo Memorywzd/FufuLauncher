@@ -102,7 +102,7 @@ public partial class ControlPanelModel : ObservableObject
         stats.AverageHours = stats.DailyRecords.Count > 0 ? stats.TotalHours / stats.DailyRecords.Count : 0;
         App.MainWindow.DispatcherQueue.TryEnqueue(() => WeeklyStats = stats);
     }
-    
+
     private async Task StartGameMonitoringLoopAsync(CancellationToken token)
     {
         while (!token.IsCancellationRequested)
@@ -110,27 +110,42 @@ public partial class ControlPanelModel : ObservableObject
             try
             {
                 var isRunning = Process.GetProcessesByName("YuanShen").Any() || Process.GetProcessesByName("GenshinImpact").Any();
-                App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+
+                
+                if (App.MainWindow?.DispatcherQueue != null)
                 {
-                    IsGameRunning = isRunning;
-                    if (isRunning)
+                    App.MainWindow.DispatcherQueue.TryEnqueue(() =>
                     {
-                        UpdateAndSavePlayTime(5);
-                        if (WeeklyStats != null)
+                        try
                         {
-                            var today = DateTime.Today;
-                            var todayRecord = WeeklyStats.DailyRecords.FirstOrDefault(r => r.Date.Date == today);
-                            if (todayRecord == null)
+                            IsGameRunning = isRunning;
+                            if (isRunning)
                             {
-                                todayRecord = new GamePlayTimeRecord { Date = today, PlayTimeSeconds = 0 };
-                                WeeklyStats.DailyRecords.Insert(0, todayRecord);
+                                UpdateAndSavePlayTime(5);
+                                if (WeeklyStats?.DailyRecords != null)
+                                {
+                                    var today = DateTime.Today;
+                                    var todayRecord = WeeklyStats.DailyRecords.FirstOrDefault(r => r.Date.Date == today);
+                                    if (todayRecord == null)
+                                    {
+                                        todayRecord = new GamePlayTimeRecord { Date = today, PlayTimeSeconds = 0 };
+                                        WeeklyStats.DailyRecords.Insert(0, todayRecord);
+                                    }
+                                    todayRecord.PlayTimeSeconds += 5;
+                                }
                             }
-                            todayRecord.PlayTimeSeconds += 5;
                         }
-                    }
-                });
+                        catch (Exception ex)
+                        {
+                            Debug.WriteLine($"游戏监控内部调度异常: {ex.Message}");
+                        }
+                    });
+                }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"游戏监控外层异常: {ex.Message}");
+            }
             await Task.Delay(5000, token);
         }
     }

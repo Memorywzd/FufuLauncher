@@ -342,7 +342,8 @@ public partial class App : Application
                     });
                 });
             }
-
+            var accountManager = GetService<AccountManager>();
+            await accountManager.InitializeAsync();
             MainWindow = new MainWindow();
             if (MainWindow is MainWindow mainWindow)
             {

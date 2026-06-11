@@ -617,8 +617,6 @@ namespace FufuLauncher.Views
             System.Diagnostics.Debug.WriteLine($"[BBSWindow] LoadPageAsync called with URL: {url}");
             //System.Diagnostics.Debug.WriteLine($"[BBSWindow] ConfigPath exists: {File.Exists(ConfigPath)}");
             
-            
-            
             var manager = BBSWebView.CoreWebView2.CookieManager;
             if (BBSWebView.Source == null || BBSWebView.Source.ToString() == "about:blank")
             {
