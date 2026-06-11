@@ -44,6 +44,4 @@ public interface IUserInfoService
     Task<GameRolesResponse> GetUserGameRolesAsync(string cookie);
     Task<UserFullInfoResponse> GetUserFullInfoAsync(string cookie);
     Task<GameRecordCardResponse> GetGameRecordCardAsync(string stuid, string cookie);
-
-    Task SaveUserDataAsync(string cookie, string stuid);
 }

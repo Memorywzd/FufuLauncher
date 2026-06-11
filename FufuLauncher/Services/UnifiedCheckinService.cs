@@ -58,7 +58,7 @@ public class UnifiedCheckinService : IUnifiedCheckinService
             cookies.TryGetValue("mid", out var mid);
 
             
-            string cloudTokenKey = $"CloudComboToken_{entry.Id}";
+            string cloudTokenKey = $"CloudComboToken_{entry.Stuid}";
             var cloudTokenObj = await _localSettingsService.ReadSettingAsync(cloudTokenKey);
             string cloudComboToken = cloudTokenObj?.ToString() ?? "";
 
@@ -351,76 +351,11 @@ public class UnifiedCheckinService : IUnifiedCheckinService
         return new HashSet<string>();
     }
 
-    private async Task<List<AccountCredentials>> LoadAllAccountsAsync()
-    {
-        var accounts = new List<AccountCredentials>();
-        var baseDir = Helpers.AppPaths.DataDir;
-        var seenUids = new HashSet<string>();
-
-        if (!Directory.Exists(baseDir)) return accounts;
-
-        foreach (var file in Directory.GetFiles(baseDir, "config*.json"))
-        {
-            try
-            {
-                var json = await File.ReadAllTextAsync(file);
-                var config = JsonSerializer.Deserialize<MihoyoBBS.Config>(json);
-                if (config?.Account?.Cookie == null) continue;
-
-                var cookie = config.Account.Cookie;
-                var match = Regex.Match(cookie, @"(?:account_id_v2|ltuid_v2|ltuid|account_id|stuid)=(\d+)");
-                if (!match.Success) continue;
-                var uid = match.Groups[1].Value;
-                if (!seenUids.Add(uid)) continue;
-
-                var stoken = ExtractCookieValue(cookie, "stoken") ?? config.Account.Stoken ?? "";
-                var mid = ExtractCookieValue(cookie, "mid") ?? config.Account.Mid ?? "";
-                var stuid = ExtractCookieValue(cookie, "stuid") ?? ExtractCookieValue(cookie, "account_id_v2") ?? config.Account.Stuid ?? uid;
-
-                string nickname = config.Display?.Nickname;
-                if (string.IsNullOrEmpty(nickname)) nickname = $"用户{uid}";
-
-                accounts.Add(new AccountCredentials
-                {
-                    Uid = uid,
-                    Cookie = cookie,
-                    Stuid = stuid,
-                    Stoken = stoken,
-                    Mid = mid,
-                    Nickname = nickname,
-                    ConfigPath = file,
-                    CloudComboToken = config.Account.CloudComboToken ?? ""
-                });
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"[统一签到] 读取账号配置失败 {file}: {ex.Message}");
-            }
-        }
-
-        return accounts;
-    }
-
     private static string? ExtractCookieValue(string cookie, string key)
     {
         var pattern = $@"(?:^|;)\s*{Regex.Escape(key)}=([^;]+)";
         var match = Regex.Match(cookie, pattern);
         return match.Success ? match.Groups[1].Value.Trim() : null;
-    }
-
-    private async Task<MihoyoBBS.Config?> LoadAccountConfigAsync(string configPath)
-    {
-        try
-        {
-            if (!File.Exists(configPath)) return null;
-            var json = await File.ReadAllTextAsync(configPath);
-            return JsonSerializer.Deserialize<MihoyoBBS.Config>(json);
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"[统一签到] 加载配置失败 {configPath}: {ex.Message}");
-            return null;
-        }
     }
 
 }

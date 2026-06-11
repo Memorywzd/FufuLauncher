@@ -182,7 +182,7 @@ public class AccountManager
     }
 
    
-    public async Task UpdateAccountMetaAsync(string accountId, string nickname, string avatarUrl)
+    public async Task UpdateAccountMetaAsync(string accountId, string nickname, string avatarUrl, string gameUid = "")
     {
         await _lock.WaitAsync();
         try
@@ -192,6 +192,8 @@ public class AccountManager
             {
                 entry.Nickname = nickname;
                 entry.AvatarUrl = avatarUrl;
+                if (!string.IsNullOrEmpty(gameUid))
+                    entry.GameUid = gameUid;
                 await SaveAccountListAsync();
             }
         }
@@ -361,12 +363,29 @@ public class AccountManager
                         CookieFilePath = cookieFileName,
                         Nickname = config.Display?.Nickname ?? "",
                         AvatarUrl = config.Display?.AvatarUrl ?? "",
+                        GameUid = config.Display?.GameUid ?? "",
                         LastLoginTime = DateTime.Now
                     };
 
                     _accountList.Accounts.Add(entry);
                     processed.Add(stuid);
                     migratedCount++;
+
+                    // 迁移云游戏凭证到 LocalSettings
+                    var cloudToken = config.Account.CloudComboToken;
+                    if (!string.IsNullOrWhiteSpace(cloudToken))
+                    {
+                        try
+                        {
+                            var settings = App.GetService<ILocalSettingsService>();
+                            await settings.SaveSettingAsync($"CloudComboToken_{stuid}", cloudToken);
+                        }
+                        catch (Exception ex)
+                        {
+                            System.Diagnostics.Debug.WriteLine(
+                                $"[AccountManager] 迁移云游戏凭证失败: {ex.Message}");
+                        }
+                    }
 
                     System.Diagnostics.Debug.WriteLine(
                         $"[AccountManager] 已迁移账号: {accountId} ({entry.Nickname}) [{serverType}]");

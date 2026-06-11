@@ -22,7 +22,6 @@ public partial class AccountViewModel : ObservableRecipient
     #region 字段
     private readonly ILocalSettingsService _localSettingsService;
     private readonly IUserInfoService _userInfoService;
-    private readonly IUserConfigService _userConfigService;
     private readonly INavigationService _navigationService;
     private readonly Microsoft.UI.Dispatching.DispatcherQueue _dispatcherQueue;
     private const int MaxAccounts = 4;
@@ -94,13 +93,11 @@ public partial class AccountViewModel : ObservableRecipient
     public AccountViewModel(
         ILocalSettingsService localSettingsService,
         IUserInfoService userInfoService,
-        IUserConfigService userConfigService,
         INavigationService navigationService,
         AccountManager accountManager)
     {
         _localSettingsService = localSettingsService;
         _userInfoService = userInfoService;
-        _userConfigService = userConfigService;
         _navigationService = navigationService;
         _dispatcherQueue = App.MainWindow.DispatcherQueue;
         _accountManager = accountManager;
@@ -219,7 +216,7 @@ public partial class AccountViewModel : ObservableRecipient
             var ipRegion = userInfo?.ip_region ?? "未知";
             var gender = userInfo?.gender ?? 0;
 
-            await _accountManager.UpdateAccountMetaAsync(entry.Id, nickname, avatarUrl);
+            await _accountManager.UpdateAccountMetaAsync(entry.Id, nickname, avatarUrl, gameUid);
 
             RunOnUIThread(() =>
             {
@@ -350,6 +347,7 @@ public partial class AccountViewModel : ObservableRecipient
             Nickname = entry.Nickname ?? "未命名",
             Stuid = entry.Stuid,
             AvatarUrl = entry.AvatarUrl ?? "ms-appx:///Assets/DefaultAvatar.png",
+            GameUid = entry.GameUid ?? "",
             Server = entry.ServerType
         };
 
@@ -381,14 +379,18 @@ public partial class AccountViewModel : ObservableRecipient
         RunOnUIThread(() =>
         {
             SavedAccounts.Clear();
+            var activeId = _accountManager.ActiveAccountId;
             foreach (var entry in _accountManager.GetAllAccounts())
             {
+                if (entry.Id == activeId)
+                    continue;
                 SavedAccounts.Add(new AccountInfo
                 {
                     AccountId = entry.Id,
                     Nickname = entry.Nickname ?? "未命名",
                     Stuid = entry.Stuid,
-                    AvatarUrl = entry.AvatarUrl ?? "ms-appx:///Assets/DefaultAvatar.png"
+                    AvatarUrl = entry.AvatarUrl ?? "ms-appx:///Assets/DefaultAvatar.png",
+                    GameUid = entry.GameUid ?? ""
                 });
             }
             OnPropertyChanged(nameof(HasSavedAccounts));
@@ -448,7 +450,7 @@ public partial class AccountViewModel : ObservableRecipient
                     Nickname = entry.Nickname ?? "未命名",
                     Stuid = entry.Stuid,
                     AvatarUrl = entry.AvatarUrl ?? "ms-appx:///Assets/DefaultAvatar.png",
-                    GameUid = entry.Stuid,       
+                    GameUid = entry.GameUid ?? entry.Stuid,
                     Server = entry.ServerType,
                     HasBoundRole = false
                 };

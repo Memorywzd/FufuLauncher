@@ -138,9 +138,6 @@ public partial class App : Application
                     services.AddTransient<AgreementViewModel>();
                     services.AddTransient<AgreementPage>();
                     services.AddSingleton<IUpdateService, UpdateService>();
-                    services.AddSingleton<IUserConfigService, UserConfigService>();
-
-                    services.AddSingleton<IUserConfigService, UserConfigService>();
                     services.AddSingleton<ControlPanelModel>();
                     services.AddTransient<PanelPage>();
                     services.AddSingleton<IUserInfoService, UserInfoService>();
