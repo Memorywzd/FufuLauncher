@@ -16,6 +16,7 @@ public class GenshinViewModel : INotifyPropertyChanged
     private readonly IGenshinService _genshinService;
     private readonly ILocalSettingsService _localSettingsService;
     private readonly IUserInfoService _userInfoService;
+    private readonly AccountManager _accountManager;   
 
     private string _uid = string.Empty;
     public string Uid
@@ -56,7 +57,6 @@ public class GenshinViewModel : INotifyPropertyChanged
     public string FormattedMonthPrimogems => _travelersDiary?.Data?.MonthData?.CurrentPrimogems.ToString("N0") ?? "0";
     public string FormattedMonthMora => _travelersDiary?.Data?.MonthData?.CurrentMora.ToString("N0") ?? "0";
 
-
     private bool _isLoading;
     public bool IsLoading
     {
@@ -81,7 +81,8 @@ public class GenshinViewModel : INotifyPropertyChanged
     {
         get
         {
-            if (TravelersDiary?.Data?.MonthData?.GroupBy == null) return new List<IncomeSourceViewModel>();
+            if (TravelersDiary?.Data?.MonthData?.GroupBy == null)
+                return new List<IncomeSourceViewModel>();
 
             return TravelersDiary.Data.MonthData.GroupBy
                 .Where(s => s.Num > 0)
@@ -108,14 +109,17 @@ public class GenshinViewModel : INotifyPropertyChanged
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 
+    
     public GenshinViewModel(
         IGenshinService genshinService,
         ILocalSettingsService localSettingsService,
-        IUserInfoService userInfoService)
+        IUserInfoService userInfoService,
+        AccountManager accountManager)
     {
         _genshinService = genshinService;
         _localSettingsService = localSettingsService;
         _userInfoService = userInfoService;
+        _accountManager = accountManager;
         LoadDataCommand = new AsyncRelayCommand(LoadDataAsync);
     }
 
@@ -128,29 +132,24 @@ public class GenshinViewModel : INotifyPropertyChanged
             IsLoading = true;
             StatusMessage = "正在连接米游社...";
 
-            var activeFileObj = await _localSettingsService.ReadSettingAsync("ActiveConfigFile");
-            string activeFile = activeFileObj?.ToString() ?? "config.json";
-            var configPath = Path.Combine(Helpers.AppPaths.DataDir, activeFile);
-            if (!File.Exists(configPath))
+     
+            string? activeId = _accountManager.ActiveAccountId;
+            if (activeId == null)
             {
                 StatusMessage = "需先登录账号";
                 return;
             }
 
-            var json = await File.ReadAllTextAsync(configPath);
-            var config = JsonSerializer.Deserialize<Config>(json, new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true
-            });
-
-            if (string.IsNullOrEmpty(config?.Account?.Cookie))
+            var cookies = await _accountManager.LoadCookiesAsync(activeId);
+            if (cookies == null || cookies.Count == 0)
             {
                 StatusMessage = "登录信息无效";
                 return;
             }
 
-            var cookie = config.Account.Cookie;
-
+          
+            string cookie = string.Join("; ", cookies.Select(kv => $"{kv.Key}={kv.Value}"));
+         
             StatusMessage = "获取角色信息...";
             var rolesResponse = await _userInfoService.GetUserGameRolesAsync(cookie);
             var role = rolesResponse?.data?.list?.FirstOrDefault();
@@ -164,11 +163,11 @@ public class GenshinViewModel : INotifyPropertyChanged
             Uid = role.game_uid;
             Nickname = role.nickname;
 
-            StatusMessage = "分析旅行札记..."; 
-            
-            TravelersDiary = await _genshinService.GetTravelersDiarySummaryAsync(Uid, cookie, role.region, DateTime.Now.Month);
+            StatusMessage = "分析旅行札记...";
+            TravelersDiary = await _genshinService.GetTravelersDiarySummaryAsync(
+                Uid, cookie, role.region, DateTime.Now.Month);
 
-            StatusMessage = $"";
+            StatusMessage = "";
         }
         catch (Exception ex)
         {

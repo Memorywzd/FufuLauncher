@@ -26,10 +26,12 @@ public class LocalGachaData
 
 public partial class GachaAnalysisModel : ObservableObject
 {
+
     private bool _isFetchingPoolMetadata;
     private readonly string _gachaDataPath;
     private readonly string _dbConnectionString;
     private readonly GachaService _gachaService;
+    private readonly AccountManager _accountManager;
     private readonly ILocalSettingsService _localSettingsService;
     private const string LastSelectedUidKey = "GachaLastSelectedUid";
     private static readonly HttpClient _httpClient = new(new HttpClientHandler
@@ -117,13 +119,14 @@ public partial class GachaAnalysisModel : ObservableObject
     public Func<string, string, Task<bool>> OnUidMismatchAsync;
     public Func<string, string, string, Task> OnShowConfirmDialogAsync;
 
-    public GachaAnalysisModel(ILocalSettingsService localSettingsService)
+    public GachaAnalysisModel(ILocalSettingsService localSettingsService, AccountManager accountManager)
     {
         _localSettingsService = localSettingsService;
 
         _gachaDataPath = Helpers.AppPaths.GachaDataFile;
         _dbConnectionString = $"Data Source={Helpers.AppPaths.MetadataDb}";
         _gachaService = new GachaService();
+        _accountManager = accountManager;
     }
 
     private void InitializeDatabase()
@@ -1220,75 +1223,76 @@ public partial class GachaAnalysisModel : ObservableObject
         RequestMetadataScrapeAction?.Invoke();
     }
 
-    private async Task<(string stoken, string mid, string stuid, string cookie, string configPath)> FindAccountByGameUidAsync(string targetGameUid)
-    {
-        var baseDir = Helpers.AppPaths.DataDir;
-        var filesToTry = Directory.GetFiles(baseDir, "config*.json")
-            .Concat(Directory.GetFiles(baseDir, "config.lab*.json"))
-            .Distinct()
-            .ToList();
+    //private async Task<(string stoken, string mid, string stuid, string cookie, string configPath)> FindAccountByGameUidAsync(string targetGameUid)
+    //{
+    //    var baseDir = Helpers.AppPaths.DataDir;
+    //    var filesToTry = Directory.GetFiles(baseDir, "config*.json")
+    //        .Concat(Directory.GetFiles(baseDir, "config.lab*.json"))
+    //        .Distinct()
+    //        .ToList();
 
-        foreach (var file in filesToTry)
-        {
-            try
-            {
-                var json = await File.ReadAllTextAsync(file);
-                using var doc = JsonDocument.Parse(json);
-                if (!doc.RootElement.TryGetProperty("Display", out var display)) continue;
-                var displayGameUid = display.TryGetProperty("GameUid", out var gu) ? gu.GetString() ?? "" : "";
-                if (string.IsNullOrEmpty(displayGameUid)) continue;
-                if (displayGameUid != targetGameUid) continue;
+    //    foreach (var file in filesToTry)
+    //    {
+    //        try
+    //        {
+    //            var json = await File.ReadAllTextAsync(file);
+    //            using var doc = JsonDocument.Parse(json);
+    //            if (!doc.RootElement.TryGetProperty("Display", out var display)) continue;
+    //            var displayGameUid = display.TryGetProperty("GameUid", out var gu) ? gu.GetString() ?? "" : "";
+    //            if (string.IsNullOrEmpty(displayGameUid)) continue;
+    //            if (displayGameUid != targetGameUid) continue;
 
-                var account = doc.RootElement.GetProperty("Account");
-                var stoken = account.TryGetProperty("Stoken", out var st) ? st.GetString() ?? "" : "";
-                var mid = account.TryGetProperty("Mid", out var mi) ? mi.GetString() ?? "" : "";
-                var stuid = account.TryGetProperty("Stuid", out var si) ? si.GetString() ?? "" : "";
-                var cookie = account.TryGetProperty("Cookie", out var ck) ? ck.GetString() ?? "" : "";
+    //            var account = doc.RootElement.GetProperty("Account");
+    //            var stoken = account.TryGetProperty("Stoken", out var st) ? st.GetString() ?? "" : "";
+    //            var mid = account.TryGetProperty("Mid", out var mi) ? mi.GetString() ?? "" : "";
+    //            var stuid = account.TryGetProperty("Stuid", out var si) ? si.GetString() ?? "" : "";
+    //            var cookie = account.TryGetProperty("Cookie", out var ck) ? ck.GetString() ?? "" : "";
 
-                bool needSave = false;
+    //            bool needSave = false;
 
-                if (string.IsNullOrEmpty(stoken) && !string.IsNullOrEmpty(cookie))
-                {
-                    var stokenMatch = Regex.Match(cookie, @"stoken=([^;]+)");
-                    if (stokenMatch.Success) { stoken = stokenMatch.Groups[1].Value; needSave = true; }
-                }
-                if (string.IsNullOrEmpty(mid) && !string.IsNullOrEmpty(cookie))
-                {
-                    var midMatch = Regex.Match(cookie, @"mid=([^;]+)");
-                    if (midMatch.Success) { mid = midMatch.Groups[1].Value; needSave = true; }
-                }
+    //            if (string.IsNullOrEmpty(stoken) && !string.IsNullOrEmpty(cookie))
+    //            {
+    //                var stokenMatch = Regex.Match(cookie, @"stoken=([^;]+)");
+    //                if (stokenMatch.Success) { stoken = stokenMatch.Groups[1].Value; needSave = true; }
+    //            }
+    //            if (string.IsNullOrEmpty(mid) && !string.IsNullOrEmpty(cookie))
+    //            {
+    //                var midMatch = Regex.Match(cookie, @"mid=([^;]+)");
+    //                if (midMatch.Success) { mid = midMatch.Groups[1].Value; needSave = true; }
+    //            }
 
-                if (needSave)
-                {
-                    try
-                    {
-                        var configObj = JsonSerializer.Deserialize<Config>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-                        if (configObj?.Account != null)
-                        {
-                            if (!string.IsNullOrEmpty(stoken)) configObj.Account.Stoken = stoken;
-                            if (!string.IsNullOrEmpty(mid)) configObj.Account.Mid = mid;
-                            var updatedJson = JsonSerializer.Serialize(configObj, new JsonSerializerOptions { WriteIndented = true });
-                            await File.WriteAllTextAsync(file, updatedJson);
-                            Debug.WriteLine($"[Gacha] 已回写 stoken/mid 到 {Path.GetFileName(file)}");
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Debug.WriteLine($"[Gacha] 回写 stoken/mid 失败: {ex.Message}");
-                    }
-                }
+    //            if (needSave)
+    //            {
+    //                try
+    //                {
+    //                    var configObj = JsonSerializer.Deserialize<Config>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+    //                    if (configObj?.Account != null)
+    //                    {
+    //                        if (!string.IsNullOrEmpty(stoken)) configObj.Account.Stoken = stoken;
+    //                        if (!string.IsNullOrEmpty(mid)) configObj.Account.Mid = mid;
+    //                        var updatedJson = JsonSerializer.Serialize(configObj, new JsonSerializerOptions { WriteIndented = true });
+    //                        await File.WriteAllTextAsync(file, updatedJson);
+    //                        Debug.WriteLine($"[Gacha] 已回写 stoken/mid 到 {Path.GetFileName(file)}");
+    //                    }
+    //                }
+    //                catch (Exception ex)
+    //                {
+    //                    Debug.WriteLine($"[Gacha] 回写 stoken/mid 失败: {ex.Message}");
+    //                }
+    //            }
 
-                return (stoken, mid, stuid, cookie, file);
-            }
-            catch { }
-        }
+    //            return (stoken, mid, stuid, cookie, file);
+    //        }
+    //        catch { }
+    //    }
 
-        return (null, null, null, null, null);
-    }
+    //    return (null, null, null, null, null);
+    //}
 
     [RelayCommand]
     private async Task FetchFromMiYouSheAsync()
     {
+        
         string gameUid = _currentUid;
         if (string.IsNullOrEmpty(gameUid))
         {
@@ -1308,22 +1312,39 @@ public partial class GachaAnalysisModel : ObservableObject
             return;
         }
 
-        var (stoken, mid, stuid, cookie, _) = await FindAccountByGameUidAsync(gameUid);
 
-        if (stoken == null)
+        var activeId = _accountManager.ActiveAccountId;
+        if (activeId == null)
         {
-            CrawlerStatus = $"请先登录 UID {gameUid} 对应的米游社账号后重试";
+            CrawlerStatus = "请先登录米游社账号后重试";
             OnErrorAction?.Invoke(CrawlerStatus);
             return;
         }
 
-        if (string.IsNullOrEmpty(stoken))
+        var cookies = await _accountManager.LoadCookiesAsync(activeId);
+        if (cookies == null || cookies.Count == 0)
         {
-            CrawlerStatus = $"UID {gameUid} 对应账号的 stoken 已失效，请重新登录该账号后重试";
+            CrawlerStatus = "无法读取登录凭证，请重新登录";
             OnErrorAction?.Invoke(CrawlerStatus);
             return;
         }
 
+       
+        string stoken = null, mid = null, stuid = null;
+        cookies.TryGetValue("stoken", out stoken);
+        cookies.TryGetValue("mid", out mid);
+        cookies.TryGetValue("stuid", out stuid);
+        if (string.IsNullOrEmpty(stuid))
+            cookies.TryGetValue("ltuid", out stuid);
+
+        if (string.IsNullOrEmpty(stoken) || string.IsNullOrEmpty(mid))
+        {
+            CrawlerStatus = "当前登录凭证不完整（缺少 stoken/mid），请重新登录";
+            OnErrorAction?.Invoke(CrawlerStatus);
+            return;
+        }
+
+      
         var previousUid = string.IsNullOrEmpty(_currentUid) ? _uidBeforeAddNew : _currentUid;
         _uidBeforeAddNew = "";
         _currentUid = gameUid;
@@ -1440,7 +1461,7 @@ public partial class GachaAnalysisModel : ObservableObject
         if (!IsScraping) IsFetching = false;
     }
 
-[RelayCommand]
+    [RelayCommand]
 private async Task ExportUigfAsync(string version)
 {
     if (string.IsNullOrEmpty(version)) version = "v4.2";
@@ -1932,7 +1953,14 @@ private async Task ImportUigfAsync()
         }
         return new ObservableCollection<GachaDisplayItem>(items);
     }
-
+    private async Task<string> GetCurrentCookieAsync()
+    {
+        var activeId = _accountManager.ActiveAccountId;
+        if (activeId == null) return null;
+        var cookies = await _accountManager.LoadCookiesAsync(activeId);
+        if (cookies == null || cookies.Count == 0) return null;
+        return string.Join("; ", cookies.Select(kv => $"{kv.Key}={kv.Value}"));
+    }
     public async Task FetchMetadataFromApiAsync()
     {
         IsScraping = true;
@@ -1942,18 +1970,7 @@ private async Task ImportUigfAsync()
         {
             await FetchGachaPoolMetadataAsync();
 
-            string? cookie = null;
-            try
-            {
-                var configPath = Helpers.AppPaths.ConfigFile;
-                if (File.Exists(configPath))
-                {
-                    var configJson = await File.ReadAllTextAsync(configPath);
-                    using var configDoc = JsonDocument.Parse(configJson);
-                    cookie = configDoc.RootElement.GetProperty("Account").TryGetProperty("Cookie", out var c) ? c.GetString() : null;
-                }
-            }
-            catch { }
+            var cookie = await GetCurrentCookieAsync();
 
             var results = new List<ScrapedMetadata>();
 

@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Drawing;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
@@ -22,7 +23,35 @@ using QRCoder;
  
 namespace FufuLauncher.Views;
 
+internal class LoginSession
+{
+    public CancellationTokenSource Cts { get; } = new();
+    public string Ticket
+    {
+        get; set;
+    }      
+    public string GameAppId
+    {
+        get; set;
+    }
+    public string GameDevice
+    {
+        get; set;
+    }
+    public LoginType Type
+    {
+        get; set;
+    }
+    public void Cancel() => Cts.Cancel();
+}
 
+internal enum LoginType
+{
+    AppQr,
+    GameQr,
+    WebPassport,
+    HoYoLabWeb
+}
 public sealed partial class LoginQrWindow : Window
 {
 
@@ -31,24 +60,24 @@ public sealed partial class LoginQrWindow : Window
     private const string SaltGame = "t0qEgfub6cvueAPgR5m9aQWWVciEer7v";
     private readonly string _deviceId;
     private readonly string _deviceFp;
-    private readonly HttpClient _httpClient;
+    private HttpClient _httpClient;
+
     public bool DidLoginSucceed() => IsLoginSuccessful;
-    private string _appTicket;
-    private string _gameTicket;
+
     private string _gameAppId = "7";
-    private string _gameDevice;
-    
-    private CancellationTokenSource _pollingCts;
+    private LoginSession _currentSession;
 
     private bool _hoYoLabCredentialsExtracted;
-                    
     private SemaphoreSlim _extractSemaphore = new SemaphoreSlim(1, 1);
     private DispatcherQueue _dispatcherQueue;
-
+    private TaskCompletionSource<(Dictionary<string, string> Cookies, string ServerType)>? _loginTcs;
     private ContentDialog _statusDialog;
     private bool _isDialogOpen;
 
-    public bool IsLoginSuccessful { get; private set; }
+    public bool IsLoginSuccessful
+    {
+        get; private set;
+    }
 
     private static readonly JsonSerializerOptions _jsonOptions = new()
     {
@@ -60,7 +89,6 @@ public sealed partial class LoginQrWindow : Window
     {
         _deviceId = Guid.NewGuid().ToString("N")[..16].ToUpper();
         _deviceFp = GenerateDeviceFingerprint();
-        _gameDevice = Guid.NewGuid().ToString("N");
         var handler = new HttpClientHandler { UseCookies = false };
         _httpClient = new HttpClient(handler);
 
@@ -68,17 +96,16 @@ public sealed partial class LoginQrWindow : Window
         _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(AppTitleBar);
-    
-        
-    
+
         if (Content is FrameworkElement rootContent)
         {
             rootContent.Loaded += RootContent_Loaded;
         }
-    
+
         Closed += LoginQrWindow_Closed;
     }
     #endregion
+
 
     #region 窗口生命周期
     private async void RootContent_Loaded(object sender, RoutedEventArgs e)
@@ -93,106 +120,138 @@ public sealed partial class LoginQrWindow : Window
 
     private void LoginQrWindow_Closed(object sender, WindowEventArgs args)
     {
-        _pollingCts?.Cancel();
+
+        _loginTcs?.TrySetCanceled();
+
+        _currentSession?.Cancel();
+
+
+        _httpClient?.Dispose();
+
         if (PassportWebView != null && PassportWebView.CoreWebView2 != null)
         {
             PassportWebView.CoreWebView2.WebResourceResponseReceived -= HoYoLab_WebResourceResponseReceived;
             PassportWebView.CoreWebView2.NavigationCompleted -= HoYoLab_NavigationCompleted;
+            PassportWebView.CoreWebView2.Stop();
+            PassportWebView.Close();
         }
     }
-
     #endregion
 
-    #region UI 事件处理
-   
 
+    #region UI 事件处理
     private async void RefreshButton_Click(object sender, RoutedEventArgs e)
     {
-        if (LoginMethodComboBox.SelectedIndex == 2) 
+
+        if (LoginMethodComboBox.SelectedIndex == 2)
         {
             await StartHoYoLabWebLoginAsync();
             return;
         }
 
+
+        _currentSession?.Cancel();
         bool isGameLogin = GameLoginPanel != null && GameLoginPanel.Visibility == Visibility.Visible;
-        await RestartLoginFlowAsync(isGameLogin);
+        var newSession = new LoginSession
+        {
+            Type = isGameLogin ? LoginType.GameQr : LoginType.AppQr,
+            GameAppId = _gameAppId,
+            GameDevice = Guid.NewGuid().ToString("N")
+        };
+        _currentSession = newSession;
+
+        if (isGameLogin)
+            await StartGameLoginFlowAsync(newSession);
+        else
+            await StartAppLoginFlowAsync(newSession);
     }
+
     private async void ManualCookieButton_Click(object sender, RoutedEventArgs e)
     {
-    TextBox inputTextBox = new()
-    {
-        AcceptsReturn = true,
-        Height = 150,
-        TextWrapping = TextWrapping.Wrap,
-        PlaceholderText = "在此处粘贴Cookie"
-    };
-
-    TextBlock errorTextBlock = new()
-    {
-        Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.Red),
-        Visibility = Visibility.Collapsed,
-        Margin = new Thickness(0, 10, 0, 0),
-        TextWrapping = TextWrapping.Wrap
-    };
-
-    StackPanel dialogContent = new();
-    dialogContent.Children.Add(inputTextBox);
-    dialogContent.Children.Add(errorTextBlock);
-
-    ContentDialog dialog = new()
-    {
-        Title = "手动输入Cookie",
-        Content = dialogContent,
-        PrimaryButtonText = "保存",
-        CloseButtonText = "取消",
-        XamlRoot = this.Content?.XamlRoot
-    };
-
-    dialog.PrimaryButtonClick += async (s, args) =>
-    {
-        string cookieStr = inputTextBox.Text.Trim();
-        
-        if (string.IsNullOrEmpty(cookieStr) || !cookieStr.Contains("="))
+        TextBox inputTextBox = new()
         {
-            args.Cancel = true;
-            errorTextBlock.Text = "Cookie无效";
-            errorTextBlock.Visibility = Visibility.Visible;
-            return;
-        }
-        
-        ContentDialogButtonClickDeferral deferral = args.GetDeferral();
-        try
-        {
-            await SaveConfigForLauncherAsync(cookieStr);
-            IsLoginSuccessful = true;
-            UpdateStatus("登录成功", false, true);
-            DispatcherQueue.TryEnqueue(() => Close());
-        }
-        catch (Exception ex)
-        {
-            args.Cancel = true;
-            errorTextBlock.Text = $"保存失败: {ex.Message}";
-            errorTextBlock.Visibility = Visibility.Visible;
-        }
-        finally
-        {
-            deferral.Complete();
-        }
-    };
-    
-    errorTextBlock.Visibility = Visibility.Collapsed;
-    inputTextBox.Text = string.Empty;
+            AcceptsReturn = true,
+            Height = 150,
+            TextWrapping = TextWrapping.Wrap,
+            PlaceholderText = "在此处粘贴Cookie"
+        };
 
-    await dialog.ShowAsync();
-}
+        TextBlock errorTextBlock = new()
+        {
+            Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.Red),
+            Visibility = Visibility.Collapsed,
+            Margin = new Thickness(0, 10, 0, 0),
+            TextWrapping = TextWrapping.Wrap
+        };
+
+        StackPanel dialogContent = new();
+        dialogContent.Children.Add(inputTextBox);
+        dialogContent.Children.Add(errorTextBlock);
+
+        ContentDialog dialog = new()
+        {
+            Title = "手动输入Cookie",
+            Content = dialogContent,
+            PrimaryButtonText = "保存",
+            CloseButtonText = "取消",
+            XamlRoot = this.Content?.XamlRoot
+        };
+
+        dialog.PrimaryButtonClick += async (s, args) =>
+        {
+            string cookieStr = inputTextBox.Text.Trim();
+
+            if (string.IsNullOrEmpty(cookieStr) || !cookieStr.Contains("="))
+            {
+                args.Cancel = true;
+                errorTextBlock.Text = "Cookie无效";
+                errorTextBlock.Visibility = Visibility.Visible;
+                return;
+            }
+
+            ContentDialogButtonClickDeferral deferral = args.GetDeferral();
+            try
+            {
+                var cookies = ParseCookieString(cookieStr);
+                if (cookies.Count == 0)
+                {
+                    args.Cancel = true;
+                    errorTextBlock.Text = "Cookie 格式无效";
+                    errorTextBlock.Visibility = Visibility.Visible;
+                    return;
+                }
+                string serverType = cookies.ContainsKey("ltuid_v2") || cookies.ContainsKey("cookie_token_v2") ? "os" : "cn";
+                OnLoginSuccess(cookies, serverType);
+            }
+            catch (Exception ex)
+            {
+                args.Cancel = true;
+                errorTextBlock.Text = $"保存失败: {ex.Message}";
+                errorTextBlock.Visibility = Visibility.Visible;
+            }
+            finally
+            {
+                deferral.Complete();
+            }
+        };
+
+        errorTextBlock.Visibility = Visibility.Collapsed;
+        inputTextBox.Text = string.Empty;
+
+        await dialog.ShowAsync();
+    }
+
     private async void LoginMethodComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
+
+        _currentSession?.Cancel();
+
         if (GameLoginPanel != null)
             GameLoginPanel.Visibility = Visibility.Collapsed;
         if (PassportWebViewBorder != null)
         {
             PassportWebViewBorder.Visibility = Visibility.Collapsed;
-            PassportWebViewBorder.MinWidth = 420;      
+            PassportWebViewBorder.MinWidth = 420;
             PassportWebViewBorder.MinHeight = 480;
         }
         if (QrCodeContainer != null)
@@ -200,7 +259,6 @@ public sealed partial class LoginQrWindow : Window
         if (WebLoginWarningTextBlock != null)
             WebLoginWarningTextBlock.Visibility = Visibility.Collapsed;
 
-        
         if (PassportWebView != null && PassportWebView.CoreWebView2 != null)
         {
             PassportWebView.CoreWebView2.WebResourceResponseReceived -= HoYoLab_WebResourceResponseReceived;
@@ -210,6 +268,7 @@ public sealed partial class LoginQrWindow : Window
 
         if (LoginMethodComboBox.SelectedIndex == 1)
         {
+
             if (QrCodeContainer != null)
                 QrCodeContainer.Visibility = Visibility.Collapsed;
             if (PassportWebViewBorder != null)
@@ -222,6 +281,7 @@ public sealed partial class LoginQrWindow : Window
 
         if (LoginMethodComboBox.SelectedIndex == 2)
         {
+
             if (QrCodeContainer != null)
                 QrCodeContainer.Visibility = Visibility.Collapsed;
             if (PassportWebViewBorder != null)
@@ -230,8 +290,17 @@ public sealed partial class LoginQrWindow : Window
             return;
         }
 
-        await RestartLoginFlowAsync(false);
+
+        var session = new LoginSession
+        {
+            Type = LoginType.AppQr,
+            GameAppId = _gameAppId,
+            GameDevice = Guid.NewGuid().ToString("N")
+        };
+        _currentSession = session;
+        await StartAppLoginFlowAsync(session);
     }
+
     private async void GameSelectionComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (LoginMethodComboBox != null && LoginMethodComboBox.SelectedIndex == 1)
@@ -240,6 +309,7 @@ public sealed partial class LoginQrWindow : Window
             await RestartLoginFlowAsync();
         }
     }
+
     private void RootGrid_PreviewKeyDown(object sender, Microsoft.UI.Xaml.Input.KeyRoutedEventArgs e)
     {
         bool isGameLoginVisible = GameLoginPanel != null && GameLoginPanel.Visibility == Visibility.Visible;
@@ -265,6 +335,7 @@ public sealed partial class LoginQrWindow : Window
             }
         }
     }
+
     private async void ClearCacheButton_Click(object sender, RoutedEventArgs e)
     {
         var dialog = new ContentDialog
@@ -285,7 +356,6 @@ public sealed partial class LoginQrWindow : Window
                 UpdateStatus("正在清除数据库缓存...", true);
 
                 var localSettingsService = new LocalSettingsService();
-
                 await localSettingsService.RemoveSettingAsync("AccountConfig");
                 await localSettingsService.RemoveSettingAsync("LabAccountConfig");
 
@@ -301,58 +371,56 @@ public sealed partial class LoginQrWindow : Window
             }
         }
     }
+
     private void ExitGameLoginMode()
     {
         if (GameLoginPanel != null)
-        {
             GameLoginPanel.Visibility = Visibility.Collapsed;
-        }
         if (LoginMethodComboBox != null)
-        {
             LoginMethodComboBox.Visibility = Visibility.Visible;
-        }
 
         LoginMethodComboBox_SelectionChanged(LoginMethodComboBox, null);
     }
+
     private void CancelGameLoginPolling()
     {
-        if (_pollingCts != null && !_pollingCts.IsCancellationRequested)
-        {
-            _pollingCts.Cancel();
-            UpdateStatus("已强制终止扫码等待", false, false);
-        }
+        _currentSession?.Cancel();
+        UpdateStatus("已强制终止扫码等待", false, false);
     }
+
     private async void EnterGameLoginMode()
     {
+        _currentSession?.Cancel();
+
         if (LoginMethodComboBox != null)
-        {
             LoginMethodComboBox.Visibility = Visibility.Collapsed;
-        }
         if (GameLoginPanel != null)
-        {
             GameLoginPanel.Visibility = Visibility.Visible;
-        }
         if (PassportWebViewBorder != null)
-        {
             PassportWebViewBorder.Visibility = Visibility.Collapsed;
-        }
         if (WebLoginWarningTextBlock != null)
-        {
             WebLoginWarningTextBlock.Visibility = Visibility.Collapsed;
-        }
         if (QrCodeContainer != null)
-        {
             QrCodeContainer.Visibility = Visibility.Visible;
-        }
 
         UpdateGameAppIdFromSelection();
-        await RestartLoginFlowAsync(true);
+
+        var session = new LoginSession
+        {
+            Type = LoginType.GameQr,
+            GameAppId = _gameAppId,
+            GameDevice = Guid.NewGuid().ToString("N")
+        };
+        _currentSession = session;
+        await StartGameLoginFlowAsync(session);
     }
+
     private async void GameLoginButton_Click(object sender, RoutedEventArgs e)
     {
         UpdateGameAppIdFromSelection();
         await RestartLoginFlowAsync(true);
     }
+
     private void UpdateGameAppIdFromSelection()
     {
         if (GameAppIdTextBox != null && !string.IsNullOrWhiteSpace(GameAppIdTextBox.Text))
@@ -362,36 +430,68 @@ public sealed partial class LoginQrWindow : Window
     }
     #endregion
 
+
     #region 登录流程控制
     private async Task RestartLoginFlowAsync(bool isGameLogin = false)
     {
-        if (_pollingCts != null)
+        _currentSession?.Cancel();
+
+        var session = new LoginSession
         {
-            _pollingCts.Cancel();
-        }
-        UpdateStatus("", false, true);
-        await StartLoginFlowAsync(isGameLogin);
+            Type = isGameLogin ? LoginType.GameQr : LoginType.AppQr,
+            GameAppId = _gameAppId,
+            GameDevice = Guid.NewGuid().ToString("N")
+        };
+        _currentSession = session;
+
+        if (isGameLogin)
+            await StartGameLoginFlowAsync(session);
+        else
+            await StartAppLoginFlowAsync(session);
     }
+
     private async Task StartLoginFlowAsync(bool isGameLogin = false)
     {
         if (isGameLogin)
         {
-            await StartGameLoginFlowAsync();
+            await StartGameLoginFlowAsync(_currentSession ?? new LoginSession { Type = LoginType.GameQr });
         }
         else if (LoginMethodComboBox.SelectedIndex == 0)
         {
-            await StartAppLoginFlowAsync();
+            await StartAppLoginFlowAsync(_currentSession ?? new LoginSession { Type = LoginType.AppQr });
         }
     }
 
+    private void OnLoginSuccess(Dictionary<string, string> cookies, string serverType)
+    {
+        if (_loginTcs == null)
+            return;
+
+        _loginTcs.TrySetResult((cookies, serverType));
+        DispatcherQueue.TryEnqueue(() => Close());
+    }
+
+    private void OnLoginFailed(Exception? ex = null)
+    {
+        if (_loginTcs == null)
+            return;
+
+        if (ex != null)
+            _loginTcs.TrySetException(ex);
+        else
+            _loginTcs.TrySetCanceled();
+
+        DispatcherQueue.TryEnqueue(() => Close());
+    }
     #endregion
 
-    #region 米游社APP扫码登录
-    private async Task StartAppLoginFlowAsync()
+
+    #region 米游社APP扫码登录（重构为基于会话对象）
+    private async Task StartAppLoginFlowAsync(LoginSession session)
     {
         UpdateStatus("正在创建APP登录二维码...", true);
-        
-        var qrResult = await CreateAppQrCodeAsync();
+
+        var qrResult = await CreateAppQrCodeAsync(session);
         if (!qrResult.Success)
         {
             UpdateStatus($"创建失败: {qrResult.Message}", false);
@@ -401,20 +501,17 @@ public sealed partial class LoginQrWindow : Window
         RenderQrCode(qrResult.Url);
         UpdateStatus("请使用米游社APP扫描二维码", false, true);
 
-        _pollingCts = new CancellationTokenSource();
-        await PollAppLoginStatusAsync(_pollingCts.Token);
+        await PollAppLoginStatusAsync(session);
     }
-    private async Task<(bool Success, string Url, string Message)> CreateAppQrCodeAsync()
-    {
-        
 
+    private async Task<(bool Success, string Url, string Message)> CreateAppQrCodeAsync(LoginSession session)
+    {
         string url = ApiEndpoints.PassportAppCreateQrLoginUrl;
         var body = new JsonObject();
         string bodyStr = body.ToJsonString(_jsonOptions);
 
         var request = new HttpRequestMessage(HttpMethod.Post, url);
         request.Content = new StringContent(bodyStr, Encoding.UTF8, "application/json");
-
         AddCommonHeaders(request, bodyStr, "", "3", "ddxf5dufpuyo", "2.90.1");
 
         try
@@ -426,7 +523,7 @@ public sealed partial class LoginQrWindow : Window
             if (result["retcode"]?.GetValue<int>() == 0)
             {
                 string qrUrl = result["data"]["url"]?.GetValue<string>();
-                _appTicket = result["data"]["ticket"]?.GetValue<string>();
+                session.Ticket = result["data"]["ticket"]?.GetValue<string>(); 
                 return (true, qrUrl, "Success");
             }
             return (false, null, result["message"]?.GetValue<string>());
@@ -436,93 +533,108 @@ public sealed partial class LoginQrWindow : Window
             return (false, null, ex.Message);
         }
     }
-    private async Task PollAppLoginStatusAsync(CancellationToken ct)
+
+    private async Task PollAppLoginStatusAsync(LoginSession session)
     {
+        const int MaxConsecutiveErrors = 5;
+        const int TimeoutSeconds = 180;
+        int consecutiveErrors = 0;
+        using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(TimeoutSeconds));
+        using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(session.Cts.Token, timeoutCts.Token);
+        CancellationToken ct = linkedCts.Token;
+
         string url = ApiEndpoints.PassportAppQueryQrLoginStatusUrl;
         int pollInterval = 3000;
         JsonNode confirmedData = null;
 
         while (!ct.IsCancellationRequested)
         {
-            var body = new JsonObject { ["ticket"] = _appTicket };
+            var body = new JsonObject { ["ticket"] = session.Ticket };
             string bodyStr = body.ToJsonString(_jsonOptions);
 
-            var request = new HttpRequestMessage(HttpMethod.Post, url);
+            using var request = new HttpRequestMessage(HttpMethod.Post, url);
             request.Content = new StringContent(bodyStr, Encoding.UTF8, "application/json");
-
             AddCommonHeaders(request, bodyStr, "", "3", "ddxf5dufpuyo", "2.90.1");
 
             try
             {
-                var response = await _httpClient.SendAsync(request, ct);
+                using var response = await _httpClient.SendAsync(request, ct);
                 string responseStr = await response.Content.ReadAsStringAsync();
                 var result = JsonNode.Parse(responseStr);
 
-                int retcode = result["retcode"]?.GetValue<int>() ?? -1;
+                int retcode = result?["retcode"]?.GetValue<int>() ?? -1;
 
                 if (retcode == -3501 || retcode == -106)
                 {
                     UpdateStatus("二维码已失效或过期", false);
-                    return; 
+                    return;
                 }
 
                 if (retcode == 0)
                 {
                     string status = result["data"]["status"]?.GetValue<string>();
-                    
-                    if (status == "Confirmed" || status == "confirmed")
+                    if (status?.ToLower() == "confirmed")
                     {
                         UpdateStatus("APP扫码成功，正在换取...", true);
                         confirmedData = result["data"];
-                        break; 
+                        break;
                     }
-
-                    if (status == "Scanned" || status == "scanned")
+                    if (status?.ToLower() == "scanned")
                     {
                         UpdateStatus("已扫码，请在手机端确认登录...", true);
                     }
+                    consecutiveErrors = 0; 
                 }
-                
+                else
+                {
+                    consecutiveErrors++;
+                    Debug.WriteLine($"轮询返回非预期码: {retcode}");
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                if (timeoutCts.IsCancellationRequested)
+                    UpdateStatus("登录超时，请重新获取二维码", false);
+                return;
+            }
+            catch (Exception ex)
+            {
+                consecutiveErrors++;
+                Debug.WriteLine($"轮询异常: {ex.Message}");
+            }
+
+            if (consecutiveErrors >= MaxConsecutiveErrors)
+            {
+                UpdateStatus("网络异常次数过多，请检查网络后重试", false);
+                return;
+            }
+
+            try
+            {
                 await Task.Delay(pollInterval, ct);
             }
-            catch (TaskCanceledException) { return; }
-            catch (Exception) { await Task.Delay(pollInterval, ct); }
+            catch (OperationCanceledException)
+            {
+                if (timeoutCts.IsCancellationRequested)
+                    UpdateStatus("登录超时，请重新获取二维码", false);
+                return;
+            }
         }
 
         if (confirmedData != null)
         {
             await ProcessAndExchangeV2TokensAsync(confirmedData);
-            DispatcherQueue.TryEnqueue(() => Close());
         }
-    }
-    private async Task ProcessAndExchangeV2TokensAsync(JsonNode dataNode)
-    {
-        string stoken = "";
-        string mid = dataNode["user_info"]?["mid"]?.GetValue<string>() ?? "";
-        string aid = dataNode["user_info"]?["aid"]?.GetValue<string>() ?? "";
-
-        var tokens = dataNode["tokens"]?.AsArray();
-        if (tokens != null && tokens.Count > 0)
-        {
-            stoken = tokens[0]["token"]?.GetValue<string>();
-        }
-
-        if (string.IsNullOrEmpty(stoken) || string.IsNullOrEmpty(mid))
-        {
-            UpdateStatus("提取失败，请重试", false);
-            return;
-        }
-        
-        await ExchangeV2TokensAndSaveAsync(stoken, mid, aid);
     }
     #endregion
 
-    #region 游戏扫码登录
-    private async Task StartGameLoginFlowAsync()
+
+    #region 游戏扫码登录（重构为基于会话对象）
+    private async Task StartGameLoginFlowAsync(LoginSession session)
     {
         UpdateStatus("正在创建游戏扫码二维码...", true);
-        
-        var qrResult = await CreateGameQrCodeAsync();
+
+        var qrResult = await CreateGameQrCodeAsync(session);
         if (!qrResult.Success)
         {
             UpdateStatus($"创建失败: {qrResult.Message}", false);
@@ -532,24 +644,21 @@ public sealed partial class LoginQrWindow : Window
         RenderQrCode(qrResult.Url);
         UpdateStatus("请使用米游社或对应游戏内扫描二维码", false, true);
 
-        _pollingCts = new CancellationTokenSource();
-        await PollGameLoginStatusAsync(_pollingCts.Token);
+        await PollGameLoginStatusAsync(session);
     }
 
-    private async Task<(bool Success, string Url, string Message)> CreateGameQrCodeAsync()
+    private async Task<(bool Success, string Url, string Message)> CreateGameQrCodeAsync(LoginSession session)
     {
         string url = ApiEndpoints.Hk4eQrCodeFetchUrl;
-        
         var requestBody = new JsonObject
         {
-            ["app_id"] = int.Parse(_gameAppId), 
-            ["device"] = _gameDevice
+            ["app_id"] = int.Parse(session.GameAppId),
+            ["device"] = session.GameDevice
         };
         string bodyStr = requestBody.ToJsonString(_jsonOptions);
 
         var request = new HttpRequestMessage(HttpMethod.Post, url);
         request.Content = new StringContent(bodyStr, Encoding.UTF8, "application/json");
-
         AddGameHeaders(request, bodyStr, "");
 
         try
@@ -561,19 +670,9 @@ public sealed partial class LoginQrWindow : Window
             if (result["retcode"]?.GetValue<int>() == 0)
             {
                 string qrUrl = result["data"]["url"]?.GetValue<string>();
-                
                 var uri = new Uri(qrUrl);
                 var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
-                _gameTicket = query["ticket"];
-
-                if (string.IsNullOrEmpty(_gameTicket) && qrUrl.Contains("ticket="))
-                {
-                    var start = qrUrl.IndexOf("ticket=") + 7;
-                    var end = qrUrl.IndexOf('&', start);
-                    if (end == -1) end = qrUrl.Length;
-                    _gameTicket = qrUrl.Substring(start, end - start);
-                }
-
+                session.Ticket = query["ticket"];  // 存入 session
                 return (true, qrUrl, "Success");
             }
             return (false, null, result["message"]?.GetValue<string>());
@@ -584,8 +683,15 @@ public sealed partial class LoginQrWindow : Window
         }
     }
 
-    private async Task PollGameLoginStatusAsync(CancellationToken ct)
+    private async Task PollGameLoginStatusAsync(LoginSession session)
     {
+        const int MaxConsecutiveErrors = 5;
+        const int TimeoutSeconds = 180;
+        int consecutiveErrors = 0;
+        var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(TimeoutSeconds));
+        using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(session.Cts.Token, timeoutCts.Token);
+        CancellationToken ct = linkedCts.Token;
+
         string url = ApiEndpoints.Hk4eQrCodeQueryUrl;
         int pollInterval = 3000;
 
@@ -593,15 +699,14 @@ public sealed partial class LoginQrWindow : Window
         {
             var requestBody = new JsonObject
             {
-                ["app_id"] = int.Parse(_gameAppId),
-                ["device"] = _gameDevice,
-                ["ticket"] = _gameTicket
+                ["app_id"] = int.Parse(session.GameAppId),
+                ["device"] = session.GameDevice,
+                ["ticket"] = session.Ticket
             };
             string bodyStr = requestBody.ToJsonString(_jsonOptions);
 
             var request = new HttpRequestMessage(HttpMethod.Post, url);
             request.Content = new StringContent(bodyStr, Encoding.UTF8, "application/json");
-
             AddGameHeaders(request, bodyStr, "");
 
             try
@@ -615,7 +720,6 @@ public sealed partial class LoginQrWindow : Window
                 if (retcode == 0)
                 {
                     string stat = result["data"]["stat"]?.GetValue<string>();
-                    
                     if (stat == "Confirmed")
                     {
                         UpdateStatus("扫码成功，正在换取SToken...", true);
@@ -626,7 +730,6 @@ public sealed partial class LoginQrWindow : Window
                             string uid = rawNode["uid"]?.GetValue<string>();
                             string token = rawNode["token"]?.GetValue<string>();
                             await GetSTokenByGameTokenAsync(uid, token);
-                            DispatcherQueue.TryEnqueue(() => Close());
                             return;
                         }
                     }
@@ -634,24 +737,39 @@ public sealed partial class LoginQrWindow : Window
                     {
                         UpdateStatus("已扫码，请在手机端确认登录...", true);
                     }
+                    consecutiveErrors = 0;
                 }
                 else
                 {
-                    UpdateStatus($"二维码检查错误或过期: {result["message"]?.GetValue<string>()}", false);
-                    return;
+                    consecutiveErrors++;
+                    Debug.WriteLine($"游戏二维码轮询异常码: {retcode}");
                 }
-                
-                await Task.Delay(pollInterval, ct);
             }
-            catch (TaskCanceledException) { return; }
-            catch (Exception) { await Task.Delay(pollInterval, ct); }
+            catch (OperationCanceledException)
+            {
+                if (timeoutCts.IsCancellationRequested)
+                    UpdateStatus("登录超时，请重新获取二维码", false);
+                return;
+            }
+            catch (Exception ex)
+            {
+                consecutiveErrors++;
+                Debug.WriteLine($"游戏轮询异常: {ex.Message}");
+            }
+
+            if (consecutiveErrors >= MaxConsecutiveErrors)
+            {
+                UpdateStatus("网络异常次数过多，请检查网络后重试", false);
+                return;
+            }
+
+            await Task.Delay(pollInterval, ct);
         }
     }
 
     private async Task GetSTokenByGameTokenAsync(string accountId, string gameToken)
     {
         string url = ApiEndpoints.GetTokenByGameTokenUrl;
-        
         var requestBody = new JsonObject
         {
             ["account_id"] = int.Parse(accountId),
@@ -661,7 +779,7 @@ public sealed partial class LoginQrWindow : Window
 
         var request = new HttpRequestMessage(HttpMethod.Post, url);
         request.Content = new StringContent(bodyStr, Encoding.UTF8, "application/json");
-        
+
         request.Headers.TryAddWithoutValidation("x-rpc-app_version", "2.71.1");
         request.Headers.TryAddWithoutValidation("x-rpc-game_biz", "bbs_cn");
         request.Headers.TryAddWithoutValidation("x-rpc-sys_version", "12");
@@ -686,7 +804,11 @@ public sealed partial class LoginQrWindow : Window
 
                 if (!string.IsNullOrEmpty(stoken) && !string.IsNullOrEmpty(mid))
                 {
-                    await ExchangeV2TokensAndSaveAsync(stoken, mid, accountId);
+                    var cookies = await ExchangeV2TokensAsync(stoken, mid, accountId);
+                    if (cookies != null)
+                    {
+                        OnLoginSuccess(cookies, "cn");
+                    }
                     return;
                 }
             }
@@ -717,17 +839,17 @@ public sealed partial class LoginQrWindow : Window
         long t = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         string r = new Random().Next(100001, 200000).ToString();
         string b = string.IsNullOrEmpty(body) ? "" : body;
-        string q = string.IsNullOrEmpty(query) ? "" : query; 
-        
+        string q = string.IsNullOrEmpty(query) ? "" : query;
         string signStr = $"salt={SaltGame}&t={t}&r={r}&b={b}&q={q}";
         string sign = CreateMD5(signStr);
         return $"{t},{r},{sign}";
     }
     #endregion
 
+
     #region 扫码换取V2Cookie
-    
-private async Task ExchangeV2TokensAndSaveAsync(string stoken, string mid, string aid)
+
+    private async Task<Dictionary<string, string>?> ExchangeV2TokensAsync(string stoken, string mid, string aid)
     {
         try
         {
@@ -737,7 +859,7 @@ private async Task ExchangeV2TokensAndSaveAsync(string stoken, string mid, strin
                 ["stoken"] = stoken,
                 ["mid"] = mid,
                 ["account_id"] = aid,
-                ["ltuid"] = aid 
+                ["ltuid"] = aid
             };
 
             string cookieToken = await GetCookieAccountInfoBySTokenAsync(stoken);
@@ -750,7 +872,7 @@ private async Task ExchangeV2TokensAndSaveAsync(string stoken, string mid, strin
             if (string.IsNullOrEmpty(webTicket))
             {
                 UpdateStatus("无法创建验证凭据");
-                return;
+                return null;
             }
 
             string authCookie = $"stoken={stoken}; mid={mid}";
@@ -759,7 +881,7 @@ private async Task ExchangeV2TokensAndSaveAsync(string stoken, string mid, strin
             if (!scanResult)
             {
                 UpdateStatus("扫描请求被拒绝");
-                return;
+                return null;
             }
 
             await Task.Delay(1000);
@@ -768,7 +890,7 @@ private async Task ExchangeV2TokensAndSaveAsync(string stoken, string mid, strin
             if (!confirmResult)
             {
                 UpdateStatus("请求被拒绝");
-                return;
+                return null;
             }
 
             var v2Cookies = await GetWebQrStatusAndExtractCookiesAsync(webTicket);
@@ -778,22 +900,49 @@ private async Task ExchangeV2TokensAndSaveAsync(string stoken, string mid, strin
                 {
                     finalCookies[kvp.Key] = kvp.Value;
                 }
-                
+
                 if (!finalCookies.ContainsKey("stoken") || string.IsNullOrEmpty(finalCookies["stoken"]))
                 {
                     finalCookies["stoken"] = stoken;
                 }
 
-                await SaveCredentialsAsync(finalCookies);
+                return finalCookies;
             }
             else
             {
                 UpdateStatus("未能从响应头提取出完整Cookie");
+                return null;
             }
         }
         catch (Exception ex)
         {
             UpdateStatus($"凭证换取异常: {ex.Message}");
+            return null;
+        }
+    }
+
+    private async Task ProcessAndExchangeV2TokensAsync(JsonNode dataNode)
+    {
+        string stoken = "";
+        string mid = dataNode["user_info"]?["mid"]?.GetValue<string>() ?? "";
+        string aid = dataNode["user_info"]?["aid"]?.GetValue<string>() ?? "";
+
+        var tokens = dataNode["tokens"]?.AsArray();
+        if (tokens != null && tokens.Count > 0)
+        {
+            stoken = tokens[0]["token"]?.GetValue<string>();
+        }
+
+        if (string.IsNullOrEmpty(stoken) || string.IsNullOrEmpty(mid))
+        {
+            UpdateStatus("提取失败，请重试", false);
+            return;
+        }
+
+        var cookies = await ExchangeV2TokensAsync(stoken, mid, aid);
+        if (cookies != null)
+        {
+            OnLoginSuccess(cookies, "cn");
         }
     }
 
@@ -882,40 +1031,27 @@ private async Task ExchangeV2TokensAndSaveAsync(string stoken, string mid, strin
     }
     #endregion
 
+
     #region 通行证网页登录
 
     private async Task StartWebPassportLoginAsync()
     {
-        if (_pollingCts != null)
-        {
-            _pollingCts.Cancel();
-        }
+       
+        _currentSession?.Cancel();
 
         UpdateStatus("正在加载通行证登录页面...", true);
-
         try
         {
             await PassportWebView.EnsureCoreWebView2Async();
-
             PassportWebView.DefaultBackgroundColor = Microsoft.UI.Colors.Transparent;
-
             PassportWebView.CoreWebView2.Settings.AreDevToolsEnabled = false;
 
             PassportWebView.CoreWebView2.ContextMenuRequested -= CoreWebView2_ContextMenuRequested;
             PassportWebView.CoreWebView2.ContextMenuRequested += CoreWebView2_ContextMenuRequested;
 
             PassportWebView.CoreWebView2.Stop();
-
             PassportWebView.CoreWebView2.CookieManager.DeleteAllCookies();
-
-            try
-            {
-                await PassportWebView.CoreWebView2.Profile.ClearBrowsingDataAsync();
-            }
-            catch
-            {
-                // ignored
-            }
+            try { await PassportWebView.CoreWebView2.Profile.ClearBrowsingDataAsync(); } catch { }
 
             PassportWebView.CoreWebView2.Navigate("about:blank");
 
@@ -990,18 +1126,16 @@ private async Task ExchangeV2TokensAndSaveAsync(string stoken, string mid, strin
 
                 if (cookieDict.ContainsKey("cookie_token") || cookieDict.ContainsKey("cookie_token_v2"))
                 {
-                    DispatcherQueue.TryEnqueue(async () =>
+                    DispatcherQueue.TryEnqueue(() =>
                     {
                         try
                         {
-                            UpdateStatus("凭证提取成功，正在保存", true);
-                            await SaveCredentialsAsync(cookieDict);
-                            UpdateStatus("登录成功", false, true);
-                            Close();
+                            UpdateStatus("凭证提取成功", true);
+                            OnLoginSuccess(cookieDict, "cn");
                         }
                         catch (Exception ex)
                         {
-                            UpdateStatus($"保存失败: {ex.Message}", false);
+                            UpdateStatus($"处理失败: {ex.Message}", false);
                         }
                     });
                 }
@@ -1011,11 +1145,12 @@ private async Task ExchangeV2TokensAndSaveAsync(string stoken, string mid, strin
 
     #endregion
 
+
     #region HoYoLAB 网页登录
     private async Task StartHoYoLabWebLoginAsync()
     {
+        _currentSession?.Cancel();
         _hoYoLabCredentialsExtracted = false;
-        if (_pollingCts != null) _pollingCts.Cancel();
 
         UpdateStatus("正在加载HoYoLAB登录页...", true);
 
@@ -1174,23 +1309,16 @@ private async Task ExchangeV2TokensAndSaveAsync(string stoken, string mid, strin
 
         _hoYoLabCredentialsExtracted = true;
 
-        bool enqueued = _dispatcherQueue.TryEnqueue(async () =>
+        bool enqueued = _dispatcherQueue.TryEnqueue(() =>
         {
             try
             {
-                UpdateStatus("HoYoLAB凭证提取成功，正在保存...", true);
-                await SaveLabCredentialsAsync(dict);
-
-
-
-                IsLoginSuccessful = true;
-                UpdateStatus("登录成功", false, true);
-                Close();
+                UpdateStatus("HoYoLAB凭证提取成功", true);
+                OnLoginSuccess(dict, "os");
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"保存凭证或关闭窗口失败: {ex}");
-
+                Debug.WriteLine($"处理失败: {ex}");
             }
         });
 
@@ -1202,217 +1330,16 @@ private async Task ExchangeV2TokensAndSaveAsync(string stoken, string mid, strin
     }
     #endregion
 
-    #region Cookie 保存
-    private async Task SaveLabCredentialsAsync(Dictionary<string, string> cookies)
-    {
-        var cookieList = new List<string>();
-        foreach (var kvp in cookies)
-        {
-            cookieList.Add($"{kvp.Key}={kvp.Value}");
-        }
-        string cookieString = string.Join("; ", cookieList);
-
-        await SaveLabConfigForLauncherAsync(cookieString);
-
-        IsLoginSuccessful = true;
-        UpdateStatus("HoYoLAB登录成功", false, true);
-       
-    }
-    private async Task SaveLabConfigForLauncherAsync(string cookieString)
-    {
-        try
-        {
-            var path = Helpers.AppPaths.ConfigLabFile;
-            var dir = Path.GetDirectoryName(path);
-            if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
-                Directory.CreateDirectory(dir);
-
-            var config = new Config();
-            if (File.Exists(path))
-            {
-                var json = await File.ReadAllTextAsync(path);
-                config = JsonSerializer.Deserialize<Config>(json) ?? new Config();
-            }
-
-            config.Account.Cookie = cookieString;
-
-            if (cookieString.Contains("account_id_v2="))
-            {
-                var match = System.Text.RegularExpressions.Regex.Match(cookieString, @"account_id_v2=(\d+)");
-                if (match.Success) config.Account.Stuid = match.Groups[1].Value;
-            }
-            else if (cookieString.Contains("ltuid_v2="))
-            {
-                var match = System.Text.RegularExpressions.Regex.Match(cookieString, @"ltuid_v2=(\d+)");
-                if (match.Success) config.Account.Stuid = match.Groups[1].Value;
-            }
-
-            if (cookieString.Contains("stoken="))
-            {
-                var stokenMatch = System.Text.RegularExpressions.Regex.Match(cookieString, @"stoken=([^;]+)");
-                if (stokenMatch.Success) config.Account.Stoken = stokenMatch.Groups[1].Value;
-            }
-
-            if (cookieString.Contains("mid="))
-            {
-                var midMatch = System.Text.RegularExpressions.Regex.Match(cookieString, @"mid=([^;]+)");
-                if (midMatch.Success) config.Account.Mid = midMatch.Groups[1].Value;
-            }
-
-            var options = new JsonSerializerOptions
-            {
-                WriteIndented = true,
-                Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
-            };
-
-            var newJson = JsonSerializer.Serialize(config, options);
-            await File.WriteAllTextAsync(path, newJson);
-
-            try
-            {
-                var localSettingsService = App.GetService<ILocalSettingsService>();
-                await localSettingsService.SaveSettingAsync("ActiveConfigFile", "config.lab.json");
-                await localSettingsService.SaveSettingAsync("IsInternationalAccount", true);
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"HoYoLAB配置数据库保存失败: {ex.Message}");
-
-                WeakReferenceMessenger.Default.Send(
-                    new NotificationMessage(
-                        "保存状态异常",
-                        $"HoYoLAB配置数据库保存失败: {ex.Message}",
-                        NotificationType.Error,
-                        4000
-                    )
-                );
-            }
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"HoYoLAB配置保存失败: {ex.Message}");
-
-            WeakReferenceMessenger.Default.Send(
-                new NotificationMessage(
-                    "写入配置失败",
-                    $"无法保存HoYoLAB配置文件: {ex.Message}",
-                    NotificationType.Error,
-                    4000
-                )
-            );
-        }
-    }
-    private async Task SaveCredentialsAsync(Dictionary<string, string> cookies)
-    {
-        var cookieList = new List<string>();
-        foreach (var kvp in cookies)
-        {
-            cookieList.Add($"{kvp.Key}={kvp.Value}");
-        }
-        string cookieString = string.Join("; ", cookieList);
-
-        await SaveConfigForLauncherAsync(cookieString);
-
-        IsLoginSuccessful = true;
-        UpdateStatus("登录成功", false, true);
-       
-    }
-
-    private async Task SaveConfigForLauncherAsync(string cookieString)
-    {
-        try
-        {
-            var path = Helpers.AppPaths.ConfigFile;
-            var dir = Path.GetDirectoryName(path);
-            if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
-                Directory.CreateDirectory(dir);
-
-            var config = new Config();
-            if (File.Exists(path))
-            {
-                var json = await File.ReadAllTextAsync(path);
-                config = JsonSerializer.Deserialize<Config>(json) ?? new Config();
-            }
-
-            config.Account.Cookie = cookieString;
-
-            if (cookieString.Contains("account_id="))
-            {
-                var match = System.Text.RegularExpressions.Regex.Match(cookieString, @"account_id=(\d+)");
-                if (match.Success) config.Account.Stuid = match.Groups[1].Value;
-            }
-            else if (cookieString.Contains("ltuid="))
-            {
-                var match = System.Text.RegularExpressions.Regex.Match(cookieString, @"ltuid=(\d+)");
-                if (match.Success) config.Account.Stuid = match.Groups[1].Value;
-            }
-            else if (cookieString.Contains("stuid="))
-            {
-                var match = System.Text.RegularExpressions.Regex.Match(cookieString, @"stuid=(\d+)");
-                if (match.Success) config.Account.Stuid = match.Groups[1].Value;
-            }
-
-            var cookies = cookieString.Split(';', StringSplitOptions.RemoveEmptyEntries);
-            foreach (var cookie in cookies)
-            {
-                var kvp = cookie.Trim();
-                if (kvp.StartsWith("stoken="))
-                {
-                    config.Account.Stoken = kvp.Substring(7);
-                }
-                else if (kvp.StartsWith("mid="))
-                {
-                    config.Account.Mid = kvp.Substring(4);
-                }
-            }
-
-            var options = new JsonSerializerOptions
-            {
-                WriteIndented = true,
-                Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
-            };
-
-            var newJson = JsonSerializer.Serialize(config, options);
-            await File.WriteAllTextAsync(path, newJson);
-
-            try
-            {
-                var localSettingsService = App.GetService<ILocalSettingsService>();
-                await localSettingsService.SaveSettingAsync("ActiveConfigFile", "config.json");
-                await localSettingsService.SaveSettingAsync("IsInternationalAccount", false);
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"配置数据库保存失败: {ex.Message}");
-
-                WeakReferenceMessenger.Default.Send(
-                    new NotificationMessage(
-                        "保存状态异常",
-                        $"配置数据库保存失败: {ex.Message}",
-                        NotificationType.Error,
-                        4000
-                    )
-                );
-            }
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"兼容配置保存失败: {ex.Message}");
-
-            WeakReferenceMessenger.Default.Send(
-                new NotificationMessage(
-                    "写入配置失败",
-                    $"无法保存配置文件，请检查权限: {ex.Message}",
-                    NotificationType.Error,
-                    4000
-                )
-            );
-        }
-    }
-
-    #endregion
 
     #region 公共
+    
+    public Task<(Dictionary<string, string> Cookies, string ServerType)> ShowAndWaitAsync()
+    {
+        _loginTcs?.TrySetCanceled();
+        _loginTcs = new TaskCompletionSource<(Dictionary<string, string>, string)>();
+        this.Activate();
+        return _loginTcs.Task;
+    }
     private async Task<string> GetCookieAccountInfoBySTokenAsync(string stoken)
     {
         string url = $"{ApiEndpoints.GetCookieAccountInfoBySTokenUrl}?stoken={stoken}";
@@ -1507,8 +1434,25 @@ private async Task ExchangeV2TokensAndSaveAsync(string stoken, string mid, strin
             return sb.ToString();
         }
     }
-
+    private Dictionary<string, string> ParseCookieString(string cookieString)
+    {
+        var dict = new Dictionary<string, string>();
+        foreach (var part in cookieString.Split(';', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var trimmed = part.Trim();
+            var idx = trimmed.IndexOf('=');
+            if (idx > 0)
+            {
+                var key = trimmed.Substring(0, idx).Trim();
+                var value = trimmed.Substring(idx + 1).Trim();
+                if (!string.IsNullOrEmpty(key) && !dict.ContainsKey(key))
+                    dict[key] = value;
+            }
+        }
+        return dict;
+    }
     #endregion
+
 
     #region 状态对话框管理
     private void UpdateStatus(string message, bool isProgress = false, bool closeDialog = false)
@@ -1553,6 +1497,7 @@ private async Task ExchangeV2TokensAndSaveAsync(string stoken, string mid, strin
 
     #endregion
 
+
     #region 二维码渲染
     private void RenderQrCode(string url)
     {
@@ -1578,39 +1523,4 @@ private async Task ExchangeV2TokensAndSaveAsync(string stoken, string mid, strin
         });
     }
     #endregion
-
-    //private async void HoYoLabWebResourceResponseReceived(object sender, CoreWebView2WebResourceResponseReceivedEventArgs e)
-    //{
-    //    string uri = e.Request.Uri;
-
-    //    if (uri.Contains("webLoginByPassword") && e.Response.StatusCode == 200)
-    //    {
-
-    //        PassportWebView.CoreWebView2.WebResourceResponseReceived -= HoYoLabWebResourceResponseReceived;
-
-    //        var cookies = await PassportWebView.CoreWebView2.CookieManager
-    //            .GetCookiesAsync("https://account.hoyolab.com");
-
-    //        var cookieDict = new Dictionary<string, string>();
-    //        foreach (var cookie in cookies)
-    //        {
-    //            if (!string.IsNullOrEmpty(cookie.Value))
-    //                cookieDict[cookie.Name] = cookie.Value;
-    //        }
-
-    //        if (cookieDict.ContainsKey("cookie_token_v2"))
-    //        {
-    //            UpdateStatus("HoYoLAB凭证提取成功，正在保存...", true);
-    //            SaveLabCredentials(cookieDict);
-    //            IsLoginSuccessful = true;
-    //            UpdateStatus("登录成功", false, true);
-    //            DispatcherQueue.TryEnqueue(() => Close());
-    //        }
-    //        else
-    //        {
-    //            UpdateStatus("未能获取完整凭证，请重试", false);
-    //        }
-    //    }
-    //}
-
 }
