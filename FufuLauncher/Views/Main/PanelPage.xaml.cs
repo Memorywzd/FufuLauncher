@@ -82,15 +82,5 @@ public sealed partial class PanelPage : Page
     {
         EntranceStoryboard.Begin();
         await Task.Delay(600);
-        
-        ViewModel.PropertyChanged += (s, args) =>
-        {
-            if (args.PropertyName == nameof(ViewModel.IsGameRunning))
-            {
-                GameRunningIndicator.Visibility = ViewModel.IsGameRunning ? Visibility.Visible : Visibility.Collapsed;
-            }
-        };
-        
-        GameRunningIndicator.Visibility = ViewModel.IsGameRunning ? Visibility.Visible : Visibility.Collapsed;
     }
 }

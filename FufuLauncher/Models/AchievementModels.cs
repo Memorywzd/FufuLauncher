@@ -204,6 +204,7 @@ public partial class AchievementItem : ObservableObject
             if (SetProperty(ref _isCompleted, value))
             {
                 OnPropertyChanged(nameof(Opacity));
+                OnPropertyChanged(nameof(CompletionTimeVisibility));
             }
         } 
     }
@@ -213,8 +214,23 @@ public partial class AchievementItem : ObservableObject
     public long CompletionTimestamp 
     { 
         get => _completionTimestamp; 
-        set => SetProperty(ref _completionTimestamp, value); 
+        set
+        {
+            if (SetProperty(ref _completionTimestamp, value))
+            {
+                OnPropertyChanged(nameof(CompletionTimeText));
+                OnPropertyChanged(nameof(CompletionTimeVisibility));
+            }
+        }
     }
+
+    [JsonIgnore]
+    public string CompletionTimeText => CompletionTimestamp > 0
+        ? DateTimeOffset.FromUnixTimeSeconds(CompletionTimestamp).LocalDateTime.ToString("yyyy-MM-dd HH:mm:ss")
+        : string.Empty;
+
+    [JsonIgnore]
+    public Visibility CompletionTimeVisibility => IsCompleted && CompletionTimestamp > 0 ? Visibility.Visible : Visibility.Collapsed;
 
     [JsonIgnore] 
     public ObservableCollection<AchievementItem> Children { get; set; } = new();

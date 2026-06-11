@@ -433,7 +433,7 @@ namespace FufuLauncher.Views
         private async void OnAboutButtonClick(object sender, RoutedEventArgs e)
         {
             var contentPanel = new StackPanel { Spacing = 8 };
-            
+    
             contentPanel.Children.Add(new TextBlock 
             { 
                 Text = "该项目使用UIGF v4.2/v4.1/v4.0/v3.0/v2.4/v2.3/v2.2标准格式处理祈愿数据",
@@ -445,6 +445,29 @@ namespace FufuLauncher.Views
                 Content = "UIGF-Org",
                 NavigateUri = new Uri("https://uigf.org/")
             });
+            
+            var badgePanel = new StackPanel 
+            { 
+                Orientation = Orientation.Horizontal, 
+                Spacing = 8,
+                Margin = new Thickness(0, 4, 0, 0)
+            };
+    
+            badgePanel.Children.Add(new FontIcon 
+            { 
+                Glyph = "\uE734",
+                FontSize = 16,
+                Foreground = (Brush)Application.Current.Resources["SystemFillColorCautionBrush"]
+            });
+    
+            badgePanel.Children.Add(new TextBlock 
+            { 
+                Text = "已获UIGF/UIAF标准项目合作",
+                VerticalAlignment = VerticalAlignment.Center,
+                FontWeight = Microsoft.UI.Text.FontWeights.SemiBold
+            });
+
+            contentPanel.Children.Add(badgePanel);
 
             var dialog = new ContentDialog
             {

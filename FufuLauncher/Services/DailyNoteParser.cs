@@ -31,7 +31,10 @@ namespace FufuLauncher.Services
             if (retcode != 0)
             {
                 string message = root.TryGetProperty("message", out var msgProp) ? msgProp.GetString() : "未知错误";
-                throw new InvalidOperationException($"获取便签数据失败: {message}");
+                string error = string.IsNullOrWhiteSpace(message)
+                    ? $"接口返回错误，retcode={retcode}"
+                    : $"{message}，retcode={retcode}";
+                throw new InvalidOperationException($"获取便签数据失败: {error}");
             }
 
             if (!root.TryGetProperty("data", out var data))

@@ -16,6 +16,7 @@ using Windows.Storage;
 using Windows.Storage.Pickers;
 using Windows.Storage.Streams;
 using FufuLauncher.Constants;
+using FufuLauncher.Services;
 using Microsoft.UI.Xaml.Media.Imaging;
 
 namespace FufuLauncher.Views
@@ -23,7 +24,6 @@ namespace FufuLauncher.Views
     public sealed partial class BBSWindow : Window
     {
         private AppWindow m_AppWindow;
-        //private string ConfigPath => Helpers.AppPaths.ConfigFile;
         private static readonly System.Threading.SemaphoreSlim _fetchApiSemaphore = new System.Threading.SemaphoreSlim(1, 1);
         
         private byte[] _screenshotBytes;
@@ -102,7 +102,11 @@ namespace FufuLauncher.Views
             document.addEventListener('mousedown', mouseDownListener);
             """;
 
-        public BBSWindow()
+        public BBSWindow() : this(true)
+        {
+        }
+
+        private BBSWindow(bool autoInitialize)
         {
             InitializeComponent();
             
@@ -113,7 +117,11 @@ namespace FufuLauncher.Views
             
             InitializeWindowStyle();
             UrlTextBox.Text = DefaultUrl;
-            _ = InitializeWebViewAsync();
+
+            if (autoInitialize)
+            {
+                _ = InitializeWebViewAsync();
+            }
         }
 
         private string GetStableGuid()
@@ -615,7 +623,7 @@ namespace FufuLauncher.Views
         private async Task LoadPageAsync(string url)
         {
             System.Diagnostics.Debug.WriteLine($"[BBSWindow] LoadPageAsync called with URL: {url}");
-            //System.Diagnostics.Debug.WriteLine($"[BBSWindow] ConfigPath exists: {File.Exists(ConfigPath)}");
+            await LoadActiveAccountCookiesAsync();
             
             var manager = BBSWebView.CoreWebView2.CookieManager;
             if (BBSWebView.Source == null || BBSWebView.Source.ToString() == "about:blank")
@@ -631,6 +639,26 @@ namespace FufuLauncher.Views
             }
             System.Diagnostics.Debug.WriteLine($"[BBSWindow] Added {cookieDic.Count} cookies to WebView2");
             BBSWebView.CoreWebView2.Navigate(url);
+        }
+
+        private async Task LoadActiveAccountCookiesAsync()
+        {
+            cookieDic.Clear();
+
+            var accountManager = App.GetService<AccountManager>();
+            var activeId = accountManager.ActiveAccountId;
+            if (activeId == null) return;
+
+            var cookies = await accountManager.LoadCookiesAsync(activeId);
+            if (cookies == null || cookies.Count == 0) return;
+
+            foreach (var kv in cookies)
+            {
+                if (!string.IsNullOrWhiteSpace(kv.Key) && !string.IsNullOrWhiteSpace(kv.Value))
+                {
+                    cookieDic[kv.Key] = kv.Value;
+                }
+            }
         }
 
         private void ParseCookie(string cookieStr)
@@ -652,10 +680,17 @@ public static async Task<string> FetchApiJsonAsync(string apiUrl)
         string capturedJson = null;
         var tcs = new TaskCompletionSource<bool>();
         
-        var window = new BBSWindow();
+        var window = new BBSWindow(false);
         window.AppWindow.Hide();
 
         await window.BBSWebView.EnsureCoreWebView2Async();
+        window.UpdateWebViewSettings();
+        await window.LoadActiveAccountCookiesAsync();
+        System.Diagnostics.Debug.WriteLine($"[BBSWindow] FetchApiJsonAsync 请求API: {apiUrl}");
+        System.Diagnostics.Debug.WriteLine($"[BBSWindow] 当前账号Cookie数量: {window.cookieDic.Count}");
+
+        window.BBSWebView.CoreWebView2.AddWebResourceRequestedFilter("*://*.mihoyo.com/*", CoreWebView2WebResourceContext.All);
+        window.BBSWebView.CoreWebView2.WebResourceRequested += window.CoreWebView2_WebResourceRequested;
 
         window.BBSWebView.CoreWebView2.NewWindowRequested += (sender, args) =>
         {

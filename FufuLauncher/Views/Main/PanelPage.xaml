@@ -5,191 +5,326 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:viewmodels="using:FufuLauncher.ViewModels"
-    xmlns:models="using:FufuLauncher.Models"
-    xmlns:converters="using:FufuLauncher.Converters"
     d:DataContext="{d:DesignInstance Type=viewmodels:ControlPanelModel}"
     mc:Ignorable="d"
     Background="Transparent">
 
     <Page.Resources>
-        <converters:EmptyCountToVisibilityConverter x:Key="EmptyCountToVisibilityConverter"/>
+        <ResourceDictionary>
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Light">
+                    <AcrylicBrush
+                        x:Key="PanelGlassBrush"
+                        FallbackColor="#CCFFFFFF"
+                        TintColor="#FFFFFF"
+                        TintOpacity="0.1" />
+                    <SolidColorBrush x:Key="PanelCardBrush" Color="#14FFFFFF" />
+                    <SolidColorBrush x:Key="PanelCardHoverBrush" Color="#24FFFFFF" />
+                    <SolidColorBrush x:Key="PanelTextBrush" Color="White" />
+                    <SolidColorBrush x:Key="PanelSecondaryTextBrush" Color="#B3FFFFFF" />
+                </ResourceDictionary>
 
-        <Storyboard x:Name="EntranceStoryboard">
-            <DoubleAnimation Storyboard.TargetName="RootLayoutGrid"
-                             Storyboard.TargetProperty="Opacity"
-                             From="0" To="1" Duration="0:0:0.6">
-                <DoubleAnimation.EasingFunction>
-                    <CubicEase EasingMode="EaseOut"/>
-                </DoubleAnimation.EasingFunction>
-            </DoubleAnimation>
-        </Storyboard>
-        <Storyboard x:Name="ExitStoryboard">
-            <DoubleAnimation Storyboard.TargetName="RootLayoutGrid"
-                             Storyboard.TargetProperty="Opacity"
-                             From="1" To="0" Duration="0:0:0.3">
-                <DoubleAnimation.EasingFunction>
-                    <CubicEase EasingMode="EaseIn"/>
-                </DoubleAnimation.EasingFunction>
-            </DoubleAnimation>
-        </Storyboard>
+                <ResourceDictionary x:Key="Default">
+                    <AcrylicBrush
+                        x:Key="PanelGlassBrush"
+                        FallbackColor="#CC000000"
+                        TintColor="#000000"
+                        TintOpacity="0.15" />
+                    <SolidColorBrush x:Key="PanelCardBrush" Color="#14FFFFFF" />
+                    <SolidColorBrush x:Key="PanelCardHoverBrush" Color="#24FFFFFF" />
+                    <SolidColorBrush x:Key="PanelTextBrush" Color="White" />
+                    <SolidColorBrush x:Key="PanelSecondaryTextBrush" Color="#B3FFFFFF" />
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+
+            <Style x:Key="ToolCardButtonStyle" TargetType="Button">
+                <Setter Property="HorizontalAlignment" Value="Stretch" />
+                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                <Setter Property="VerticalAlignment" Value="Stretch" />
+                <Setter Property="MinHeight" Value="92" />
+                <Setter Property="Padding" Value="16" />
+                <Setter Property="Background" Value="{StaticResource PanelCardBrush}" />
+                <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="CornerRadius" Value="10" />
+            </Style>
+
+            <Storyboard x:Name="EntranceStoryboard">
+                <DoubleAnimation
+                    Storyboard.TargetName="RootLayoutGrid"
+                    Storyboard.TargetProperty="Opacity"
+                    From="0"
+                    To="1"
+                    Duration="0:0:0.45">
+                    <DoubleAnimation.EasingFunction>
+                        <CubicEase EasingMode="EaseOut" />
+                    </DoubleAnimation.EasingFunction>
+                </DoubleAnimation>
+            </Storyboard>
+            <Storyboard x:Name="ExitStoryboard">
+                <DoubleAnimation
+                    Storyboard.TargetName="RootLayoutGrid"
+                    Storyboard.TargetProperty="Opacity"
+                    From="1"
+                    To="0"
+                    Duration="0:0:0.25">
+                    <DoubleAnimation.EasingFunction>
+                        <CubicEase EasingMode="EaseIn" />
+                    </DoubleAnimation.EasingFunction>
+                </DoubleAnimation>
+            </Storyboard>
+        </ResourceDictionary>
     </Page.Resources>
 
-    <Grid Padding="40" x:Name="RootLayoutGrid" Opacity="0" RenderTransformOrigin="0.5,0.5">
+    <Grid
+        x:Name="RootLayoutGrid"
+        Padding="40,34"
+        Opacity="0"
+        RenderTransformOrigin="0.5,0.5">
         <Grid.Transitions>
             <TransitionCollection>
-                <EntranceThemeTransition FromVerticalOffset="40"/>
+                <EntranceThemeTransition FromVerticalOffset="36" />
             </TransitionCollection>
         </Grid.Transitions>
         <Grid.RenderTransform>
-            <ScaleTransform x:Name="RootLayoutScale" ScaleX="1" ScaleY="1"/>
+            <ScaleTransform x:Name="RootLayoutScale" ScaleX="1" ScaleY="1" />
         </Grid.RenderTransform>
 
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="*"/>
-            <ColumnDefinition Width="350"/>
-        </Grid.ColumnDefinitions>
-
-        <Border Grid.Column="0" 
-                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" 
-                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" 
-                BorderThickness="1" 
-                CornerRadius="8" 
-                Padding="24">
-            <Border.Shadow>
-                <ThemeShadow/>
-            </Border.Shadow>
-            
-            <Grid>
+        <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+            <Grid
+                MaxWidth="1120"
+                HorizontalAlignment="Center"
+                RowSpacing="18">
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
-                <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="8" Margin="0,0,0,15">
-                    <TextBlock Text="近30天游戏时长统计" FontSize="20" FontWeight="SemiBold"/>
-                    <Border x:Name="GameRunningIndicator" 
-                            Background="{ThemeResource SystemFillColorSuccessBrush}" 
-                            CornerRadius="4" Padding="6,2" 
-                            Visibility="Collapsed" 
-                            VerticalAlignment="Center">
-                        <TextBlock Text="游戏中" FontSize="10" Foreground="White" FontWeight="Bold"/>
-                    </Border>
-                </StackPanel>
-                
-                <Grid Grid.Row="1" Margin="0,0,0,20">
+                <Grid Grid.Row="0" Margin="0,0,0,6" Translation="0,0,32">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    
-                    <StackPanel Grid.Column="0">
-                        <TextBlock Text="总时长" FontSize="14" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-                        <TextBlock Text="{x:Bind ViewModel.WeeklyStats.TotalHoursFormatted, Mode=OneWay}" FontSize="36" FontWeight="Bold" Foreground="{ThemeResource AccentFillColorDefaultBrush}"/>
-                    </StackPanel>
 
-                    <StackPanel Grid.Column="1">
-                        <TextBlock Text="日均时长" FontSize="14" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-                        <TextBlock Text="{x:Bind ViewModel.WeeklyStats.AverageHoursFormatted, Mode=OneWay}" FontSize="36" FontWeight="SemiBold"/>
+                    <StackPanel Spacing="6" VerticalAlignment="Center">
+                        <TextBlock
+                            FontSize="32"
+                            FontWeight="SemiBold"
+                            Foreground="{StaticResource PanelTextBrush}"
+                            Text="工具箱" />
                     </StackPanel>
                 </Grid>
 
-                <MenuFlyoutSeparator Grid.Row="2" Margin="0,0,0,20"/>
+                <Border
+                    Grid.Row="1"
+                    Padding="18"
+                    Background="{StaticResource PanelGlassBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1"
+                    CornerRadius="14"
+                    Translation="0,0,32">
+                    <Border.Shadow>
+                        <ThemeShadow/>
+                    </Border.Shadow>
+                    <StackPanel Spacing="14">
+                        <StackPanel Spacing="2">
+                            <TextBlock
+                                FontSize="16"
+                                FontWeight="SemiBold"
+                                Foreground="{StaticResource PanelTextBrush}"
+                                Text="数据分析" />
+                            <TextBlock
+                                FontSize="12"
+                                Foreground="{StaticResource PanelSecondaryTextBrush}"
+                                Text="记录统计、完成进度与长期数据沉淀" />
+                        </StackPanel>
 
-                <Grid Grid.Row="3">
-                    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,0,16,0">
-                        <ItemsControl ItemsSource="{x:Bind ViewModel.WeeklyStats.DailyRecords, Mode=OneWay}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate x:DataType="models:GamePlayTimeRecord">
-                                    <Grid Margin="0,8">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                        </Grid.ColumnDefinitions>
-                                        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="16">
-                                            <TextBlock Text="{x:Bind DayOfWeek}" FontSize="14" Width="40" FontWeight="SemiBold"/>
-                                            <TextBlock Text="{x:Bind DisplayDate}" FontSize="14" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-                                        </StackPanel>
-                                        <TextBlock Grid.Column="1" Text="{x:Bind DisplayTime}" FontSize="14" FontWeight="Bold"/>
-                                    </Grid>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </ScrollViewer>
+                        <Grid ColumnSpacing="12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
 
-                    <TextBlock Text="近30天暂无游戏记录" 
-                               FontSize="16" 
-                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" 
-                               HorizontalAlignment="Center" VerticalAlignment="Center" 
-                               Visibility="{x:Bind ViewModel.WeeklyStats.DailyRecords.Count, Converter={StaticResource EmptyCountToVisibilityConverter}, Mode=OneWay}"/>
-                </Grid>
+                            <Button Grid.Column="0" Style="{StaticResource ToolCardButtonStyle}" Click="OnOpenGachaAnalysisClick">
+                                <Grid ColumnSpacing="14">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="48" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Border Width="48" Height="48" Background="#1AFFFFFF" CornerRadius="10">
+                                        <Image Margin="9" Source="https://act-upload.mihoyo.com/ys-obc/2025/01/21/73740358/4e65638b8b81ca7556f0fd42612d0be2_6482084243159257686.png" Stretch="Uniform" />
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center">
+                                        <TextBlock FontSize="17" FontWeight="SemiBold" Foreground="{StaticResource PanelTextBrush}" Text="抽卡记录分析" />
+                                        <TextBlock FontSize="13" Foreground="{StaticResource PanelSecondaryTextBrush}" Text="分析游戏内的祈愿记录，展示抽卡数据情况" TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </Grid>
+                            </Button>
+
+                            <Button Grid.Column="1" Style="{StaticResource ToolCardButtonStyle}" Click="OnOpenAchievementsClick">
+                                <Grid ColumnSpacing="14">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="48" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Border Width="48" Height="48" Background="#1AFFFFFF" CornerRadius="10">
+                                        <Image Margin="9" Source="https://act-upload.mihoyo.com/ys-obc/2025/01/21/73740358/b097c597c8e957e5c29ebba956be7b77_3600296528699504897.png" Stretch="Uniform" />
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center">
+                                        <TextBlock FontSize="17" FontWeight="SemiBold" Foreground="{StaticResource PanelTextBrush}" Text="成就追踪" />
+                                        <TextBlock FontSize="13" Foreground="{StaticResource PanelSecondaryTextBrush}" Text="追踪游戏内成就的完成进度，支持导出与导入" TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </Grid>
+                            </Button>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <Border
+                    Grid.Row="2"
+                    Padding="18"
+                    Background="{StaticResource PanelGlassBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1"
+                    CornerRadius="14"
+                    Translation="0,0,32">
+                    <Border.Shadow>
+                        <ThemeShadow />
+                    </Border.Shadow>
+                    <StackPanel Spacing="14">
+                        <StackPanel Spacing="2">
+                            <TextBlock
+                                FontSize="16"
+                                FontWeight="SemiBold"
+                                Foreground="{StaticResource PanelTextBrush}"
+                                Text="旅行者档案" />
+                            <TextBlock
+                                FontSize="12"
+                                Foreground="{StaticResource PanelSecondaryTextBrush}"
+                                Text="角色、背包、便签与米游社战绩信息" />
+                        </StackPanel>
+
+                        <Grid ColumnSpacing="12" RowSpacing="12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+
+                            <Button Grid.Row="0" Grid.Column="0" Style="{StaticResource ToolCardButtonStyle}" Click="OnOpenInventoryClick">
+                                <Grid ColumnSpacing="14">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="48" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Border Width="48" Height="48" Background="#1AFFFFFF" CornerRadius="10">
+                                        <Image Margin="9" Source="https://act-upload.mihoyo.com/ys-obc/2025/01/21/73740358/746e735b9968d0a7496393809653bf9b_3827123919585554136.png" Stretch="Uniform" />
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center">
+                                        <TextBlock FontSize="17" FontWeight="SemiBold" Foreground="{StaticResource PanelTextBrush}" Text="背包物品" />
+                                        <TextBlock FontSize="13" Foreground="{StaticResource PanelSecondaryTextBrush}" Text="查看当前账号游戏内背包中的材料" TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </Grid>
+                            </Button>
+
+                            <Button Grid.Row="0" Grid.Column="1" Style="{StaticResource ToolCardButtonStyle}" Click="OnOpenPlayerRolesClick">
+                                <Grid ColumnSpacing="14">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="48" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Border Width="48" Height="48" Background="#1AFFFFFF" CornerRadius="10">
+                                        <Image Margin="9" Source="https://act-upload.mihoyo.com/ys-obc/2025/01/21/73740358/816696c690ea7d95d8c13e67f794c807_6317738625095616930.png" Stretch="Uniform" />
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center">
+                                        <TextBlock FontSize="17" FontWeight="SemiBold" Foreground="{StaticResource PanelTextBrush}" Text="角色练度查询" />
+                                        <TextBlock FontSize="13" Foreground="{StaticResource PanelSecondaryTextBrush}" Text="查询已拥有角色的等级、命座、武器及圣遗物搭配情况" TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </Grid>
+                            </Button>
+
+                            <Button Grid.Row="1" Grid.Column="0" Style="{StaticResource ToolCardButtonStyle}" Click="OnOpenDailyNoteClick">
+                                <Grid ColumnSpacing="14">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="48" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Border Width="48" Height="48" Background="#1AFFFFFF" CornerRadius="10">
+                                        <Image Margin="9" Source="https://act-upload.mihoyo.com/ys-obc/2025/01/21/73740358/35990ccaac57819dbaf39a47db133a59_6427418972247587857.png" Stretch="Uniform" />
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center">
+                                        <TextBlock FontSize="17" FontWeight="SemiBold" Foreground="{StaticResource PanelTextBrush}" Text="旅行便签" />
+                                        <TextBlock FontSize="13" Foreground="{StaticResource PanelSecondaryTextBrush}" Text="独立窗口显示当前开放的角色材料秘境等实时数据" TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </Grid>
+                            </Button>
+
+                            <Button Grid.Row="1" Grid.Column="1" Style="{StaticResource ToolCardButtonStyle}" Click="BBSButton_Click">
+                                <Grid ColumnSpacing="14">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="48" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Border Width="48" Height="48" Background="#1AFFFFFF" CornerRadius="10">
+                                        <Image Margin="9" Source="https://act-upload.mihoyo.com/ys-obc/2025/01/21/73740358/aae53df95bd8d8f437729545e3a287ab_8614980669390833989.png" Stretch="Uniform" />
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center">
+                                        <TextBlock FontSize="17" FontWeight="SemiBold" Foreground="{StaticResource PanelTextBrush}" Text="战绩信息" />
+                                        <TextBlock FontSize="13" Foreground="{StaticResource PanelSecondaryTextBrush}" Text="查询深渊、幻想真境剧诗等详细战绩数据" TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </Grid>
+                            </Button>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <Border
+                    Grid.Row="3"
+                    Padding="18"
+                    Background="{StaticResource PanelGlassBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1"
+                    CornerRadius="14"
+                    Translation="0,0,32">
+                    <Border.Shadow>
+                        <ThemeShadow />
+                    </Border.Shadow>
+                    <StackPanel Spacing="14">
+                        <StackPanel Spacing="2">
+                            <TextBlock
+                                FontSize="16"
+                                FontWeight="SemiBold"
+                                Foreground="{StaticResource PanelTextBrush}"
+                                Text="资源获取" />
+                            <TextBlock
+                                FontSize="12"
+                                Foreground="{StaticResource PanelSecondaryTextBrush}"
+                                Text="管理与资源获取" />
+                        </StackPanel>
+
+                        <Button Style="{StaticResource ToolCardButtonStyle}" Click="OnOpenVideoResourcesClick">
+                            <Grid ColumnSpacing="14">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="48" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Border Width="48" Height="48" Background="#1AFFFFFF" CornerRadius="10">
+                                    <Image Margin="9" Source="https://act-upload.mihoyo.com/ys-obc/2025/01/21/73740358/6ba109a0c67067ce3f16c18147c91f03_2613518829063232490.png" Stretch="Uniform" />
+                                </Border>
+                                <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center">
+                                    <TextBlock FontSize="17" FontWeight="SemiBold" Foreground="{StaticResource PanelTextBrush}" Text="视频资源库" />
+                                    <TextBlock FontSize="13" Foreground="{StaticResource PanelSecondaryTextBrush}" Text="可查看各类游戏角色PV或者游戏内过场动画" TextWrapping="Wrap" />
+                                </StackPanel>
+                            </Grid>
+                        </Button>
+                    </StackPanel>
+                </Border>
             </Grid>
-        </Border>
-
-        <Border Grid.Column="1" 
-                Translation="0,0,32"
-                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" 
-                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" 
-                BorderThickness="1" 
-                CornerRadius="8" 
-                Margin="40,0,0,0" Padding="20">
-            <Border.Shadow>
-                <ThemeShadow/>
-            </Border.Shadow>
-            
-            <StackPanel Spacing="8">
-                <TextBlock Text="功能面板" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,15"/>
-                
-                <Button Click="OnOpenGachaAnalysisClick" HorizontalAlignment="Stretch" Height="48">
-                    <StackPanel Orientation="Horizontal" Spacing="12">
-                        <Image Source="https://act-upload.mihoyo.com/ys-obc/2025/01/21/73740358/4e65638b8b81ca7556f0fd42612d0be2_6482084243159257686.png" Width="18" Height="18"/> 
-                        <TextBlock Text="抽卡记录分析" VerticalAlignment="Center"/>
-                    </StackPanel>
-                </Button>
-                
-                <Button Click="OnOpenAchievementsClick" HorizontalAlignment="Stretch" Height="48">
-                    <StackPanel Orientation="Horizontal" Spacing="12">
-                        <Image Source="https://act-upload.mihoyo.com/ys-obc/2025/01/21/73740358/b097c597c8e957e5c29ebba956be7b77_3600296528699504897.png" Width="18" Height="18"/> 
-                        <TextBlock Text="打开成就追踪" VerticalAlignment="Center"/>
-                    </StackPanel>
-                </Button>
-                
-                <Button Click="OnOpenInventoryClick" HorizontalAlignment="Stretch" Height="48">
-                    <StackPanel Orientation="Horizontal" Spacing="12">
-                        <Image Source="https://act-upload.mihoyo.com/ys-obc/2025/01/21/73740358/746e735b9968d0a7496393809653bf9b_3827123919585554136.png" Width="18" Height="18"/> 
-                        <TextBlock Text="查看背包物品" VerticalAlignment="Center"/>
-                    </StackPanel>
-                </Button>
-                
-                <Button Click="OnOpenPlayerRolesClick" HorizontalAlignment="Stretch" Height="48">
-                    <StackPanel Orientation="Horizontal" Spacing="12">
-                        <Image Source="https://act-upload.mihoyo.com/ys-obc/2025/01/21/73740358/816696c690ea7d95d8c13e67f794c807_6317738625095616930.png" Width="18" Height="18"/>
-                        <TextBlock Text="角色练度查询" VerticalAlignment="Center"/>
-                    </StackPanel>
-                </Button>
-                
-                <Button Click="OnOpenDailyNoteClick" HorizontalAlignment="Stretch" Height="48">
-                    <StackPanel Orientation="Horizontal" Spacing="12">
-                        <Image Source="https://act-upload.mihoyo.com/ys-obc/2025/01/21/73740358/35990ccaac57819dbaf39a47db133a59_6427418972247587857.png" Width="18" Height="18"/>
-                        <TextBlock Text="旅行便签" VerticalAlignment="Center"/>
-                    </StackPanel>
-                </Button>
-                
-                <Button Click="OnOpenVideoResourcesClick" HorizontalAlignment="Stretch" Height="48">
-                    <StackPanel Orientation="Horizontal" Spacing="12">
-                        <Image Source="https://act-upload.mihoyo.com/ys-obc/2025/01/21/73740358/6ba109a0c67067ce3f16c18147c91f03_2613518829063232490.png" Width="18" Height="18"/>
-                        <TextBlock Text="视频资源库" VerticalAlignment="Center"/>
-                    </StackPanel>
-                </Button>
-                
-                <Button Click="BBSButton_Click" HorizontalAlignment="Stretch" Height="48">
-                    <StackPanel Orientation="Horizontal" Spacing="12">
-                        <Image Source="https://act-upload.mihoyo.com/ys-obc/2025/01/21/73740358/aae53df95bd8d8f437729545e3a287ab_8614980669390833989.png" Width="18" Height="18"/>
-                        <TextBlock Text="战绩信息" VerticalAlignment="Center"/>
-                    </StackPanel>
-                </Button>
-            </StackPanel>
-        </Border>
+        </ScrollViewer>
     </Grid>
 </Page>

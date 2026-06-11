@@ -18,12 +18,18 @@ public sealed partial class AccountPage : Page
     {
         get;
     }
+
+    public ControlPanelModel ControlPanelViewModel
+    {
+        get;
+    }
     #endregion
 
     #region 构造函数
     public AccountPage()
     {
         ViewModel = App.GetService<AccountViewModel>();
+        ControlPanelViewModel = App.GetService<ControlPanelModel>();
         DataContext = ViewModel;
         InitializeComponent();
         Debug.WriteLine("AccountPage initialized");

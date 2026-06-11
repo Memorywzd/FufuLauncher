@@ -2,6 +2,7 @@
 using System.Text.Json;
 using FufuLauncher.Constants;
 using FufuLauncher.Models;
+using FufuLauncher.Services;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
@@ -11,7 +12,6 @@ namespace FufuLauncher.Views
     public sealed partial class InventoryWindow : Window
     {
         private readonly string _cachePath;
-        private readonly string _configPath;
         private List<InventoryItemModel> _currentItems = new();
 
         private static readonly HttpClient _httpClient = new(new HttpClientHandler
@@ -27,7 +27,6 @@ namespace FufuLauncher.Views
             SetTitleBar(AppTitleBar);
 
             _cachePath = Helpers.AppPaths.InventoryCacheFile;
-            //_configPath = Helpers.AppPaths.ConfigFile;
 
             if (_httpClient.DefaultRequestHeaders.UserAgent.Count == 0)
             {
@@ -104,11 +103,15 @@ namespace FufuLauncher.Views
             try
             {
                 StatusText.Text = isManualRefresh ? "正在请求米游社..." : "正在获取数据...";
-                if (!File.Exists(_configPath)) throw new Exception("未找到配置文件");
 
-                var configJson = await File.ReadAllTextAsync(_configPath);
-                using var configDoc = JsonDocument.Parse(configJson);
-                var cookie = configDoc.RootElement.GetProperty("Account").GetProperty("Cookie").GetString();
+                var accountManager = App.GetService<AccountManager>();
+                var activeId = accountManager.ActiveAccountId;
+                if (activeId == null) throw new Exception("请先登录米游社账号");
+
+                var cookies = await accountManager.LoadCookiesAsync(activeId);
+                if (cookies == null || cookies.Count == 0) throw new Exception("无法读取登录凭证，请重新登录");
+
+                var cookie = string.Join("; ", cookies.Select(x => $"{x.Key}={x.Value}"));
 
                 if (string.IsNullOrEmpty(cookie)) throw new Exception("Cookie未配置");
 

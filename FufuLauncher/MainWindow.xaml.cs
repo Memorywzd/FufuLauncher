@@ -300,8 +300,7 @@ public sealed partial class MainWindow : WindowEx
             
             var isHidden = !Visible;
 
-            var memoryService = new MemoryOptimizationService();
-            memoryService.FlushMemory(isMinimized || isHidden);
+            MemoryOptimizationService.FlushMemory(isMinimized || isHidden);
         }
         catch (Exception ex)
         {
