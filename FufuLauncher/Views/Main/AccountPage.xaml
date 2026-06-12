@@ -439,7 +439,6 @@
 
                                 <Button
                                     Command="{x:Bind ViewModel.LoadUserInfoCommand}"
-                                    IsEnabled="{x:Bind ViewModel.IsLoadingUserInfo, Mode=OneWay, Converter={StaticResource BoolNegationConverter}}"
                                     Style="{StaticResource ActionButtonStyle}"
                                     Translation="0,0,32">
                                     <Button.Shadow>
