@@ -71,7 +71,7 @@ public partial class PluginSettingsViewModel : ObservableObject
     public string GetAvatarOriginalPath(int size) => Path.Combine(AppContext.BaseDirectory, "Plugins", "Avatar", $"avatar{size}_original.png");
     
     
-    private bool _isAutoCreatePresetEnabled = true;
+    private bool _isAutoCreatePresetEnabled = false;
 
     public bool IsAutoCreatePresetEnabled
     {
@@ -225,7 +225,7 @@ public partial class PluginSettingsViewModel : ObservableObject
             try { File.Delete(mainDisabledPath); } catch { }
         }
     
-        _isMainPluginEnabled = !File.Exists(mainDisabledPath);
+        _isMainPluginEnabled = File.Exists(mainEnabledPath);
         OnPropertyChanged(nameof(IsMainPluginEnabled));
 
         if (File.Exists(fpsEnabledPath) && File.Exists(fpsDisabledPath))
@@ -443,6 +443,11 @@ public async Task TriggerBackgroundAuthCheckAsync()
         }
     }
 
+    public void RefreshPluginStates()
+    {
+        CheckPluginStates();
+    }
+
     private void RefreshUIState()
     {
         OnPropertyChanged(nameof(SettingsOverlayVisibility));
@@ -535,9 +540,8 @@ public async Task TriggerBackgroundAuthCheckAsync()
             
             var autoCreateTask = localSettings.ReadSettingAsync("IsAutoCreatePresetEnabled");
             autoCreateTask.Wait();
-            _isAutoCreatePresetEnabled = autoCreateTask.Result == null || Convert.ToBoolean(autoCreateTask.Result);
-
-            // 在下方补充以下代码：
+            _isAutoCreatePresetEnabled = autoCreateTask.Result != null && Convert.ToBoolean(autoCreateTask.Result);
+            
             var devFeaturesTask = localSettings.ReadSettingAsync("IsDevFeaturesEnabled");
             devFeaturesTask.Wait();
             bool savedDevFeatures = devFeaturesTask.Result != null && Convert.ToBoolean(devFeaturesTask.Result);
@@ -552,8 +556,7 @@ public async Task TriggerBackgroundAuthCheckAsync()
                 _isDevFeaturesEnabled = false;
             }
         }
-
-        // 纯同步本地加载，[DEV] 默认不加载
+        
         LoadConfiguration();
         UpdateAvatarPreview();
     }
@@ -610,6 +613,14 @@ public async Task TriggerBackgroundAuthCheckAsync()
         }
         hasAvatar = false;
         return null;
+    }
+
+    public bool IsMainPluginDllMissing()
+    {
+        string mainDir = Path.Combine(AppContext.BaseDirectory, "Plugins", "FuFuPlugin");
+        string mainEnabledPath = Path.Combine(mainDir, "FufuLauncher.UnlockerIsland.dll");
+        string mainDisabledPath = Path.Combine(mainDir, "FufuLauncher.UnlockerIsland.disabled");
+        return !File.Exists(mainEnabledPath) && !File.Exists(mainDisabledPath);
     }
 
     public bool IsPluginCorrupted()
@@ -1127,6 +1138,39 @@ public void LoadConfiguration()
         }
         CurrentPreset.ConfigData[section][key] = value;
         SavePresetToFile(CurrentPreset);
+    }
+
+    public string GetPresetLockReason(PresetModel preset)
+    {
+        if (preset == null || !preset.IsLocked) return string.Empty;
+
+        var currentHash = GetTargetDllHash();
+        if (string.IsNullOrEmpty(preset.DllHash))
+        {
+            return "此预设没有记录插件 Hash，无法确认它是否适用于当前插件版本。";
+        }
+
+        if (string.IsNullOrEmpty(currentHash))
+        {
+            return "当前插件文件不存在或无法读取 Hash，无法确认此预设是否适用于当前插件版本。";
+        }
+
+        if (!string.Equals(preset.DllHash, currentHash, StringComparison.OrdinalIgnoreCase))
+        {
+            return "此预设记录的插件 Hash 与当前插件 Hash 不一致，可能来自旧版本或不同版本的插件。";
+        }
+
+        return "此预设当前被标记为锁定。";
+    }
+
+    public void ForceUnlockAndSwitchPreset(PresetModel targetPreset)
+    {
+        if (targetPreset == null) return;
+
+        targetPreset.DllHash = GetTargetDllHash();
+        targetPreset.IsLocked = false;
+        SavePresetToFile(targetPreset);
+        SwitchPreset(targetPreset);
     }
 
     public void SwitchPreset(PresetModel targetPreset)

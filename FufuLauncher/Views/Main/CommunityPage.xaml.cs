@@ -1,4 +1,4 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.Web.WebView2.Core;
@@ -231,8 +231,13 @@ public sealed partial class CommunityPage : Page
         }
     }
 
-    private void RefreshButton_Click(object sender, RoutedEventArgs e)
+    private async void RefreshButton_Click(object sender, RoutedEventArgs e)
     {
+        if (CommunityWebView.CoreWebView2 == null)
+        {
+            await CommunityWebView.EnsureCoreWebView2Async();
+        }
+
         CommunityWebView.Reload();
     }
 }

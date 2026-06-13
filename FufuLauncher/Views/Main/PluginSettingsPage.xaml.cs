@@ -25,6 +25,8 @@ public sealed partial class PluginSettingsPage : Page
     private bool _hasShownFpsWarning = false;
     private bool _isEnforcingFpsDisable = false;
     private bool _isInitializing = true;
+    private FileSystemWatcher _mainPluginWatcher;
+    private bool _hasShownMainPluginMissingWarning = false;
 
     [DllImport("user32.dll")]
     private static extern IntPtr GetActiveWindow();
@@ -37,6 +39,7 @@ public sealed partial class PluginSettingsPage : Page
         InitializeComponent();
     
         Loaded += PluginSettingsPage_Loaded;
+        Unloaded += PluginSettingsPage_Unloaded;
         
         ViewModel.PropertyChanged += ViewModel_PropertyChanged;
     }
@@ -127,6 +130,8 @@ public sealed partial class PluginSettingsPage : Page
     private async void PluginSettingsPage_Loaded(object sender, RoutedEventArgs e)
     {
         EntranceStoryboard.Begin();
+        StartMainPluginWatcher();
+        ShowMainPluginMissingWarningIfNeeded();
         if (ViewModel.IsPluginCorrupted())
         {
             var dialog = new ContentDialog
@@ -152,6 +157,63 @@ public sealed partial class PluginSettingsPage : Page
         }
         
         _isInitializing = false;
+    }
+    
+    private void PluginSettingsPage_Unloaded(object sender, RoutedEventArgs e)
+    {
+        _mainPluginWatcher?.Dispose();
+        _mainPluginWatcher = null;
+    }
+
+    private void StartMainPluginWatcher()
+    {
+        if (_mainPluginWatcher != null) return;
+
+        string mainPluginDir = Path.Combine(AppContext.BaseDirectory, "Plugins", "FuFuPlugin");
+        if (!Directory.Exists(mainPluginDir))
+        {
+            Directory.CreateDirectory(mainPluginDir);
+        }
+
+        _mainPluginWatcher = new FileSystemWatcher(mainPluginDir)
+        {
+            Filter = "FufuLauncher.UnlockerIsland.*",
+            NotifyFilter = NotifyFilters.FileName | NotifyFilters.Size | NotifyFilters.LastWrite,
+            EnableRaisingEvents = true
+        };
+
+        _mainPluginWatcher.Created += OnMainPluginFileChanged;
+        _mainPluginWatcher.Deleted += OnMainPluginFileChanged;
+        _mainPluginWatcher.Renamed += OnMainPluginFileChanged;
+        _mainPluginWatcher.Changed += OnMainPluginFileChanged;
+    }
+
+    private void OnMainPluginFileChanged(object sender, FileSystemEventArgs e)
+    {
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            ViewModel.RefreshPluginStates();
+
+            if (!ViewModel.IsMainPluginDllMissing())
+            {
+                _hasShownMainPluginMissingWarning = false;
+                return;
+            }
+
+            ShowMainPluginMissingWarningIfNeeded();
+        });
+    }
+
+    private void ShowMainPluginMissingWarningIfNeeded()
+    {
+        if (_hasShownMainPluginMissingWarning || !ViewModel.IsMainPluginDllMissing()) return;
+
+        _hasShownMainPluginMissingWarning = true;
+        WeakReferenceMessenger.Default.Send(new NotificationMessage(
+            "主插件缺失",
+            "未找到主插件 DLL 文件，插件可能未安装、被误删或被杀毒软件拦截。请重新下载插件，或将启动器目录加入杀毒软件白名单后再试。",
+            NotificationType.Error,
+            6000));
     }
     
     private void OnOpenSponsorWindowClick(object sender, RoutedEventArgs e)
@@ -525,13 +587,29 @@ private async Task PerformFpsPluginRepairAsync(bool showUI)
         _feedbackWindow.Activate();
     }
 
-    private void OnSwitchPresetClick(object sender, RoutedEventArgs e)
+    private async void OnSwitchPresetClick(object sender, RoutedEventArgs e)
     {
         if (sender is FrameworkElement element && element.DataContext is PresetModel preset)
         {
             if (preset.IsLocked)
             {
-                WeakReferenceMessenger.Default.Send(new NotificationMessage("操作受限", "此预设针对匹配的插件，因不符合指定插件，已被锁定", NotificationType.Warning));
+                var reason = ViewModel.GetPresetLockReason(preset);
+                var dialog = new ContentDialog
+                {
+                    Title = "配置预设已锁定",
+                    Content = $"锁定原因：{reason}\n\n如果继续使用，将忽略该警告并把此预设的 Hash 更新为当前插件 Hash，从而重新解锁该预设。是否继续？",
+                    PrimaryButtonText = "继续使用并解锁",
+                    CloseButtonText = "取消",
+                    DefaultButton = ContentDialogButton.Close,
+                    XamlRoot = XamlRoot
+                };
+
+                if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+                {
+                    return;
+                }
+
+                ViewModel.ForceUnlockAndSwitchPreset(preset);
                 return;
             }
             ViewModel.SwitchPreset(preset);
