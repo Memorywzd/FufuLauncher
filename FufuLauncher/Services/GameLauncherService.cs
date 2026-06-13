@@ -1,4 +1,4 @@
-﻿using System.ComponentModel;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Security.Principal;
@@ -326,8 +326,7 @@ public async Task<LaunchResult> LaunchGameAsync()
                 {
                     logBuilder.AppendLine("[启动流程] 游戏进程已启动，正在捕获目标PID...");
                     int gamePid = await WaitGenshinStartAsync();
-                    
-                    await LaunchBetterGIAsync();
+                    _ = LaunchBetterGIAsync();
 
                     await CheckAndLaunchFpsOverlayAsync(logBuilder, gamePid);
 
@@ -576,9 +575,15 @@ public async Task<LaunchResult> LaunchGameAsync()
                 var enabled = await _localSettingsService.ReadSettingAsync("IsBetterGIIntegrationEnabled");
                 if (enabled != null && Convert.ToBoolean(enabled))
                 {
-                    Debug.WriteLine("[BetterGI] 配置已启用，准备通过URL Scheme启动 bettergi://start");
+                    var delaySetting = await _localSettingsService.ReadSettingAsync("BetterGIStartupDelaySeconds");
+                    var delaySeconds = delaySetting != null ? Math.Clamp(Convert.ToDouble(delaySetting), 0.0, 60.0) : 2.0;
 
-                    await WaitGenshinStartAsync();
+                    Debug.WriteLine($"[BetterGI] 配置已启用，将在 {delaySeconds:0.#} 秒后通过URL Scheme启动 bettergi://start");
+
+                    if (delaySeconds > 0)
+                    {
+                        await Task.Delay(TimeSpan.FromSeconds(delaySeconds));
+                    }
 
                     var startInfo = new ProcessStartInfo
                     {

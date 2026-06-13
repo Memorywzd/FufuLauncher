@@ -1045,8 +1045,21 @@
                                    Style="{ThemeResource CaptionTextBlockStyle}"
                                    Opacity="0.7"
                                    Margin="0,0,0,0"/>
+                        <NumberBox Header="BetterGI启动延迟 (秒)"
+                                   Width="180"
+                                   Minimum="0"
+                                   Maximum="60"
+                                   SmallChange="0.5"
+                                   LargeChange="1"
+                                   SpinButtonPlacementMode="Compact"
+                                   Value="{x:Bind ViewModel.BetterGIStartupDelaySeconds, Mode=TwoWay}"
+                                   Margin="0,8,0,0"/>
+                        <TextBlock Text="设为0可关闭延迟；延迟只影响BetterGI"
+                                   Style="{ThemeResource CaptionTextBlockStyle}"
+                                   Opacity="0.7"
+                                   Margin="0,0,0,0"/>
                                    
-                        <ToggleSwitch Header="退出游戏时关闭 BetterGI"
+                        <ToggleSwitch Header="退出游戏时关闭BetterGI"
                                       OffContent="已禁用"
                                       OnContent="已启用"
                                       IsOn="{x:Bind ViewModel.IsBetterGICloseOnExitEnabled, Mode=TwoWay}"

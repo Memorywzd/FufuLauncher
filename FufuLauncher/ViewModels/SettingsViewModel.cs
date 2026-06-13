@@ -87,6 +87,19 @@ namespace FufuLauncher.ViewModels
         [ObservableProperty] private bool _isShortTermSupportEnabled;
         [ObservableProperty] private bool _isBetterGIIntegrationEnabled;
         [ObservableProperty] private bool _isBetterGICloseOnExitEnabled;
+        private double _betterGIStartupDelaySeconds = 2.0;
+        public double BetterGIStartupDelaySeconds
+        {
+            get => _betterGIStartupDelaySeconds;
+            set
+            {
+                var clampedValue = Math.Clamp(value, 0.0, 60.0);
+                if (SetProperty(ref _betterGIStartupDelaySeconds, clampedValue) && !_isInitializing)
+                {
+                    _ = _localSettingsService.SaveSettingAsync("BetterGIStartupDelaySeconds", clampedValue);
+                }
+            }
+        }
         [ObservableProperty] private double _globalBackgroundOverlayOpacity = 0.0;
         [ObservableProperty] private double _contentFrameBackgroundOpacity = 0.5;
         [ObservableProperty] private bool _isSaveWindowSizeEnabled;
@@ -810,6 +823,7 @@ namespace FufuLauncher.ViewModels
                 OnPropertyChanged(nameof(IsShortTermSupportEnabled));
                 OnPropertyChanged(nameof(IsBetterGIIntegrationEnabled));
                 OnPropertyChanged(nameof(IsBetterGICloseOnExitEnabled));
+                OnPropertyChanged(nameof(BetterGIStartupDelaySeconds));
                 OnPropertyChanged(nameof(GlobalBackgroundOverlayOpacity));
                 OnPropertyChanged(nameof(ContentFrameBackgroundOpacity));
                 OnPropertyChanged(nameof(IsSaveWindowSizeEnabled));
