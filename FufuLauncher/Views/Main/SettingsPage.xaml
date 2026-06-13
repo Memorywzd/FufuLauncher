@@ -724,7 +724,7 @@
                                 <TextBox Text="{x:Bind ViewModel.CustomBackgroundApiUrl, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                          PlaceholderText="输入自定义官方背景 API 地址"
                                          MaxWidth="640"
-                                         HorizontalAlignment="Stretch"/>
+                                         HorizontalAlignment="Left"/>
                                 <TextBlock Text="{x:Bind ViewModel.CurrentBackgroundApiUrl, Mode=OneWay}"
                                            Style="{ThemeResource CaptionTextBlockStyle}"
                                            Opacity="0.7"
