@@ -76,15 +76,13 @@ public partial class GachaDisplayItem : ObservableObject
 
     public int PityMaximum => Rank == 5 ? (PoolType == "302" ? 80 : 90) : 10;
 
-    public SolidColorBrush ProgressBarColor => Rank switch
+    // 进度条颜色与抽数文字颜色（CountToColorConverter）一一对应：
+    // 欧气十足(≤30 抽)绿色、中段(≤60 抽)橙色、保底区间(>60 抽)红色
+    public SolidColorBrush ProgressBarColor => Count switch
     {
-        5 => Count <= 30 ? new SolidColorBrush(Windows.UI.Color.FromArgb(255, 106, 168, 209)) :
-             Count <= 60 ? new SolidColorBrush(Windows.UI.Color.FromArgb(255, 255, 165, 0)) :
-             new SolidColorBrush(Windows.UI.Color.FromArgb(255, 220, 53, 69)),
-        4 => Count <= 3 ? new SolidColorBrush(Windows.UI.Color.FromArgb(255, 106, 168, 209)) :
-             Count <= 6 ? new SolidColorBrush(Windows.UI.Color.FromArgb(255, 255, 165, 0)) :
-             new SolidColorBrush(Windows.UI.Color.FromArgb(255, 220, 53, 69)),
-        _ => new SolidColorBrush(Windows.UI.Color.FromArgb(255, 106, 168, 209))
+        <= 30 => new SolidColorBrush(Windows.UI.Color.FromArgb(255, 50, 205, 50)),
+        <= 60 => new SolidColorBrush(Windows.UI.Color.FromArgb(255, 255, 128, 0)),
+        _ => new SolidColorBrush(Windows.UI.Color.FromArgb(255, 255, 0, 0))
     };
 
     public SolidColorBrush PityStatusBrush => PityStatus switch
