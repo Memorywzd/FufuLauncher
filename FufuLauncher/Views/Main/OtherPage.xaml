@@ -199,7 +199,6 @@
                         <Rectangle Grid.Row="1" Height="1" Fill="{ThemeResource SafeBorderBrush}" Margin="-24,16,-24,16"/>
 
                         <ContentControl Grid.Row="2" 
-                                        IsEnabled="{x:Bind ViewModel.IsAutoClickerEnabled, Mode=OneWay}"
                                         HorizontalContentAlignment="Stretch"
                                         VerticalContentAlignment="Stretch">
                             <Grid ColumnSpacing="24" RowSpacing="16">

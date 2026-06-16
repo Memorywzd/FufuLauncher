@@ -101,7 +101,7 @@ namespace FufuLauncher.Views
         {
             try
             {
-                if (ViewModel.IsRecordingTriggerKey || ViewModel.IsRecordingClickKey)
+                if (ViewModel.IsRecordingTriggerKey || ViewModel.IsRecordingClickKey || ViewModel.IsRecordingStopKey)
                 {
                     var key = args.Key;
                     Debug.WriteLine($"[OtherPage] 捕获按键: {key}");

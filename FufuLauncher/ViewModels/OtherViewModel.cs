@@ -258,9 +258,12 @@ namespace FufuLauncher.ViewModels
                 _autoClickerService.Mode = clickerMode;
                 _isInitializing = false;
 
-                if (IsAutoClickerEnabled && IsMouseModeEnabled() && !HasStopKey())
+                if (IsMouseModeEnabled() && !HasStopKey())
                 {
                     IsAutoClickerEnabled = false;
+                    IsMouseLeftClickerEnabled = false;
+                    IsMouseRightClickerEnabled = false;
+                    _autoClickerService.Mode = AutoClickerMode.Keyboard;
                     StatusMessage = "鼠标连点必须先设置键盘停止快捷键";
                     _ = SaveSettingsAsync();
                 }
@@ -435,6 +438,7 @@ namespace FufuLauncher.ViewModels
                 {
                     StatusMessage = "请先设置键盘停止快捷键，再开启鼠标连点";
                     RevertAutoClickerToggle(false);
+                    RevertMouseClickerToggles();
                     return;
                 }
 
@@ -533,14 +537,15 @@ namespace FufuLauncher.ViewModels
         private void ApplyClickerModeFromSelection()
         {
             var mode = GetCurrentMode();
-            _autoClickerService.Mode = mode;
 
-            if (IsAutoClickerEnabled && mode != AutoClickerMode.Keyboard && !HasStopKey())
+            if (mode != AutoClickerMode.Keyboard && !HasStopKey())
             {
                 StatusMessage = "请先设置键盘停止快捷键，再开启鼠标连点";
-                RevertAutoClickerToggle(false);
+                RevertMouseClickerToggles();
+                return;
             }
 
+            _autoClickerService.Mode = mode;
             _ = SaveSettingsAsync();
         }
 
@@ -569,6 +574,16 @@ namespace FufuLauncher.ViewModels
                 IsAutoClickerEnabled = value;
                 _isReverting = false;
             });
+        }
+
+        private void RevertMouseClickerToggles()
+        {
+            _isReverting = true;
+            IsMouseLeftClickerEnabled = false;
+            IsMouseRightClickerEnabled = false;
+            _autoClickerService.Mode = AutoClickerMode.Keyboard;
+            _isReverting = false;
+            _ = SaveSettingsAsync();
         }
 
         private void AutoClickerService_IsEnabledChanged(object sender, bool value)
