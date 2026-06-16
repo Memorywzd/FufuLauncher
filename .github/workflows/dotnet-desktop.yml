@@ -11,10 +11,6 @@ jobs:
 
     runs-on: windows-latest
 
-    permissions:
-      contents: read
-      actions: write
-
     steps:
     - name: Checkout
       uses: actions/checkout@v4
@@ -59,23 +55,22 @@ jobs:
     - name: Compile Inno Setup Script
       run: '& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" FufuLauncher.Installer\setup.iss'
 
-    - name: Rename Workflow Run
-      env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Get Executable Name
       shell: pwsh
       run: |
         $exeFile = Get-ChildItem -Path "FufuLauncher.Installer\installer" -Filter "*.exe" | Select-Object -First 1
         if ($exeFile) {
-            $exeName = $exeFile.Name
-            gh api -X PATCH repos/${{ github.repository }}/actions/runs/${{ github.run_id }} -f name="$exeName"
-            Write-Host "Workflow名称已重命名为$exeName"
+            Write-Output "EXE_NAME=$($exeFile.BaseName)" >> $env:GITHUB_ENV
+            Write-Output "### Build Successful" >> $env:GITHUB_STEP_SUMMARY
+            Write-Output "Generated Installer: **$($exeFile.Name)**" >> $env:GITHUB_STEP_SUMMARY
+            Write-Host "$($exeFile.BaseName)"
         } else {
-            Write-Error "目录下未找到已打包的文件"
+            Write-Error "目录下未找到已打包的exe文件"
             exit 1
         }
 
     - name: Upload Installer Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: FufuLauncher_Installer
+        name: ${{ env.EXE_NAME }}
         path: FufuLauncher.Installer\installer\*.exe
