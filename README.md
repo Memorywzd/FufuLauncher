@@ -43,9 +43,7 @@
 
 [![Star History Chart](https://api.star-history.com/svg?repos=CodeCubist/FufuLauncher&type=date&legend=top-left)](https://www.star-history.com/#CodeCubist/FufuLauncher&type=date&legend=top-left)
 
-## 代码签名策略
-
-#### [<img src="https://avatars.githubusercontent.com/u/34448643" alt="SignPath" width="48" /> 代码签名由 SignPath 提供](https://signpath.org)
+### [<img src="https://avatars.githubusercontent.com/u/34448643" alt="SignPath" width="48" /> 代码签名由 SignPath 提供](https://signpath.org)
 
 免费代码签名由 [SignPath.io](https://about.signpath.io) 提供，证书由 [SignPath Foundation](https://signpath.org) 提供。
 
