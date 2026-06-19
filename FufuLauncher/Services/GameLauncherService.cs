@@ -243,8 +243,6 @@ public async Task<LaunchResult> LaunchGameAsync()
 
                 if (useInjection)
                 {
-                    await _pluginUpdateService.ExecuteAutoUpdateAsync(logBuilder);
-                    
                     int configMask = 0;
 
                     logBuilder.AppendLine($"[启动流程] 配置掩码: {configMask}");
@@ -334,6 +332,11 @@ public async Task<LaunchResult> LaunchGameAsync()
                         _ = LaunchBetterGIAsync();
                         await CheckAndLaunchFpsOverlayAsync(logBuilder, gamePid);
 
+                        if (useInjection)
+                        {
+                            _ = RunBackgroundPluginUpdateAsync();
+                        }
+
                         result.Success = true;
                         result.ErrorMessage = "";
                     }
@@ -354,6 +357,28 @@ public async Task<LaunchResult> LaunchGameAsync()
                 result.DetailLog = $"[启动流程] ?? 未处理异常: {ex}\n{ex.StackTrace}";
                 Debug.WriteLine(result.DetailLog);
                 return result;
+            }
+        }
+
+        private async Task RunBackgroundPluginUpdateAsync()
+        {
+            var logBuilder = new StringBuilder();
+            try
+            {
+                var enabledObj = await _localSettingsService.ReadSettingAsync(PluginUpdateService.AutoUpdatePluginKey);
+                if (enabledObj == null || !Convert.ToBoolean(enabledObj)) return;
+
+                WeakReferenceMessenger.Default.Send(new PluginUpdateStateMessage(true));
+                await _pluginUpdateService.ExecuteAutoUpdateAsync(logBuilder);
+                Debug.WriteLine(logBuilder.ToString());
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[启动流程] 后台插件更新异常: {ex.Message}");
+            }
+            finally
+            {
+                WeakReferenceMessenger.Default.Send(new PluginUpdateStateMessage(false));
             }
         }
 
