@@ -710,7 +710,8 @@ public partial class GachaAnalysisModel : ObservableObject
         RefreshKnownUids();
         Debug.WriteLine("[Gacha] SaveGachaDataAsync: 完成");
 
-        _ = FetchGachaPoolMetadataAsync();
+        if (RequestMetadataScrapeAction == null)
+            _ = FetchGachaPoolMetadataAsync();
     }
 
     private List<GachaLogItem> MergeLogs(List<GachaLogItem> existing, List<GachaLogItem> incoming)
@@ -1218,7 +1219,7 @@ public partial class GachaAnalysisModel : ObservableObject
     {
         if (IsScraping) return;
         IsScraping = true;
-        CrawlerStatus = "正在预爬取全部图片资源...";
+        CrawlerStatus = "正在刷新角色、武器与卡池元数据...";
         RequestMetadataScrapeAction?.Invoke();
     }
 
@@ -1456,12 +1457,14 @@ public partial class GachaAnalysisModel : ObservableObject
 
             CrawlerStatus = $"获取完成，共 {total} 条记录，正在检查图片资源...";
 
-            RefreshUIFromCache();
             HasGachaData = true;
             SaveGachaDataAsync();
 
             IsScraping = true;
-            RequestMetadataScrapeAction?.Invoke();
+            if (RequestMetadataScrapeAction != null)
+                RequestMetadataScrapeAction.Invoke();
+            else
+                RefreshUIFromCache();
         }
         catch (Exception ex)
         {
@@ -1758,14 +1761,16 @@ private async Task ImportUigfAsync()
         _cachedNoviceLogs = MergeLogs(_cachedNoviceLogs, newLogs.Where(x => GetNormalizedGachaType(x.GachaType) == "100").ToList());
         _cachedStandardLogs = MergeLogs(_cachedStandardLogs, newLogs.Where(x => GetNormalizedGachaType(x.GachaType) == "200").ToList());
 
-        RefreshUIFromCache();
         HasGachaData = true;
         SaveGachaDataAsync();
 
         var total = _cachedCharacterLogs.Count + _cachedWeaponLogs.Count + _cachedChronicledLogs.Count + _cachedNoviceLogs.Count + _cachedStandardLogs.Count;
         CrawlerStatus = $"导入完成，共 {total} 条记录，正在检查图片资源...";
         IsScraping = true;
-        RequestMetadataScrapeAction?.Invoke();
+        if (RequestMetadataScrapeAction != null)
+            RequestMetadataScrapeAction.Invoke();
+        else
+            RefreshUIFromCache();
     }
     catch (Exception ex)
     {
@@ -1778,9 +1783,9 @@ private async Task ImportUigfAsync()
     if (!IsScraping) IsFetching = false;
 }
 
-    private void FillMissingFieldsFromMetadata(params List<GachaLogItem>[] logLists)
+    private bool FillMissingFieldsFromMetadata(params List<GachaLogItem>[] logLists)
     {
-        if (_savedMetadata.Count == 0) return;
+        if (_savedMetadata.Count == 0) return false;
         var byName = new Dictionary<string, ScrapedMetadata>();
         var byItemId = new Dictionary<string, ScrapedMetadata>();
         foreach (var m in _savedMetadata)
@@ -1791,24 +1796,42 @@ private async Task ImportUigfAsync()
                 byItemId[m.ItemId] = m;
         }
 
+        var filledItemId = 0;
+        var filledName = 0;
+        var changed = false;
         foreach (var logs in logLists)
         {
             foreach (var log in logs)
             {
                 if (string.IsNullOrEmpty(log.ItemId) && !string.IsNullOrEmpty(log.Name)
                     && byName.TryGetValue(log.Name, out var byNameMeta))
+                {
                     log.ItemId = byNameMeta.ItemId;
+                    filledItemId++;
+                    changed = true;
+                }
 
                 if (string.IsNullOrEmpty(log.Name) && !string.IsNullOrEmpty(log.ItemId)
                     && byItemId.TryGetValue(log.ItemId, out var byIdMeta))
+                {
                     log.Name = byIdMeta.Name;
+                    filledName++;
+                    changed = true;
+                }
 
                 if (string.IsNullOrEmpty(log.RankType) && !string.IsNullOrEmpty(log.ItemId)
                     && byItemId.TryGetValue(log.ItemId, out var byIdRankMeta)
                     && !string.IsNullOrEmpty(byIdRankMeta.Rank))
+                {
                     log.RankType = byIdRankMeta.Rank;
+                    changed = true;
+                }
             }
         }
+
+        Debug.WriteLine($"[Gacha] 通过缓存元数据补全记录：name→id 映射 {byName.Count} 条（补全 {filledItemId} 条）、id→name 映射 {byItemId.Count} 条（补全 {filledName} 条）");
+
+        return changed;
     }
 
     private static long GetNewestLogId(List<GachaLogItem> logs)
@@ -1902,12 +1925,14 @@ private async Task ImportUigfAsync()
             var total = charLogs.Count + weaponLogs.Count + chronicledLogs.Count + noviceLogs.Count + standardLogs.Count;
             CrawlerStatus = $"获取完成，共 {total} 条记录，正在检查图片资源...";
 
-            RefreshUIFromCache();
             HasGachaData = true;
             SaveGachaDataAsync();
 
             IsScraping = true;
-            RequestMetadataScrapeAction?.Invoke();
+            if (RequestMetadataScrapeAction != null)
+                RequestMetadataScrapeAction.Invoke();
+            else
+                RefreshUIFromCache();
         }
         catch (Exception ex)
         {
@@ -1993,27 +2018,55 @@ private async Task ImportUigfAsync()
 
         try
         {
-            await FetchGachaPoolMetadataAsync();
-
             var cookie = await GetCurrentCookieAsync();
 
             var results = new List<ScrapedMetadata>();
 
-            var chars = await FetchCalculatorListAsync(ApiEndpoints.CalculateAvatarListUrl,
+            var chars = await FetchCalculatorListWithRetryAsync(ApiEndpoints.CalculateAvatarListUrl,
                 new { page = 1, size = 1000, is_all = true }, cookie, "char");
             results.AddRange(chars);
 
-            var weapons = await FetchCalculatorListAsync(ApiEndpoints.CalculateWeaponListUrl,
+            var weapons = await FetchCalculatorListWithRetryAsync(ApiEndpoints.CalculateWeaponListUrl,
                 new { page = 1, size = 1000, weapon_levels = new[] { 1, 2, 3, 4, 5 } }, cookie, "weapon");
             results.AddRange(weapons);
 
-            UpdateMetadata(results);
+            UpdateMetadata(results, deferRefresh: true);
+
+            await FetchGachaPoolMetadataAsync(deferRefresh: true);
         }
         catch (Exception ex)
         {
             Debug.WriteLine($"[Gacha] API 元数据获取失败: {ex.Message}");
-            UpdateMetadata(null);
+            UpdateMetadata(null, deferRefresh: true);
         }
+        finally
+        {
+            App.MainWindow.DispatcherQueue.TryEnqueue(() => RefreshUIFromCache());
+        }
+    }
+
+    private async Task<List<ScrapedMetadata>> FetchCalculatorListWithRetryAsync(string url, object payload, string? cookie, string type)
+    {
+        const int maxAttempts = 3;
+        int[] delays = { 1000, 2000, 4000 };
+        var typeName = type == "char" ? "角色" : "武器";
+
+        for (var attempt = 1; attempt <= maxAttempts; attempt++)
+        {
+            var result = await FetchCalculatorListAsync(url, payload, cookie, type);
+            if (result.Count > 0) return result;
+
+            if (attempt < maxAttempts)
+            {
+                CrawlerStatus = $"{typeName}元数据获取失败，{delays[attempt - 1] / 1000} 秒后重试（{attempt}/{maxAttempts}）…";
+                await Task.Delay(delays[attempt - 1]);
+            }
+            else
+            {
+                Debug.WriteLine($"[Gacha] {typeName}元数据获取失败，已重试 {maxAttempts} 次仍为空");
+            }
+        }
+        return new List<ScrapedMetadata>();
     }
 
     private async Task<List<ScrapedMetadata>> FetchCalculatorListAsync(string url, object payload, string? cookie, string type)
@@ -2076,7 +2129,7 @@ private async Task ImportUigfAsync()
         return list;
     }
 
-    public void UpdateMetadata(List<ScrapedMetadata> scrapedData)
+    public void UpdateMetadata(List<ScrapedMetadata> scrapedData, bool deferRefresh = false)
     {
         IsFetching = false;
         IsScraping = false;
@@ -2084,15 +2137,36 @@ private async Task ImportUigfAsync()
         if (scrapedData == null || scrapedData.Count == 0)
         {
             CrawlerStatus = "未找到新图片资源，将使用现有缓存或默认图标";
+            EnrichAndPersistCachedLogs(deferRefresh);
             return;
         }
 
         CrawlerStatus = $"更新了 {scrapedData.Count} 个图片资源，并存入数据库";
-        
+
         SaveMetadataToDb(scrapedData);
         LoadMetadataFromDb();
-        
+
         _ = ApplyMetadataToUIAsync(_savedMetadata);
+        EnrichAndPersistCachedLogs(deferRefresh);
+    }
+
+    private void EnrichAndPersistCachedLogs(bool deferRefresh = false)
+    {
+        if (string.IsNullOrEmpty(_currentUid)) return;
+
+        var total = _cachedCharacterLogs.Count + _cachedWeaponLogs.Count + _cachedChronicledLogs.Count
+                  + _cachedNoviceLogs.Count + _cachedStandardLogs.Count;
+        if (total == 0) return;
+
+        var changed = FillMissingFieldsFromMetadata(
+            _cachedCharacterLogs, _cachedWeaponLogs, _cachedChronicledLogs, _cachedNoviceLogs, _cachedStandardLogs);
+
+        if (changed)
+        {
+            SaveGachaLogsToDb();
+            if (!deferRefresh)
+                RefreshUIFromCache();
+        }
     }
 
     private async Task ApplyMetadataToUIAsync(List<ScrapedMetadata> metadataList)
@@ -2166,25 +2240,48 @@ private async Task ImportUigfAsync()
                 StartTime TEXT NOT NULL,
                 EndTime TEXT NOT NULL,
                 UpItems TEXT NOT NULL,
+                UpItemNames TEXT NOT NULL DEFAULT '[]',
                 PRIMARY KEY (Version, PoolType)
             );
         ";
         command.ExecuteNonQuery();
+
+        var colCmd = connection.CreateCommand();
+        colCmd.CommandText = "PRAGMA table_info(GachaPoolMetadata)";
+        var hasNamesColumn = false;
+        using (var reader = colCmd.ExecuteReader())
+        {
+            while (reader.Read())
+            {
+                if (reader.GetString(1) == "UpItemNames") { hasNamesColumn = true; break; }
+            }
+        }
+        if (!hasNamesColumn)
+        {
+            var alterCmd = connection.CreateCommand();
+            alterCmd.CommandText = "ALTER TABLE GachaPoolMetadata ADD COLUMN UpItemNames TEXT NOT NULL DEFAULT '[]'";
+            alterCmd.ExecuteNonQuery();
+        }
     }
 
-    private async Task FetchGachaPoolMetadataAsync()
+    private async Task FetchGachaPoolMetadataAsync(bool deferRefresh = false)
     {
         if (_isFetchingPoolMetadata) return;
         _isFetchingPoolMetadata = true;
 
         try
         {
+            if (_savedMetadata.Count == 0)
+            {
+                Debug.WriteLine("[Gacha] 跳过卡池元数据拉取：物品元数据尚未就绪");
+                return;
+            }
+
             CrawlerStatus = "正在获取卡池元数据...";
 
-            if (_charNameToIdMap == null)
-                _charNameToIdMap = await BuildNameToIdMapAsync("char");
-            if (_weaponNameToIdMap == null)
-                _weaponNameToIdMap = await BuildNameToIdMapAsync("weapon");
+            _charNameToIdMap = BuildNameToIdMap("char");
+            _weaponNameToIdMap = BuildNameToIdMap("weapon");
+            Debug.WriteLine($"[Gacha] 卡池数据 name→id 映射：角色 {_charNameToIdMap.Count} 个、武器 {_weaponNameToIdMap.Count} 个");
 
             var response = await _httpClient.GetStringAsync(ApiEndpoints.WishHistoryUrl);
             var data = JsonSerializer.Deserialize<WishHistoryResponse>(response);
@@ -2235,7 +2332,7 @@ private async Task ImportUigfAsync()
             var count500 = allPools.Count(p => p.poolType == "500");
             CrawlerStatus = $"卡池元数据更新完成（共 {allPools.Count} 个历史卡池：角色 {count301}、武器 {count302}、集录 {count500}）";
 
-            if (_cachedCharacterLogs.Count + _cachedWeaponLogs.Count > 0)
+            if (!deferRefresh && _cachedCharacterLogs.Count + _cachedWeaponLogs.Count > 0)
             {
                 App.MainWindow.DispatcherQueue.TryEnqueue(() => RefreshUIFromCache());
             }
@@ -2250,24 +2347,15 @@ private async Task ImportUigfAsync()
         }
     }
 
-    private async Task<Dictionary<string, int>> BuildNameToIdMapAsync(string type)
+    private Dictionary<string, int> BuildNameToIdMap(string type)
     {
-        var url = type == "char"
-            ? ApiEndpoints.CalculateAvatarListUrl
-            : ApiEndpoints.CalculateWeaponListUrl;
-
-        object payload;
-        if (type == "char")
-            payload = new { page = 1, size = 1000, is_all = true };
-        else
-            payload = new { page = 1, size = 1000, weapon_levels = new[] { 1, 2, 3, 4, 5 } };
-
-        var items = await FetchCalculatorListAsync(url, payload, null, type);
         var map = new Dictionary<string, int>();
-        foreach (var i in items)
+        foreach (var m in _savedMetadata)
         {
-            if (!string.IsNullOrEmpty(i.Name) && !map.ContainsKey(i.Name))
-                map[i.Name] = int.Parse(i.ItemId);
+            if (m.Type != type) continue;
+            if (string.IsNullOrEmpty(m.Name) || string.IsNullOrEmpty(m.ItemId)) continue;
+            if (!map.ContainsKey(m.Name) && int.TryParse(m.ItemId, out var id))
+                map[m.Name] = id;
         }
         return map;
     }
@@ -2320,38 +2408,26 @@ private async Task ImportUigfAsync()
 
         foreach (var name in star5Names)
         {
-            if (nameToIdMap.TryGetValue(name, out var itemId))
+            nameToIdMap.TryGetValue(name, out var itemId);
+            items.Add(new GachaPoolItem
             {
-                items.Add(new GachaPoolItem
-                {
-                    ItemId = itemId,
-                    Name = name,
-                    ImageUrl = avatarList.TryGetValue(name, out var url) ? url : "",
-                    RankType = 5
-                });
-            }
-            else
-            {
-                Debug.WriteLine($"[Gacha] 未找到5星物品映射: {name}");
-            }
+                ItemId = itemId,
+                Name = name,
+                ImageUrl = avatarList.TryGetValue(name, out var url) ? url : "",
+                RankType = 5
+            });
         }
 
         foreach (var name in star4Names)
         {
-            if (nameToIdMap.TryGetValue(name, out var itemId))
+            nameToIdMap.TryGetValue(name, out var itemId);
+            items.Add(new GachaPoolItem
             {
-                items.Add(new GachaPoolItem
-                {
-                    ItemId = itemId,
-                    Name = name,
-                    ImageUrl = avatarList.TryGetValue(name, out var url) ? url : "",
-                    RankType = 4
-                });
-            }
-            else
-            {
-                Debug.WriteLine($"[Gacha] 未找到4星物品映射: {name}");
-            }
+                ItemId = itemId,
+                Name = name,
+                ImageUrl = avatarList.TryGetValue(name, out var url) ? url : "",
+                RankType = 4
+            });
         }
 
         return items;
@@ -2368,23 +2444,31 @@ private async Task ImportUigfAsync()
         var command = connection.CreateCommand();
 
         command.CommandText = @"
-            INSERT INTO GachaPoolMetadata (Version, PoolType, StartTime, EndTime, UpItems)
-            VALUES ($version, $poolType, $startTime, $endTime, $upItems)
+            INSERT INTO GachaPoolMetadata (Version, PoolType, StartTime, EndTime, UpItems, UpItemNames)
+            VALUES ($version, $poolType, $startTime, $endTime, $upItems, $upItemNames)
             ON CONFLICT(Version, PoolType) DO UPDATE SET
                 StartTime=excluded.StartTime,
                 EndTime=excluded.EndTime,
-                UpItems=excluded.UpItems;
+                UpItems=excluded.UpItems,
+                UpItemNames=excluded.UpItemNames;
         ";
+
+        var jsonOptions = new JsonSerializerOptions
+        {
+            Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+        };
 
         foreach (var pool in pools)
         {
-            var upItemsJson = JsonSerializer.Serialize(pool.Items.Select(i => i.ItemId));
+            var upItemsJson = JsonSerializer.Serialize(pool.Items.Select(i => i.ItemId), jsonOptions);
+            var upItemNamesJson = JsonSerializer.Serialize(pool.Items.Select(i => i.Name), jsonOptions);
             command.Parameters.Clear();
             command.Parameters.AddWithValue("$version", pool.Version);
             command.Parameters.AddWithValue("$poolType", poolType);
             command.Parameters.AddWithValue("$startTime", pool.Start);
             command.Parameters.AddWithValue("$endTime", pool.End);
             command.Parameters.AddWithValue("$upItems", upItemsJson);
+            command.Parameters.AddWithValue("$upItemNames", upItemNamesJson);
             command.ExecuteNonQuery();
         }
 
@@ -2398,21 +2482,42 @@ private async Task ImportUigfAsync()
         connection.Open();
         EnsurePoolMetadataTable(connection);
         var command = connection.CreateCommand();
-        command.CommandText = "SELECT Version, StartTime, EndTime, UpItems FROM GachaPoolMetadata WHERE PoolType = $poolType ORDER BY StartTime DESC";
+        command.CommandText = "SELECT Version, StartTime, EndTime, UpItems, UpItemNames FROM GachaPoolMetadata WHERE PoolType = $poolType ORDER BY StartTime DESC";
         command.Parameters.AddWithValue("$poolType", poolType);
 
         using var reader = command.ExecuteReader();
         while (reader.Read())
         {
             var upItemsJson = reader.GetString(3);
-            var upItems = JsonSerializer.Deserialize<List<int>>(upItemsJson);
+            var upItemNamesJson = reader.GetString(4);
+
+            List<int> ids;
+            try
+            {
+                ids = JsonSerializer.Deserialize<List<int>>(upItemsJson) ?? new List<int>();
+            }
+            catch (JsonException)
+            {
+                ids = new List<int>();
+            }
+            var names = JsonSerializer.Deserialize<List<string>>(upItemNamesJson) ?? new List<string>();
+
+            var upItems = new List<GachaPoolItem>();
+            for (var i = 0; i < ids.Count; i++)
+            {
+                upItems.Add(new GachaPoolItem
+                {
+                    ItemId = ids[i],
+                    Name = i < names.Count ? names[i] : ""
+                });
+            }
 
             var pool = new GachaPoolMetadata
             {
                 Version = reader.GetString(0),
                 Start = reader.GetString(1),
                 End = reader.GetString(2),
-                Items = upItems.Select(itemId => new GachaPoolItem { ItemId = itemId }).ToList()
+                Items = upItems
             };
             pools.Add(pool);
         }
@@ -2457,7 +2562,12 @@ private async Task ImportUigfAsync()
         if (matchedPools.Count == 0)
             return PityStatus.None;
 
-        var isUpItem = matchedPools.Any(pool => pool.Items.Any(p => p.ItemId.ToString() == item.ItemId));
+        if (matchedPools.All(p => p.Items == null || p.Items.Count == 0))
+            return PityStatus.None;
+
+        var isUpItem = matchedPools.Any(pool => pool.Items.Any(p =>
+            (!string.IsNullOrEmpty(item.ItemId) && p.ItemId.ToString() == item.ItemId) ||
+            (!string.IsNullOrEmpty(p.Name) && p.Name == item.Name)));
 
         if (item.RankType == "5")
         {
