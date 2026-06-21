@@ -253,22 +253,6 @@ namespace FufuLauncher.ViewModels
                 _dispatcherQueue?.TryEnqueue(() => UpdateLaunchButtonState());
             });
 
-            WeakReferenceMessenger.Default.Register<PluginUpdateStateMessage>(this, (r, m) =>
-            {
-                _dispatcherQueue?.TryEnqueue(() =>
-                {
-                    if (m.Value)
-                    {
-                        LaunchButtonText = "插件更新中...";
-                        OnPropertyChanged(nameof(LaunchButtonText));
-                    }
-                    else
-                    {
-                        UpdateLaunchButtonState();
-                    }
-                });
-            });
-
             _gameMonitoringCts = new CancellationTokenSource();
             StartGameMonitoringLoopAsync(_gameMonitoringCts.Token);
 

@@ -46,7 +46,6 @@ namespace FufuLauncher.Services
             _gameConfigService = gameConfigService;
             _launcherService = launcherService;
             _controlPanelModel = controlPanelModel;
-            _pluginUpdateService = pluginUpdateService;
         }
 
         [DllImport("user32.dll")]
@@ -332,11 +331,6 @@ public async Task<LaunchResult> LaunchGameAsync()
                         _ = LaunchBetterGIAsync();
                         await CheckAndLaunchFpsOverlayAsync(logBuilder, gamePid);
 
-                        if (useInjection)
-                        {
-                            _ = RunBackgroundPluginUpdateAsync();
-                        }
-
                         result.Success = true;
                         result.ErrorMessage = "";
                     }
@@ -357,28 +351,6 @@ public async Task<LaunchResult> LaunchGameAsync()
                 result.DetailLog = $"[启动流程] ?? 未处理异常: {ex}\n{ex.StackTrace}";
                 Debug.WriteLine(result.DetailLog);
                 return result;
-            }
-        }
-
-        private async Task RunBackgroundPluginUpdateAsync()
-        {
-            var logBuilder = new StringBuilder();
-            try
-            {
-                var enabledObj = await _localSettingsService.ReadSettingAsync(PluginUpdateService.AutoUpdatePluginKey);
-                if (enabledObj == null || !Convert.ToBoolean(enabledObj)) return;
-
-                WeakReferenceMessenger.Default.Send(new PluginUpdateStateMessage(true));
-                await _pluginUpdateService.ExecuteAutoUpdateAsync(logBuilder);
-                Debug.WriteLine(logBuilder.ToString());
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"[启动流程] 后台插件更新异常: {ex.Message}");
-            }
-            finally
-            {
-                WeakReferenceMessenger.Default.Send(new PluginUpdateStateMessage(false));
             }
         }
 
