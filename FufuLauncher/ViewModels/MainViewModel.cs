@@ -991,6 +991,8 @@ private void BackgroundVideoPlayer_MediaFailed(MediaPlayer sender, MediaPlayerFa
         {
             IsCheckinButtonEnabled = false;
             CheckinButtonText = "签到中...";
+            CheckinStatusText = "签到中...";
+            CheckinSummary = "正在执行签到任务...";
 
             //await RefreshSettingsAsync();
 
@@ -1000,7 +1002,8 @@ private void BackgroundVideoPlayer_MediaFailed(MediaPlayer sender, MediaPlayerFa
                 {
                     _dispatcherQueue.TryEnqueue(() =>
                     {
-                        CheckinButtonText = msg;
+                        CheckinButtonText = "签到中...";
+                        CheckinSummary = msg;
                     });
                 });
 
@@ -1010,7 +1013,13 @@ private void BackgroundVideoPlayer_MediaFailed(MediaPlayer sender, MediaPlayerFa
                 CheckinSummary = unifiedResult.SummaryMessage;
                 UpdateCheckinIconState(unifiedResult.OverallSuccess ? "已签到" : "Fail");
 
-                _notificationService.Show("签到完成", unifiedResult.GetDetailedSummary(), unifiedResult.NotificationType, 5000);
+                var notificationTitle = unifiedResult.NotificationType switch
+                {
+                    NotificationType.Success => "签到完成",
+                    NotificationType.Warning => "签到部分失败",
+                    _ => "签到失败"
+                };
+                _notificationService.Show(notificationTitle, unifiedResult.GetDetailedSummary(), unifiedResult.NotificationType, 5000);
             }
             catch (Exception ex)
             {
