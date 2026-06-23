@@ -1383,7 +1383,7 @@ public sealed partial class MainWindow : WindowEx
         AgreementFrame.Navigate(typeof(Views.AgreementPage));
     }
 
-    private void ShowMainContent()
+    private async void ShowMainContent()
     {
         AgreementFrame.Visibility = Visibility.Collapsed;
         NavigationView.Visibility = Visibility.Visible;
@@ -1399,11 +1399,15 @@ public sealed partial class MainWindow : WindowEx
         _networkMonitorService.Start();
         _ = _networkMonitorService.CheckNetworkAndProxyStatusAsync();
         
-        var redeemService = new RedeemCodeReminderService(_localSettingsService);
-        _ = redeemService.CheckRedeemCodesForTodayAsync(msg => 
+        var notifyEnabledObj = await _localSettingsService.ReadSettingAsync("IsRedeemCodeNotificationEnabled");
+        if (notifyEnabledObj == null || Convert.ToBoolean(notifyEnabledObj))
         {
-            dispatcherQueue.TryEnqueue(() => ShowNotification(msg));
-        });
+            var redeemService = new RedeemCodeReminderService(_localSettingsService);
+            _ = redeemService.CheckRedeemCodesAsync(msg =>
+            {
+                dispatcherQueue.TryEnqueue(() => ShowNotification(msg));
+            });
+        }
     }
 
     private void NavigationView_SelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
@@ -1752,7 +1756,7 @@ public sealed partial class MainWindow : WindowEx
 
     private void DismissInfoBar(FrameworkElement element)
     {
-        if (element is InfoBar infoBar && (infoBar.Title == "兑换码失效提醒" || infoBar.Title == "今日兑换码提醒"))
+        if (element is InfoBar infoBar && (infoBar.Title == "兑换码失效提醒" || infoBar.Title == "今日兑换码提醒" || infoBar.Title == "新兑换码已发布" || infoBar.Title == "兑换码即将失效"))
         {
             _ = _localSettingsService.SaveSettingAsync("LastRedeemCodeReminderDate", DateTime.Now.ToString("yyyy-MM-dd"));
             Debug.WriteLine("[RedeemCodes] 已将关闭状态写入数据库");

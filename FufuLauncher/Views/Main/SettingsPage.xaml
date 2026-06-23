@@ -671,6 +671,21 @@
                                     Command="{x:Bind ViewModel.ResetGameExeNameCommand}"
                                     Style="{StaticResource PresetButtonStyle}"/>
                         </StackPanel>
+
+                        <StackPanel Style="{StaticResource SettingItemStyle}" Margin="0,24,0,0">
+                            <TextBlock Text="兑换码提醒"
+                                       Style="{StaticResource SectionTitleStyle}"
+                                       VerticalAlignment="Center"/>
+                            <ToggleSwitch Header="新兑换码发布时即时提醒"
+                                          OffContent="已禁用"
+                                          OnContent="已启用"
+                                          IsOn="{x:Bind ViewModel.IsRedeemCodeNotificationEnabled, Mode=TwoWay}"/>
+                            <TextBlock Text="开启后，当有新的兑换码发布时，将在第一时间推送通知并显示有效期倒计时。每期兑换码仅通知一次。"
+                                       Style="{ThemeResource CaptionTextBlockStyle}"
+                                       Opacity="0.7"
+                                       TextWrapping="Wrap"
+                                       Margin="0,4,0,0"/>
+                        </StackPanel>
                     </StackPanel>
                 </Border>
                 
