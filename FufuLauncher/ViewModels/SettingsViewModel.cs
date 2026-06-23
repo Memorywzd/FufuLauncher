@@ -150,9 +150,16 @@ namespace FufuLauncher.ViewModels
         [ObservableProperty] private string _currentBackgroundApiUrl = "";
         
         [ObservableProperty] private string _launchButtonOverlayColor = "#0078D7";
-        [ObservableProperty] private bool _isCpuUsageWarningEnabled = true;
+[ObservableProperty] private bool _isCpuUsageWarningEnabled = true;
         [ObservableProperty] private double _cpuUsageWarningThreshold = ProcessCpuUsageMonitor.DefaultCpuThreshold;
-        
+
+        [ObservableProperty] private bool _isRedeemCodeNotificationEnabled = true;
+
+        partial void OnIsRedeemCodeNotificationEnabledChanged(bool value)
+        {
+            _ = _localSettingsService.SaveSettingAsync("IsRedeemCodeNotificationEnabled", value);
+        }
+
         partial void OnIsShowWidgetCardEnabledChanged(bool value)
         {
             _ = _localSettingsService.SaveSettingAsync("IsShowWidgetCardEnabled", value);
@@ -835,6 +842,7 @@ namespace FufuLauncher.ViewModels
                 OnPropertyChanged(nameof(AppProcessPriority));
                 OnPropertyChanged(nameof(IsCpuUsageWarningEnabled));
                 OnPropertyChanged(nameof(CpuUsageWarningThreshold));
+                OnPropertyChanged(nameof(IsRedeemCodeNotificationEnabled));
                 LoadMonitors();
             }
             finally
@@ -923,11 +931,14 @@ namespace FufuLauncher.ViewModels
             var cpuWarningEnabledJson = await _localSettingsService.ReadSettingAsync(ProcessCpuUsageMonitor.IsEnabledSettingKey);
             IsCpuUsageWarningEnabled = cpuWarningEnabledJson == null || Convert.ToBoolean(cpuWarningEnabledJson);
 
-            var cpuWarningThresholdJson = await _localSettingsService.ReadSettingAsync(ProcessCpuUsageMonitor.ThresholdSettingKey);
+var cpuWarningThresholdJson = await _localSettingsService.ReadSettingAsync(ProcessCpuUsageMonitor.ThresholdSettingKey);
             CpuUsageWarningThreshold = cpuWarningThresholdJson != null
                 ? Math.Clamp(Convert.ToDouble(cpuWarningThresholdJson), 5.0, 100.0)
                 : ProcessCpuUsageMonitor.DefaultCpuThreshold;
-            
+
+            var redeemNotifyJson = await _localSettingsService.ReadSettingAsync("IsRedeemCodeNotificationEnabled");
+            IsRedeemCodeNotificationEnabled = redeemNotifyJson == null || Convert.ToBoolean(redeemNotifyJson);
+
             var customExeJson = await _localSettingsService.ReadSettingAsync(GameExeManager.CustomExeNameKey);
             CustomGameExeName = customExeJson?.ToString() ?? string.Empty;
 
