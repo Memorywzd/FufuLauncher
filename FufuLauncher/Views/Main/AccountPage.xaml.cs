@@ -1,5 +1,8 @@
 using System.ComponentModel;
 using System.Diagnostics;
+using CommunityToolkit.Mvvm.Input;
+using FufuLauncher.Contracts.Services;
+using FufuLauncher.Messages;
 using FufuLauncher.Models;
 using FufuLauncher.ViewModels;
 using Microsoft.UI.Dispatching;
@@ -18,6 +21,8 @@ namespace FufuLauncher.Views;
 public sealed partial class AccountPage : Page
 {
     #region 字段
+    private readonly IUnifiedCheckinService _unifiedCheckinService;
+    private readonly INotificationService _notificationService;
     private bool _isDeleting;
     private bool _hasAnimatedButtons;
     private bool _hasAnimatedProfileCard;
@@ -42,6 +47,8 @@ public sealed partial class AccountPage : Page
     {
         ViewModel = App.GetService<AccountViewModel>();
         ControlPanelViewModel = App.GetService<ControlPanelModel>();
+        _unifiedCheckinService = App.GetService<IUnifiedCheckinService>();
+        _notificationService = App.GetService<INotificationService>();
         DataContext = ViewModel;
         InitializeComponent();
         RegisterRippleHandlers();
@@ -222,12 +229,23 @@ public sealed partial class AccountPage : Page
 
     #endregion
 
-    #region 账户切换
-    private void OnSwitchAccountClicked(object sender, RoutedEventArgs e)
+    #region 账户登录
+    private async void OnSwitchAccountClicked(object sender, RoutedEventArgs e)
     {
         if (sender is Button button && button.DataContext is AccountInfo account)
         {
-            ViewModel.SwitchAccountCommand.Execute(account);
+            try
+            {
+                if (ViewModel.SwitchAccountCommand is IAsyncRelayCommand<AccountInfo> asyncCmd)
+                {
+                    await asyncCmd.ExecuteAsync(account);
+                    _notificationService.Show("账户登录成功", $"已登录到 {account.Nickname}", NotificationType.Success, 3000);
+                }
+            }
+            catch (Exception ex)
+            {
+                _notificationService.Show("登录失败", ex.Message, NotificationType.Error, 3000);
+            }
         }
     }
     #endregion
@@ -290,6 +308,39 @@ public sealed partial class AccountPage : Page
             XamlRoot = this.XamlRoot
         };
         return await dialog.ShowAsync();
+    }
+    #endregion
+
+    #region 签到
+    private async void OnCheckinClicked(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn) btn.IsEnabled = false;
+        BtnCheckinText.Text = "签到中...";
+        try
+        {
+            var progress = new Progress<string>(msg =>
+            {
+                DispatcherQueue.TryEnqueue(() => BtnCheckinText.Text = msg);
+            });
+            var result = await _unifiedCheckinService.ExecuteAllCheckinsAsync(progress);
+            BtnCheckinText.Text = result.OverallSuccess ? "签到完成" : "签到失败";
+
+            _notificationService.Show(
+                result.OverallSuccess ? "签到完成" : "签到失败",
+                result.SummaryMessage,
+                result.OverallSuccess ? NotificationType.Success : NotificationType.Warning,
+                5000);
+        }
+        catch (Exception ex)
+        {
+            BtnCheckinText.Text = "签到异常";
+            _notificationService.Show("签到异常", ex.Message, NotificationType.Error, 3000);
+            Debug.WriteLine($"签到异常: {ex.Message}");
+        }
+        finally
+        {
+            if (sender is Button btn2) btn2.IsEnabled = true;
+        }
     }
     #endregion
 

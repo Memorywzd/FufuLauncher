@@ -455,7 +455,7 @@
                                     <RowDefinition Height="*" />
                                     <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
-                                <Button Grid.Row="0" x:Name="BtnSwitchAccount" Opacity="0" Style="{StaticResource ActionButtonStyle}" Translation="0,0,32">
+                                <Button Grid.Row="0" x:Name="BtnSwitchAccount" Opacity="0" Click="OnCheckinClicked" Style="{StaticResource ActionButtonStyle}" Translation="0,0,32">
                                     <Button.RenderTransform>
                                         <TranslateTransform x:Name="BtnSwitchAccountTransform" Y="-80"/>
                                     </Button.RenderTransform>
@@ -465,114 +465,10 @@
                                     <Grid Background="Transparent">
                                         <Canvas IsHitTestVisible="False"/>
                                         <StackPanel HorizontalAlignment="Center" Orientation="Horizontal" Spacing="8">
-                                        <FontIcon FontSize="16" Glyph="&#xE748;" />
-                                        <TextBlock Text="切换账户" />
+                                        <FontIcon FontSize="16" Glyph="&#xE916;" />
+                                        <TextBlock x:Name="BtnCheckinText" Text="每日签到" />
                                     </StackPanel>
                                     </Grid>
-                                    <Button.Flyout>
-                                        <Flyout Placement="Bottom">
-                                            <StackPanel MinWidth="320" Spacing="8">
-                                                <TextBlock
-                                                    Margin="8,4,0,4"
-                                                    Style="{StaticResource BodyStrongTextBlockStyle}"
-                                                    Text="当前登录" />
-                                                <Grid
-                                                    Margin="0,6"
-                                                    Padding="8,8"
-                                                    Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
-                                                    CornerRadius="8">
-                                                    <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="Auto" />
-                                                        <ColumnDefinition Width="*" />
-                                                        <ColumnDefinition Width="Auto" />
-                                                    </Grid.ColumnDefinitions>
-                                                    <PersonPicture
-                                                        Width="32"
-                                                        Height="32"
-                                                        Margin="0,0,12,0"
-                                                        ProfilePicture="{x:Bind ViewModel.CurrentAccount.AvatarUrl, Mode=OneWay}" />
-                                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                                        <TextBlock
-                                                            FontSize="14"
-                                                            FontWeight="SemiBold"
-                                                            Text="{x:Bind ViewModel.CurrentAccount.Nickname, Mode=OneWay}" />
-                                                        <TextBlock
-                                                            FontSize="12"
-                                                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                                            Text="{x:Bind ViewModel.CurrentAccount.GameUidDisplay, Mode=OneWay}" />
-                                                    </StackPanel>
-                                                    <TextBlock
-                                                        Grid.Column="2"
-                                                        VerticalAlignment="Center"
-                                                        FontSize="12"
-                                                        FontWeight="SemiBold"
-                                                        Foreground="{ThemeResource AccentFillColorDefaultBrush}"
-                                                        Text="当前" />
-                                                </Grid>
-
-                                                <StackPanel Spacing="4" Visibility="{x:Bind ViewModel.HasSavedAccounts, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
-                                                    <TextBlock
-                                                        Margin="8,8,0,4"
-                                                        Style="{StaticResource BodyStrongTextBlockStyle}"
-                                                        Text="已保存的其他账户" />
-                                                    <ListView ItemsSource="{x:Bind ViewModel.SavedAccounts, Mode=OneWay}" SelectionMode="None">
-                                                        <ListView.ItemTemplate>
-                                                            <DataTemplate x:DataType="models:AccountInfo">
-                                                                <Grid Margin="0,4" Padding="0,4">
-                                                                    <Grid.ColumnDefinitions>
-                                                                        <ColumnDefinition Width="Auto" />
-                                                                        <ColumnDefinition Width="*" />
-                                                                        <ColumnDefinition Width="Auto" />
-                                                                        <ColumnDefinition Width="Auto" />
-                                                                    </Grid.ColumnDefinitions>
-                                                                    <PersonPicture
-                                                                        Width="32"
-                                                                        Height="32"
-                                                                        Margin="0,0,12,0"
-                                                                        ProfilePicture="{x:Bind AvatarUrl}" />
-                                                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                                                        <TextBlock
-                                                                            FontSize="14"
-                                                                            FontWeight="SemiBold"
-                                                                            Text="{x:Bind Nickname}" />
-                                                                        <TextBlock
-                                                                            FontSize="12"
-                                                                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                                                            Text="{x:Bind GameUidDisplay}" />
-                                                                    </StackPanel>
-                                                                    <Button
-                                                                        Grid.Column="2"
-                                                                        Margin="0,0,4,0"
-                                                                        Click="OnSwitchAccountClicked"
-                                                                        Content="切换"
-                                                                        FontSize="12" />
-                                                                    <Button
-                                                                        Grid.Column="3"
-                                                                        Padding="6,4"
-                                                                        Background="Transparent"
-                                                                        BorderThickness="0"
-                                                                        Click="OnDeleteSavedAccountClicked"
-                                                                        Tag="{Binding GameUid}">
-                                                                        <FontIcon
-                                                                            FontSize="12"
-                                                                            Foreground="{ThemeResource SystemFillColorCriticalBrush}"
-                                                                            Glyph="&#xE74D;" />
-                                                                    </Button>
-                                                                </Grid>
-                                                            </DataTemplate>
-                                                        </ListView.ItemTemplate>
-                                                    </ListView>
-                                                </StackPanel>
-                                                <MenuFlyoutSeparator />
-                                                <Button HorizontalAlignment="Stretch" Command="{x:Bind ViewModel.AddAccountCommand}">
-                                                    <StackPanel Orientation="Horizontal" Spacing="8">
-                                                        <FontIcon FontSize="12" Glyph="&#xE710;" />
-                                                        <TextBlock Text="添加新账户" />
-                                                    </StackPanel>
-                                                </Button>
-                                            </StackPanel>
-                                        </Flyout>
-                                    </Button.Flyout>
                                 </Button>
 
                                 <Button Grid.Row="2" x:Name="BtnRefreshInfo" Opacity="0"
