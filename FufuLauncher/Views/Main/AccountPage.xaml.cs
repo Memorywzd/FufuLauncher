@@ -1,5 +1,8 @@
 using System.ComponentModel;
 using System.Diagnostics;
+using CommunityToolkit.Mvvm.Input;
+using FufuLauncher.Contracts.Services;
+using FufuLauncher.Messages;
 using FufuLauncher.Models;
 using FufuLauncher.ViewModels;
 using Microsoft.UI.Dispatching;
@@ -18,8 +21,11 @@ namespace FufuLauncher.Views;
 public sealed partial class AccountPage : Page
 {
     #region 字段
+    private readonly IUnifiedCheckinService _unifiedCheckinService;
+    private readonly INotificationService _notificationService;
     private bool _isDeleting;
     private bool _hasAnimatedButtons;
+    private bool _hasAnimatedProfileCard;
     private bool _hasAnimatedRightCards;
     private bool _wasLoggedInOnLoad;
     #endregion
@@ -41,8 +47,11 @@ public sealed partial class AccountPage : Page
     {
         ViewModel = App.GetService<AccountViewModel>();
         ControlPanelViewModel = App.GetService<ControlPanelModel>();
+        _unifiedCheckinService = App.GetService<IUnifiedCheckinService>();
+        _notificationService = App.GetService<INotificationService>();
         DataContext = ViewModel;
         InitializeComponent();
+        RegisterRippleHandlers();
         Debug.WriteLine("AccountPage initialized");
     }
     #endregion
@@ -79,30 +88,104 @@ public sealed partial class AccountPage : Page
         {
             if (ViewModel.IsLoggedIn && !_wasLoggedInOnLoad)
             {
-
                 _wasLoggedInOnLoad = true;
                 DispatcherQueue.TryEnqueue(DispatcherQueuePriority.Normal, async () =>
                 {
+
+                    ProfileCard.Opacity = 0;
+                    ProfileCardTransform.Y = -30;
+
+                    // 强制刷新头像
+                    var avatarUrl = ViewModel.CurrentAccount?.AvatarUrl;
+                    if (!string.IsNullOrEmpty(avatarUrl) && AvatarPicture.Fill is ImageBrush brush)
+                    {
+                        brush.ImageSource = new Microsoft.UI.Xaml.Media.Imaging.BitmapImage(new Uri(avatarUrl));
+                    }
+
                     await Task.Delay(150);
                     PlayEntranceAnimations();
                 });
             }
             else if (!ViewModel.IsLoggedIn)
             {
-  
                 _hasAnimatedButtons = false;
+                _hasAnimatedProfileCard = false;
                 _hasAnimatedRightCards = false;
                 _wasLoggedInOnLoad = false;
                 ResetAnimationState();
+                EntranceStoryboard.Begin();
             }
         }
     }
 
+    private void RegisterRippleHandlers()
+    {
+        var rippleButtons = new[] { BtnSwitchAccount, BtnRefreshInfo, BtnGenshinData, BtnGachaAnalysis, BtnSecurityCenter, BtnLockAccount, BtnCopyCookie, BtnDeleteAccount, BtnLogout };
+        foreach (var btn in rippleButtons)
+        {
+            btn.AddHandler(UIElement.PointerPressedEvent, new PointerEventHandler(Btn_RipplePressed), true);
+        }
+    }
+
+    private void Btn_RipplePressed(object sender, PointerRoutedEventArgs e)
+    {
+        if (sender is not Button button) return;
+        var host = (button.Content as Grid)?.Children[0] as Canvas;
+        if (host == null || host.ActualWidth <= 0) return;
+
+        var pt = e.GetCurrentPoint(host).Position;
+        double w = host.ActualWidth, h = host.ActualHeight;
+        double x = pt.X, y = pt.Y;
+
+        double targetR = new[]
+        {
+            Math.Sqrt(x * x + y * y),
+            Math.Sqrt((w - x) * (w - x) + y * y),
+            Math.Sqrt(x * x + (h - y) * (h - y)),
+            Math.Sqrt((w - x) * (w - x) + (h - y) * (h - y))
+        }.Max();
+
+        var ripple = new Ellipse
+        {
+            Width = targetR * 2,
+            Height = targetR * 2,
+            Fill = new SolidColorBrush(Color.FromArgb(26, 255, 255, 255)),
+            IsHitTestVisible = false,
+            RenderTransformOrigin = new Point(0.5, 0.5),
+            RenderTransform = new ScaleTransform { ScaleX = 0, ScaleY = 0 }
+        };
+        Canvas.SetLeft(ripple, x - targetR);
+        Canvas.SetTop(ripple, y - targetR);
+        host.Children.Add(ripple);
+
+        var sb = new Storyboard();
+        var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
+
+        var scaleX = new DoubleAnimation { From = 0, To = 1, Duration = TimeSpan.FromMilliseconds(400), EasingFunction = ease };
+        var scaleY = new DoubleAnimation { From = 0, To = 1, Duration = TimeSpan.FromMilliseconds(400), EasingFunction = ease };
+        var fade = new DoubleAnimation { From = 1, To = 0, Duration = TimeSpan.FromMilliseconds(500) };
+
+        Storyboard.SetTarget(scaleX, ripple);
+        Storyboard.SetTargetProperty(scaleX, "(UIElement.RenderTransform).(ScaleTransform.ScaleX)");
+        Storyboard.SetTarget(scaleY, ripple);
+        Storyboard.SetTargetProperty(scaleY, "(UIElement.RenderTransform).(ScaleTransform.ScaleY)");
+        Storyboard.SetTarget(fade, ripple);
+        Storyboard.SetTargetProperty(fade, "Opacity");
+
+        var task = ripple;
+        sb.Completed += (_, _) => { try { host.Children.Remove(task); } catch { } };
+        sb.Children.Add(scaleX);
+        sb.Children.Add(scaleY);
+        sb.Children.Add(fade);
+        sb.Begin();
+    }
+
     private void ResetAnimationState()
     {
-  
+
         ButtonsStaggerStoryboard?.Stop();
         RightCardsEntranceStoryboard?.Stop();
+        ProfileCardEntranceStoryboard?.Stop();
 
         // 按钮复位
         BtnSwitchAccount.Opacity = 0; BtnSwitchAccountTransform.Y = -80;
@@ -115,6 +198,8 @@ public sealed partial class AccountPage : Page
         BtnDeleteAccount.Opacity = 0; BtnDeleteAccountTransform.Y = -80;
         BtnLogout.Opacity = 0; BtnLogoutTransform.Y = -80;
 
+        // 角色卡片复位
+        ProfileCard.Opacity = 0; ProfileCardTransform.Y = -30;
 
         CommunityFeedCard.Opacity = 0; CommunityFeedCardTransform.X = 50;
         BoundRolesCard.Opacity = 0; BoundRolesCardTransform.X = 50;
@@ -129,6 +214,12 @@ public sealed partial class AccountPage : Page
             ButtonsStaggerStoryboard?.Begin();
         }
 
+        if (!_hasAnimatedProfileCard)
+        {
+            _hasAnimatedProfileCard = true;
+            ProfileCardEntranceStoryboard?.Begin();
+        }
+
         if (!_hasAnimatedRightCards)
         {
             _hasAnimatedRightCards = true;
@@ -136,18 +227,25 @@ public sealed partial class AccountPage : Page
         }
     }
 
-    private void AvatarPicture_Loaded(object sender, RoutedEventArgs e)
-    {
-        AvatarEntranceStoryboard.Begin();
-    }
     #endregion
 
-    #region 账户切换
-    private void OnSwitchAccountClicked(object sender, RoutedEventArgs e)
+    #region 账户登录
+    private async void OnSwitchAccountClicked(object sender, RoutedEventArgs e)
     {
         if (sender is Button button && button.DataContext is AccountInfo account)
         {
-            ViewModel.SwitchAccountCommand.Execute(account);
+            try
+            {
+                if (ViewModel.SwitchAccountCommand is IAsyncRelayCommand<AccountInfo> asyncCmd)
+                {
+                    await asyncCmd.ExecuteAsync(account);
+                    _notificationService.Show("账户登录成功", $"已登录到 {account.Nickname}", NotificationType.Success, 3000);
+                }
+            }
+            catch (Exception ex)
+            {
+                _notificationService.Show("登录失败", ex.Message, NotificationType.Error, 3000);
+            }
         }
     }
     #endregion
@@ -213,58 +311,36 @@ public sealed partial class AccountPage : Page
     }
     #endregion
 
-    #region 动画
-    private void Btn_RipplePressed(object sender, PointerRoutedEventArgs e)
+    #region 签到
+    private async void OnCheckinClicked(object sender, RoutedEventArgs e)
     {
-        if (sender is not Grid grid) return;
-        var host = grid.Children[0] as Canvas;
-        if (host == null || host.ActualWidth <= 0) return;
-
-        var pt = e.GetCurrentPoint(host).Position;
-        double w = host.ActualWidth, h = host.ActualHeight;
-        double x = pt.X, y = pt.Y;
-
-        double targetR = new[]
+        if (sender is Button btn) btn.IsEnabled = false;
+        BtnCheckinText.Text = "签到中...";
+        try
         {
-            Math.Sqrt(x * x + y * y),
-            Math.Sqrt((w - x) * (w - x) + y * y),
-            Math.Sqrt(x * x + (h - y) * (h - y)),
-            Math.Sqrt((w - x) * (w - x) + (h - y) * (h - y))
-        }.Max();
+            var progress = new Progress<string>(msg =>
+            {
+                DispatcherQueue.TryEnqueue(() => BtnCheckinText.Text = msg);
+            });
+            var result = await _unifiedCheckinService.ExecuteAllCheckinsAsync(progress);
+            BtnCheckinText.Text = result.OverallSuccess ? "签到完成" : "签到失败";
 
-        var ripple = new Ellipse
+            _notificationService.Show(
+                result.OverallSuccess ? "签到完成" : "签到失败",
+                result.SummaryMessage,
+                result.OverallSuccess ? NotificationType.Success : NotificationType.Warning,
+                5000);
+        }
+        catch (Exception ex)
         {
-            Width = targetR * 2,
-            Height = targetR * 2,
-            Fill = new SolidColorBrush(Color.FromArgb(26, 255, 255, 255)),
-            IsHitTestVisible = false,
-            RenderTransformOrigin = new Point(0.5, 0.5),
-            RenderTransform = new ScaleTransform { ScaleX = 0, ScaleY = 0 }
-        };
-        Canvas.SetLeft(ripple, x - targetR);
-        Canvas.SetTop(ripple, y - targetR);
-        host.Children.Add(ripple);
-
-        var sb = new Storyboard();
-        var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
-
-        var scaleX = new DoubleAnimation { From = 0, To = 1, Duration = TimeSpan.FromMilliseconds(400), EasingFunction = ease };
-        var scaleY = new DoubleAnimation { From = 0, To = 1, Duration = TimeSpan.FromMilliseconds(400), EasingFunction = ease };
-        var fade = new DoubleAnimation { From = 1, To = 0, Duration = TimeSpan.FromMilliseconds(500) };
-
-        Storyboard.SetTarget(scaleX, ripple);
-        Storyboard.SetTargetProperty(scaleX, "(UIElement.RenderTransform).(ScaleTransform.ScaleX)");
-        Storyboard.SetTarget(scaleY, ripple);
-        Storyboard.SetTargetProperty(scaleY, "(UIElement.RenderTransform).(ScaleTransform.ScaleY)");
-        Storyboard.SetTarget(fade, ripple);
-        Storyboard.SetTargetProperty(fade, "Opacity");
-
-        var task = ripple;
-        sb.Completed += (_, _) => { try { host.Children.Remove(task); } catch { } };
-        sb.Children.Add(scaleX);
-        sb.Children.Add(scaleY);
-        sb.Children.Add(fade);
-        sb.Begin();
+            BtnCheckinText.Text = "签到异常";
+            _notificationService.Show("签到异常", ex.Message, NotificationType.Error, 3000);
+            Debug.WriteLine($"签到异常: {ex.Message}");
+        }
+        finally
+        {
+            if (sender is Button btn2) btn2.IsEnabled = true;
+        }
     }
     #endregion
 
