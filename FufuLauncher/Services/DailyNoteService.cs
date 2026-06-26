@@ -7,6 +7,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using FufuLauncher.Contracts.Services;
 
 namespace FufuLauncher.Services;
 
@@ -33,6 +34,10 @@ public sealed class DailyNoteService
     private static DeviceVariant _currentVariant = null!;  
     private static string _registeredDeviceFp = "";
     private static bool _fpRegistered;
+
+    // 持久化指纹注册状态，避免进程重启后重新 getFp
+    private static ILocalSettingsService? _settings;
+    private const int DeviceFpMaxAgeDays = 7;
 
     //每个账号派生一套一致的设备特征
     private sealed record DeviceVariant(
@@ -124,7 +129,7 @@ public sealed class DailyNoteService
             if (cookies == null || cookies.Count == 0)
                 throw new InvalidOperationException("无法加载Cookie");
 
-            // 切换账号时重置状态，强制重新 getFp，并重建设备档案
+            // 切换账号时重置状态，并尝试从持久化恢复指纹注册
             if (_currentAccountId != activeId)
             {
                 _currentAccountId = activeId;
@@ -132,6 +137,11 @@ public sealed class DailyNoteService
                 InitDeviceProfile(activeId);
                 _registeredDeviceFp = "";
                 _fpRegistered = false;
+
+                if (!await TryRestoreFpStateAsync(activeId))
+                {
+                    // 持久化状态不存在或已过期，走正常注册流程
+                }
             }
 
             if (!_fpRegistered)
@@ -144,6 +154,8 @@ public sealed class DailyNoteService
 
             if (retcode == 1034)
             {
+                // 1034 = 风控拦截，持久化指纹已失效，标记为未注册
+                await InvalidateFpStateAsync(activeId);
                 GeetestService geetestService = new();
                 string xrpcChallenge = await geetestService.TryVerifyForDailyNoteAsync(cookies);
 
@@ -229,6 +241,9 @@ public sealed class DailyNoteService
                 cookies["DEVICEFP_SEED_ID"] = seedId;
                 cookies["DEVICEFP_SEED_TIME"] = seedTime;
                 await accountManager.UpdateCookiesAsync(activeId, cookies);
+
+                // 持久化指纹注册状态，进程重启后免重新 getFp
+                await PersistFpStateAsync(activeId, seedTime);
             }
             else
             {
@@ -405,6 +420,74 @@ public sealed class DailyNoteService
         Span<byte> bytes = stackalloc byte[(length + 1) / 2];
         Random.Shared.NextBytes(bytes);
         return Convert.ToHexString(bytes).ToLowerInvariant().Substring(0, length);
+    }
+
+    // ── 指纹注册状态持久化（跨进程免重新 getFp） ──
+
+    private static ILocalSettingsService GetSettings()
+    {
+        _settings ??= App.GetService<ILocalSettingsService>();
+        return _settings;
+    }
+
+    /// <summary>尝试从 SQLite 持久化恢复指纹注册状态，成功则免去 getFp 注册</summary>
+    private static async Task<bool> TryRestoreFpStateAsync(string accountId)
+    {
+        try
+        {
+            var settings = GetSettings();
+            var seedTimeObj = await settings.ReadSettingAsync($"DeviceFpSeedTime_{accountId}");
+            if (seedTimeObj is not string seedTimeStr || !long.TryParse(seedTimeStr, out var seedTimeMs))
+                return false;
+
+            // 检查是否过期
+            var age = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - seedTimeMs;
+            if (age > TimeSpan.FromDays(DeviceFpMaxAgeDays).TotalMilliseconds)
+                return false;
+
+            // 从 cookies 中恢复 DEVICEFP
+            var accountManager = App.GetService<AccountManager>();
+            var cookies = await accountManager.LoadCookiesAsync(accountId);
+            if (cookies == null || !cookies.TryGetValue("DEVICEFP", out var fp) || string.IsNullOrEmpty(fp))
+                return false;
+
+            _registeredDeviceFp = fp;
+            _fpRegistered = true;
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>getFp 注册成功后持久化时间戳，跨进程可用</summary>
+    private static async Task PersistFpStateAsync(string accountId, string seedTime)
+    {
+        try
+        {
+            var settings = GetSettings();
+            await settings.SaveSettingAsync($"DeviceFpSeedTime_{accountId}", seedTime);
+        }
+        catch
+        {
+            // 持久化失败不影响主流程
+        }
+    }
+
+    /// <summary>API 返回 1034 时清除持久化注册状态，下次强制重新注册</summary>
+    private static async Task InvalidateFpStateAsync(string accountId)
+    {
+        try
+        {
+            var settings = GetSettings();
+            await settings.SaveSettingAsync($"DeviceFpSeedTime_{accountId}", "");
+            _fpRegistered = false;
+        }
+        catch
+        {
+            _fpRegistered = false;
+        }
     }
 
     /// <summary>解析 JSON 中的 retcode（using 确保 JsonDocument 及时释放）</summary>

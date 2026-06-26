@@ -298,11 +298,6 @@
                                           OnContent="隐藏"
                                           IsOn="{x:Bind ViewModel.IsHideCheckinCardEnabled, Mode=TwoWay}" />
 
-                            <ToggleSwitch Header="隐藏便签卡片"
-                                          OffContent="显示"
-                                          OnContent="隐藏"
-                                          IsOn="{x:Bind ViewModel.IsHideDailyNoteCardEnabled, Mode=TwoWay}" />
-
                             <ToggleSwitch Header="显示快速预设卡片"
                                           OffContent="隐藏"
                                           OnContent="显示"
@@ -360,7 +355,19 @@
                             <TextBlock Text="选择要在便签卡片中显示的项目，最多选择3个！"
                                        Style="{ThemeResource CaptionTextBlockStyle}"
                                        Opacity="0.7"
-                                       Margin="0,2,0,12" />
+                                       Margin="0,2,0,8" />
+
+                            <InfoBar Severity="Warning"
+                                     Title="注意"
+                                     Message="便签数据来自米游社游戏记录接口，频繁刷新可能触发人机验证，严重时风控可能导致战绩页面暂时无法访问。如遇此情况，请降低刷新频率，等待一段时间后重试。"
+                                     IsOpen="True"
+                                     IsClosable="False"
+                                     Margin="0,0,0,8" />
+
+                            <ToggleSwitch Header="隐藏便签卡片"
+                                          OffContent="显示"
+                                          OnContent="隐藏"
+                                          IsOn="{x:Bind ViewModel.IsHideDailyNoteCardEnabled, Mode=TwoWay}" />
 
                             <ToggleSwitch Header="显示树脂"
                                           OffContent="隐藏"
