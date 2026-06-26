@@ -1,3 +1,7 @@
+﻿/*
+Copyright (c) FufuLauncher Dev Team. All rights reserved.
+Licensed under the MIT License.
+*/
 // Copyright (c) FufuLauncher Dev Team. All rights reserved.
 // By kyxsan.
 // Licensed under the MIT License.
@@ -650,3 +654,4 @@ public sealed class DailyNoteService
         public string DeviceFp { get; set; }
     }
 }
+
