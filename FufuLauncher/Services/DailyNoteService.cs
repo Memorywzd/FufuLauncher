@@ -30,31 +30,31 @@ public sealed class DailyNoteService
     private static string _currentDeviceName = "";
     private static string _currentSysVersion = "";
     private static string _currentUserAgent = "";
-    private static DeviceVariant _currentVariant = null!;  // 缓存当前变体，避免重复哈希
+    private static DeviceVariant _currentVariant = null!;  
     private static string _registeredDeviceFp = "";
     private static bool _fpRegistered;
 
-    // ── 设备档案：每个账号派生一套一致的设备特征，减少风控聚合风险 ──
+    //每个账号派生一套一致的设备特征
     private sealed record DeviceVariant(
-        string DeviceModel,     // "24031PN0DC"
-        string ProductName,     // "aurora"
-        string Brand,           // "Xiaomi"
-        string Board,           // "24031PN0DC"
-        string Hardware,        // "Xiaomi"
-        string DeviceType,      // "aurora"
-        string Manufacturer,    // "Xiaomi"
-        string DeviceInfo,      // "Xiaomi/aurora/aurora:12/V417IR/1747:user/release-keys"
-        string OsVersion,       // "12"
-        string SdkVersion,      // "32"
-        string BuildId,         // "V417IR"
-        string BuildDisplay,    // "V417IR release-keys"
-        long BuildTime,         // 1779448087000
-        string Hostname         // "6b29a8384f29"
+        string DeviceModel,    
+        string ProductName,    
+        string Brand,          
+        string Board,          
+        string Hardware,       
+        string DeviceType,     
+        string Manufacturer,   
+        string DeviceInfo,     
+        string OsVersion,      
+        string SdkVersion,     
+        string BuildId,        
+        string BuildDisplay,   
+        long BuildTime,        
+        string Hostname        
     );
 
     private static readonly DeviceVariant[] DeviceVariants =
     {
-        // 0: Xiaomi 24031PN0DC (Android 12) — 原始配置
+       
         new(
             DeviceModel:   "24031PN0DC",
             ProductName:   "aurora",
@@ -71,7 +71,7 @@ public sealed class DailyNoteService
             BuildTime:     1779448087000L,
             Hostname:      "6b29a8384f29"
         ),
-        // 1: Xiaomi 2211133C (Android 14) — Xiaomi 13
+  
         new(
             DeviceModel:   "2211133C",
             ProductName:   "fuxi",
@@ -88,7 +88,7 @@ public sealed class DailyNoteService
             BuildTime:     1700000000000L,
             Hostname:      "dg02-pool03-kvm87"
         ),
-        // 2: Xiaomi 23127PN0CC (Android 15) — Xiaomi 14
+    
         new(
             DeviceModel:   "23127PN0CC",
             ProductName:   "shennong",

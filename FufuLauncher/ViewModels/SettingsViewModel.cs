@@ -155,6 +155,26 @@ namespace FufuLauncher.ViewModels
 
         [ObservableProperty] private bool _isRedeemCodeNotificationEnabled = true;
 
+        [ObservableProperty] private PostLaunchBehavior _postLaunchBehavior;
+
+        public record PostLaunchBehaviorItem(string DisplayName, PostLaunchBehavior Value);
+
+        public List<PostLaunchBehaviorItem> PostLaunchBehaviorItems { get; } = new()
+        {
+            new("不变", Models.PostLaunchBehavior.None),
+            new("最小化到托盘", Models.PostLaunchBehavior.MinimizeToTray),
+            new("保存状态并退出", Models.PostLaunchBehavior.Exit)
+        };
+
+        [ObservableProperty] private PostLaunchBehaviorItem _selectedPostLaunchBehaviorItem = null!;
+
+        partial void OnSelectedPostLaunchBehaviorItemChanged(PostLaunchBehaviorItem value)
+        {
+            if (value == null) return;
+            _postLaunchBehavior = value.Value;
+            _ = _localSettingsService.SaveSettingAsync("PostLaunchBehavior", value.Value.ToString());
+        }
+
         partial void OnIsRedeemCodeNotificationEnabledChanged(bool value)
         {
             _ = _localSettingsService.SaveSettingAsync("IsRedeemCodeNotificationEnabled", value);
@@ -938,6 +958,13 @@ var cpuWarningThresholdJson = await _localSettingsService.ReadSettingAsync(Proce
 
             var redeemNotifyJson = await _localSettingsService.ReadSettingAsync("IsRedeemCodeNotificationEnabled");
             IsRedeemCodeNotificationEnabled = redeemNotifyJson == null || Convert.ToBoolean(redeemNotifyJson);
+
+            var behaviorJson = await _localSettingsService.ReadSettingAsync("PostLaunchBehavior");
+            PostLaunchBehavior postLaunchBehavior = PostLaunchBehavior.None;
+            if (behaviorJson is string behaviorStr && Enum.TryParse<PostLaunchBehavior>(behaviorStr, out var parsed))
+                postLaunchBehavior = parsed;
+            _postLaunchBehavior = postLaunchBehavior;
+            SelectedPostLaunchBehaviorItem = PostLaunchBehaviorItems.First(i => i.Value == postLaunchBehavior);
 
             var customExeJson = await _localSettingsService.ReadSettingAsync(GameExeManager.CustomExeNameKey);
             CustomGameExeName = customExeJson?.ToString() ?? string.Empty;

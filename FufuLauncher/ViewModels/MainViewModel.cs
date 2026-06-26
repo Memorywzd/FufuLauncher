@@ -1189,6 +1189,7 @@ private void QuickSwitchPreset(PresetModel targetPreset)
                 if (result.Success)
                 {
                     await ForceRefreshGameStateAsync();
+                    await ApplyPostLaunchBehaviorAsync();
                 }
                 else
                 {
@@ -1200,6 +1201,52 @@ private void QuickSwitchPreset(PresetModel targetPreset)
                 IsGameLaunching = false;
                 IsLaunchButtonEnabled = true;
                 await ForceRefreshGameStateAsync();
+            }
+        }
+
+        private async Task ApplyPostLaunchBehaviorAsync()
+        {
+            var obj = await _localSettingsService.ReadSettingAsync("PostLaunchBehavior");
+            if (obj is not string s || !Enum.TryParse<PostLaunchBehavior>(s, out var behavior))
+                return;
+
+            switch (behavior)
+            {
+                case PostLaunchBehavior.MinimizeToTray:
+                    _dispatcherQueue.TryEnqueue(() =>
+                    {
+                        App.MainWindow.Hide();
+                    });
+                    break;
+
+                case PostLaunchBehavior.Exit:
+                    await SaveStateBeforeExitAsync();
+                    _dispatcherQueue.TryEnqueue(() =>
+                    {
+                        Application.Current.Exit();
+                    });
+                    break;
+            }
+        }
+
+        private async Task SaveStateBeforeExitAsync()
+        {
+            try
+            {               
+                var windowSaveService = App.GetService<ILocalSettingsService>();
+                var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(App.MainWindow);
+                var windowId = Microsoft.UI.Win32Interop.GetWindowIdFromWindow(hwnd);
+                var appWindow = Microsoft.UI.Windowing.AppWindow.GetFromWindowId(windowId);
+                if (appWindow != null)
+                {
+                    var size = appWindow.Size;
+                    await windowSaveService.SaveSettingAsync("WindowWidth", size.Width);
+                    await windowSaveService.SaveSettingAsync("WindowHeight", size.Height);
+                }
+            }
+            catch
+            {
+                // 保存状态失败不影响退出
             }
         }
 
