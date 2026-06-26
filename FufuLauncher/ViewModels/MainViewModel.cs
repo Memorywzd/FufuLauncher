@@ -1357,6 +1357,15 @@ private void QuickSwitchPreset(PresetModel targetPreset)
 
         public async Task LoadDailyNoteAsync()
         {
+            // 便签卡片隐藏时不发起任何 API 请求
+            var hideJson = await _localSettingsService.ReadSettingAsync("IsHideDailyNoteCardEnabled");
+            if (hideJson != null && Convert.ToBoolean(hideJson))
+            {
+                IsDailyNoteLoaded = false;
+                Debug.WriteLine("[DailyNote] 便签卡片已隐藏，跳过API请求");
+                return;
+            }
+
             try
             {
                 var accountManager = App.GetService<AccountManager>();
