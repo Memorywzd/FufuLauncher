@@ -169,6 +169,14 @@ public sealed class GeetestService
             appWindow.TitleBar.ButtonBackgroundColor = Colors.Transparent;
             appWindow.TitleBar.ButtonInactiveBackgroundColor = Colors.Transparent;
             appWindow.Resize(new SizeInt32(400, 450));
+
+            AppWindow mainAppWindow = App.MainWindow.AppWindow;
+            PointInt32 mainPos = mainAppWindow.Position;
+            SizeInt32 mainSize = mainAppWindow.Size;
+            appWindow.Move(new PointInt32(
+                mainPos.X + (mainSize.Width - 400) / 2,
+                mainPos.Y + (mainSize.Height - 450) / 2));
+
             geetestWindow.SetTitleBar(titleBar);
 
             await webView.EnsureCoreWebView2Async();
