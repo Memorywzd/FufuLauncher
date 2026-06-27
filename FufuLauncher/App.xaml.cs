@@ -1,3 +1,7 @@
+﻿/*
+Copyright (c) FufuLauncher Dev Team. All rights reserved.
+Licensed under the MIT License.
+*/
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text.Json;
@@ -144,6 +148,7 @@ public partial class App : Application
                     services.AddTransient<OtherViewModel>();
                     services.AddTransient<OtherPage>();
                     services.AddSingleton<IAutoClickerService, AutoClickerService>();
+                    services.AddSingleton<IScreenshotService, ScreenshotService>();
                     services.AddTransient<AgreementViewModel>();
                     services.AddTransient<AgreementPage>();
                     services.AddSingleton<IUpdateService, UpdateService>();
@@ -628,3 +633,4 @@ public partial class App : Application
         }
     }
 }
+

@@ -1,3 +1,7 @@
+﻿/*
+Copyright (c) FufuLauncher Dev Team. All rights reserved.
+Licensed under the MIT License.
+*/
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
@@ -32,6 +36,7 @@ namespace FufuLauncher.Services
         private const string CustomLaunchParametersKey = "CustomLaunchParameters";
         public const string GenshinHDRConfigKey = "IsGenshinHDRForcedEnabled";
         private readonly IPluginUpdateService _pluginUpdateService;
+        private readonly IScreenshotService _screenshotService;
 
         private bool _lastUseInjection;
 
@@ -40,12 +45,14 @@ namespace FufuLauncher.Services
             IGameConfigService gameConfigService,
             ILauncherService launcherService,
             ControlPanelModel controlPanelModel,
-            IPluginUpdateService pluginUpdateService)
+            IPluginUpdateService pluginUpdateService,
+            IScreenshotService screenshotService)
         {
             _localSettingsService = localSettingsService;
             _gameConfigService = gameConfigService;
             _launcherService = launcherService;
             _controlPanelModel = controlPanelModel;
+            _screenshotService = screenshotService;
         }
 
         [DllImport("user32.dll")]
@@ -330,6 +337,7 @@ public async Task<LaunchResult> LaunchGameAsync()
                     {
                         _ = LaunchBetterGIAsync();
                         await CheckAndLaunchFpsOverlayAsync(logBuilder, gamePid);
+                        await CheckAndLaunchScreenshotServiceAsync(logBuilder, gamePid);
 
                         result.Success = true;
                         result.ErrorMessage = "";
@@ -382,6 +390,24 @@ public async Task<LaunchResult> LaunchGameAsync()
             catch (Exception ex)
             {
                 logBuilder.AppendLine($"[启动流程] 帧数监控遮罩启动异常: {ex.Message}");
+            }
+        }
+
+        private async Task CheckAndLaunchScreenshotServiceAsync(StringBuilder logBuilder, int gamePid)
+        {
+            try
+            {
+                var isEnabled = await _localSettingsService.ReadSettingAsync("IsScreenshotEnabled");
+                if (isEnabled != null && Convert.ToBoolean(isEnabled))
+                {
+                    logBuilder.AppendLine($"[启动流程] 正在为进程(PID:{gamePid})启动截图服务");
+                    await _screenshotService.StartAsync(gamePid);
+                    logBuilder.AppendLine("[启动流程] 截图服务已启动");
+                }
+            }
+            catch (Exception ex)
+            {
+                logBuilder.AppendLine($"[启动流程] 截图服务启动异常: {ex.Message}");
             }
         }
 
