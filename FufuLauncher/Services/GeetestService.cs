@@ -1,4 +1,4 @@
-// Copyright (c) FufuLauncher Dev Team. All rights reserved.
+﻿// Copyright (c) FufuLauncher Dev Team. All rights reserved.
 // By kyxsan.
 // Licensed under the MIT License.
 
@@ -8,6 +8,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using FufuLauncher.Services.MiHoYo;
 using Microsoft.UI;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
