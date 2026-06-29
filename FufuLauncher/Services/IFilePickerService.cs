@@ -3,7 +3,6 @@ Copyright (c) FufuLauncher Dev Team. All rights reserved.
 Licensed under the MIT License.
 */
 using System.Diagnostics;
-using Microsoft.UI.Xaml;
 
 namespace FufuLauncher.Services
 {
@@ -16,37 +15,15 @@ namespace FufuLauncher.Services
 
     public class FilePickerService : IFilePickerService
     {
-        public static IntPtr GetValidWindowHandle(Window window = null)
-        {
-            if (window != null)
-            {
-                var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
-                if (hwnd != IntPtr.Zero) return hwnd;
-            }
-
-            var mainWindow = App.MainWindow;
-            if (mainWindow != null)
-            {
-                var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(mainWindow);
-                if (hwnd != IntPtr.Zero) return hwnd;
-            }
-
-            return IntPtr.Zero;
-        }
-
-        public static void InitializeWithValidWindow(object target, Window window = null)
-        {
-            var hwnd = GetValidWindowHandle(window);
-            if (hwnd != IntPtr.Zero)
-                WinRT.Interop.InitializeWithWindow.Initialize(target, hwnd);
-        }
-
         public async Task<string> PickAudioFileAsync()
         {
             try
             {
+                var window = App.MainWindow;
+                var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
+
                 var picker = new Windows.Storage.Pickers.FileOpenPicker();
-                InitializeWithValidWindow(picker);
+                WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
 
                 picker.ViewMode = Windows.Storage.Pickers.PickerViewMode.List;
                 picker.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.MusicLibrary;
@@ -83,7 +60,8 @@ namespace FufuLauncher.Services
                     filePicker.FileTypeFilter.Add(type);
                 }
 
-                InitializeWithValidWindow(filePicker);
+                var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(App.MainWindow);
+                WinRT.Interop.InitializeWithWindow.Initialize(filePicker, hwnd);
 
                 var file = await filePicker.PickSingleFileAsync();
                 return file?.Path;
@@ -104,7 +82,8 @@ namespace FufuLauncher.Services
                 };
                 folderPicker.FileTypeFilter.Add("*");
 
-                InitializeWithValidWindow(folderPicker);
+                var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(App.MainWindow);
+                WinRT.Interop.InitializeWithWindow.Initialize(folderPicker, hwnd);
 
                 var folder = await folderPicker.PickSingleFolderAsync();
                 return folder?.Path;

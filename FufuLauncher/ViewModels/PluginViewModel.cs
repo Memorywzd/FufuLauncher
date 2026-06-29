@@ -10,7 +10,6 @@ using System.Text;
 using System.Windows.Input;
 using CommunityToolkit.Mvvm.Input;
 using FufuLauncher.Models;
-using FufuLauncher.Services;
 using Windows.Storage.Pickers;
 
 namespace FufuLauncher.ViewModels;
@@ -254,7 +253,8 @@ public class PluginViewModel : INotifyPropertyChanged
         try
         {
             var picker = new FileOpenPicker();
-            FilePickerService.InitializeWithValidWindow(picker);
+            var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(App.MainWindow);
+            WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
 
             picker.ViewMode = PickerViewMode.List;
             picker.SuggestedStartLocation = PickerLocationId.ComputerFolder;

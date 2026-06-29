@@ -8,7 +8,6 @@ using CommunityToolkit.Mvvm.Messaging;
 using FufuLauncher.Constants;
 using FufuLauncher.Contracts.Services;
 using FufuLauncher.Messages;
-using FufuLauncher.Services;
 using Microsoft.UI.Xaml;
 using System.Diagnostics;
 using Windows.Storage.Pickers;
@@ -165,7 +164,8 @@ namespace FufuLauncher.ViewModels
                 picker.SuggestedStartLocation = PickerLocationId.ComputerFolder;
                 picker.FileTypeFilter.Add("*");
 
-                FilePickerService.InitializeWithValidWindow(picker);
+                var hwnd = WindowNative.GetWindowHandle(App.MainWindow);
+                InitializeWithWindow.Initialize(picker, hwnd);
 
                 var folder = await picker.PickSingleFolderAsync();
                 return folder?.Path;
