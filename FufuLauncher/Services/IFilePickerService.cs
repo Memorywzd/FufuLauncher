@@ -16,7 +16,7 @@ namespace FufuLauncher.Services
 
     public class FilePickerService : IFilePickerService
     {
-        public static bool InitializeWithValidWindow(object target, out string? errorMessage, Window window = null)
+        public static bool InitializeWithValidWindow(object target, out string? errorMessage, Window? window = null)
         {
             if (window != null)
             {

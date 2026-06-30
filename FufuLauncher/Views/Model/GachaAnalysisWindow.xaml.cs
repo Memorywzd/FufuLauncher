@@ -702,29 +702,34 @@ namespace FufuLauncher.Views
             DispatcherQueue.TryEnqueue(() => tcs.SetResult());
             await tcs.Task;
 
-            var renderTargetBitmap = new RenderTargetBitmap();
-            await renderTargetBitmap.RenderAsync(element);
+            try
+            {
+                var renderTargetBitmap = new RenderTargetBitmap();
+                await renderTargetBitmap.RenderAsync(element);
 
-            AnalysisExportButtons.Visibility = Visibility.Visible;
-            AnalysisExportLogo.Visibility = Visibility.Collapsed;
-            AnalysisExportTarget.Background = null;
+                var pixels = await renderTargetBitmap.GetPixelsAsync();
 
-            var pixels = await renderTargetBitmap.GetPixelsAsync();
+                var stream = new InMemoryRandomAccessStream();
+                var encoder = await BitmapEncoder.CreateAsync(BitmapEncoder.PngEncoderId, stream);
 
-            var stream = new InMemoryRandomAccessStream();
-            var encoder = await BitmapEncoder.CreateAsync(BitmapEncoder.PngEncoderId, stream);
+                encoder.SetPixelData(
+                    BitmapPixelFormat.Bgra8,
+                    BitmapAlphaMode.Premultiplied,
+                    (uint)renderTargetBitmap.PixelWidth,
+                    (uint)renderTargetBitmap.PixelHeight,
+                    96,
+                    96,
+                    pixels.ToArray());
 
-            encoder.SetPixelData(
-                BitmapPixelFormat.Bgra8,
-                BitmapAlphaMode.Premultiplied,
-                (uint)renderTargetBitmap.PixelWidth,
-                (uint)renderTargetBitmap.PixelHeight,
-                96,
-                96,
-                pixels.ToArray());
-
-            await encoder.FlushAsync();
-            return stream;
+                await encoder.FlushAsync();
+                return stream;
+            }
+            finally
+            {
+                AnalysisExportButtons.Visibility = Visibility.Visible;
+                AnalysisExportLogo.Visibility = Visibility.Collapsed;
+                AnalysisExportTarget.Background = null;
+            }
         }
 
         private async void ShowDialogMessage(string title, string content)
