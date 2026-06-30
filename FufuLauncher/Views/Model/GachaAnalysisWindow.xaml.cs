@@ -7,6 +7,7 @@ using FufuLauncher.Helpers;
 using FufuLauncher.Models;
 using FufuLauncher.Services;
 using FufuLauncher.ViewModels;
+using System.Diagnostics;
 using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -333,7 +334,7 @@ namespace FufuLauncher.Views
             WindowManagerHelper.CenterWindowOnScreen(AppWindow, 1120, 720);
             LoadingRing.IsActive = true;
 
-            ViewModel.GetWindowHandle = () => WinRT.Interop.WindowNative.GetWindowHandle(this);
+            ViewModel.GetWindow = () => this;
             ViewModel.RequestMetadataScrapeAction = async () => await ViewModel.FetchMetadataFromApiAsync();
             this.Activated += OnWindowFirstActivated;
             ViewModel.OnUidMismatchAsync = async (currentUid, incomingUid) =>
@@ -692,10 +693,24 @@ namespace FufuLauncher.Views
         
         private async Task<InMemoryRandomAccessStream> RenderElementToStreamAsync(UIElement element)
         {
+            AnalysisExportButtons.Visibility = Visibility.Collapsed;
+            AnalysisExportLogo.Visibility = Visibility.Visible;
+            AnalysisExportTarget.Background = (Brush)Application.Current.Resources["ApplicationPageBackgroundThemeBrush"]
+                ?? new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.Transparent);
+
+            var tcs = new TaskCompletionSource();
+            DispatcherQueue.TryEnqueue(() => tcs.SetResult());
+            await tcs.Task;
+
             var renderTargetBitmap = new RenderTargetBitmap();
             await renderTargetBitmap.RenderAsync(element);
 
+            AnalysisExportButtons.Visibility = Visibility.Visible;
+            AnalysisExportLogo.Visibility = Visibility.Collapsed;
+            AnalysisExportTarget.Background = null;
+
             var pixels = await renderTargetBitmap.GetPixelsAsync();
+
             var stream = new InMemoryRandomAccessStream();
             var encoder = await BitmapEncoder.CreateAsync(BitmapEncoder.PngEncoderId, stream);
 
@@ -730,16 +745,30 @@ namespace FufuLauncher.Views
             try
             {
                 using var stream = await RenderElementToStreamAsync(AnalysisExportTarget);
+                stream.Seek(0);
                 var dataPackage = new DataPackage();
                 dataPackage.SetBitmap(RandomAccessStreamReference.CreateFromStream(stream));
                 Clipboard.SetContent(dataPackage);
-                Clipboard.Flush();
+
+                for (var i = 0; i < 5; i++)
+                {
+                    try
+                    {
+                        Clipboard.Flush();
+                        break;
+                    }
+                    catch (System.Runtime.InteropServices.COMException) when (i < 4)
+                    {
+                        await Task.Delay(100);
+                    }
+                }
 
                 ShowDialogMessage("复制成功", "祈愿分析图片已复制到剪贴板。");
             }
             catch (Exception ex)
             {
-                ShowDialogMessage("复制失败", $"详细信息: {ex.Message}");
+                Debug.WriteLine($"[Gacha] 复制图片失败: {ex}");
+                ShowDialogMessage("复制失败", ex.Message);
             }
         }
 

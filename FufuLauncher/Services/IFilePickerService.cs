@@ -40,7 +40,7 @@ namespace FufuLauncher.Services
             var mainHwnd = WinRT.Interop.WindowNative.GetWindowHandle(mainWindow);
             if (mainHwnd == IntPtr.Zero)
             {
-                errorMessage = "窗口句柄无效，无法打开文件选择器";
+                errorMessage = "窗口句柄无效，请以普通用户模式运行或重试";
                 Debug.WriteLine($"[FilePickerService] {errorMessage}");
                 return false;
             }
