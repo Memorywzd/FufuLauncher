@@ -79,10 +79,6 @@
             <CopyToOutputDirectory>Always</CopyToOutputDirectory>
             <Link>Update.json</Link>
         </Content>
-        <!-- <Content Include="..\tools\getfp\getfp.exe">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-            <Link>getfp.exe</Link>
-        </Content> -->
     </ItemGroup>
 
     <ItemGroup>

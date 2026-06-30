@@ -29,6 +29,7 @@ namespace FufuLauncher.Views
 {
     public sealed partial class BBSWindow : Window
     {
+        #region 
         private AppWindow m_AppWindow;
 
         private byte[] _screenshotBytes;
@@ -90,6 +91,8 @@ namespace FufuLauncher.Views
         private string _sysVersion = "";
         private string _deviceUserAgent = "";
 
+        private string _activeDeviceFp = string.Empty;
+        
         private const string DefaultUrl = ApiEndpoints.BbsDefaultUrl;
 
         private const string HideScrollBarScript = """
@@ -123,7 +126,9 @@ namespace FufuLauncher.Views
             Object.defineProperty(navigator, 'webdriver', { get: () => false });
             Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
             """;
+        #endregion
 
+        #region
         public BBSWindow() : this(true)
         {
         }
@@ -195,6 +200,8 @@ namespace FufuLauncher.Views
             }
         }
 
+        #endregion
+
         private async Task InitializeWebViewAsync()
         {
             try
@@ -225,32 +232,37 @@ namespace FufuLauncher.Views
             }
         }
 
-       
+
         private async Task EnsureDeviceFpAsync()
         {
             try
             {
                 var accountManager = App.GetService<AccountManager>();
                 var activeId = accountManager.ActiveAccountId;
-                if (string.IsNullOrEmpty(activeId)) return;
-
-                var cookies = await accountManager.LoadCookiesAsync(activeId);
-                if (cookies == null || cookies.Count == 0) return;
-
-                var fp = _fingerprintService.GetCurrentFingerprint();
-                if (string.IsNullOrEmpty(fp))
+                if (string.IsNullOrEmpty(activeId))
                 {
-                    fp = await _fingerprintService.GetOrRegisterFingerprintAsync(activeId, cookies);
+                    System.Diagnostics.Debug.WriteLine("[BBSWindow] 无活跃账号，跳过指纹获取");
+                    return;
                 }
 
-                if (!string.IsNullOrEmpty(fp))
+                var cookies = await accountManager.LoadCookiesAsync(activeId);
+                if (cookies == null || cookies.Count == 0)
                 {
-                    cookieDic["DEVICEFP"] = fp;
+                    System.Diagnostics.Debug.WriteLine("[BBSWindow] 无可用 Cookies，跳过指纹获取");
+                    return;
+                }
+
+                _activeDeviceFp = await _fingerprintService.GetOrRegisterFingerprintAsync(activeId, cookies);
+                System.Diagnostics.Debug.WriteLine($"[BBSWindow] 活跃账号指纹已获取: {_activeDeviceFp}");
+
+                if (!string.IsNullOrEmpty(_activeDeviceFp))
+                {
+                    cookieDic["DEVICEFP"] = _activeDeviceFp;
                 }
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[BBSWindow] EnsureDeviceFpAsync failed: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"[BBSWindow] EnsureDeviceFpAsync 失败: {ex.Message}");
             }
         }
 
@@ -312,17 +324,14 @@ namespace FufuLauncher.Views
                 }
 
                 var uri = args.Request.Uri;
-
                 bool isApiRequest = uri.Contains("/api/") || uri.Contains("/community/") || uri.Contains("/record/") || uri.Contains("/event/");
 
                 if (isApiRequest && (uri.Contains("mihoyo.com") || uri.Contains("hoyolab.com")))
                 {
                     var headers = args.Request.Headers;
-
-             
                     var config = SelectConfig(uri);
 
-             
+                   
                     headers.RemoveHeader("x-rpc-client_type");
                     headers.RemoveHeader("x-rpc-app_version");
                     headers.RemoveHeader("DS");
@@ -335,7 +344,7 @@ namespace FufuLauncher.Views
                     headers.RemoveHeader("x-rpc-sdk_version");
                     headers.RemoveHeader("X-Requested-With");
 
-       
+                  
                     headers.SetHeader("x-rpc-client_type", config.ClientType);
                     headers.SetHeader("x-rpc-app_version", config.AppVersion);
                     headers.SetHeader("x-rpc-device_id", _deviceId);
@@ -347,15 +356,15 @@ namespace FufuLauncher.Views
                     headers.SetHeader("x-rpc-sdk_version", "2.16.0");
                     headers.SetHeader("X-Requested-With", "com.mihoyo.hyperion");
 
-           
-                    string fp;
-                    if (cookieDic.TryGetValue("DEVICEFP", out var cfp) && !string.IsNullOrWhiteSpace(cfp))
-                        fp = cfp;
-                    else
+                    string fp = _activeDeviceFp;
+                    if (string.IsNullOrEmpty(fp))
+                    {
+                        System.Diagnostics.Debug.WriteLine("[BBSWindow] 警告：_activeDeviceFp 为空，使用临时随机值");
                         fp = Convert.ToHexString(RandomNumberGenerator.GetBytes(7)).ToLowerInvariant();
+                    }
                     headers.SetHeader("x-rpc-device_fp", fp);
 
-                 
+
                     string ds;
                     if (config.UseDS2)
                     {
@@ -373,7 +382,7 @@ namespace FufuLauncher.Views
                     }
                     headers.SetHeader("DS", ds);
 
-                 
+                   
                     headers.SetHeader("Origin", "https://webstatic.mihoyo.com");
                     headers.SetHeader("Referer", "https://webstatic.mihoyo.com/");
                     headers.SetHeader("Accept", "application/json, text/plain, */*");
@@ -433,8 +442,14 @@ namespace FufuLauncher.Views
             });
             return null;
         }
-       private JsResult GetCookieInfoMinimal()
+        private JsResult GetCookieInfoMinimal()
         {
+            string fp = _activeDeviceFp;
+            if (string.IsNullOrEmpty(fp))
+            {
+                System.Diagnostics.Debug.WriteLine("[BBSWindow] GetCookieInfoMinimal: _activeDeviceFp 为空，使用随机回退");
+                fp = Convert.ToHexString(RandomNumberGenerator.GetBytes(7)).ToLowerInvariant();
+            }
             return new JsResult
             {
                 Data = new Dictionary<string, object>
@@ -447,7 +462,7 @@ namespace FufuLauncher.Views
                     ["ltoken_v2"] = cookieDic.GetValueOrDefault("ltoken_v2") ?? "",
                     ["account_mid_v2"] = cookieDic.GetValueOrDefault("account_mid_v2") ?? "",
                     ["cookie_token_v2"] = cookieDic.GetValueOrDefault("cookie_token_v2") ?? "",
-                    ["DEVICEFP"] = cookieDic.GetValueOrDefault("DEVICEFP") ?? ""
+                    ["DEVICEFP"] = fp 
                 }
             };
         }
@@ -578,15 +593,21 @@ namespace FufuLauncher.Views
 
         private JsResult GetHttpRequestHeader()
         {
+            string fp = _activeDeviceFp;
+            if (string.IsNullOrEmpty(fp))
+            {
+                System.Diagnostics.Debug.WriteLine("[BBSWindow] GetHttpRequestHeader: _activeDeviceFp 为空，使用随机回退");
+                fp = Convert.ToHexString(RandomNumberGenerator.GetBytes(7)).ToLowerInvariant();
+            }
             var data = new Dictionary<string, object>
             {
                 ["x-rpc-app_id"] = "bll8iq97cem8",
                 ["x-rpc-client_type"] = _currentConfig.ClientType,
                 ["x-rpc-app_version"] = _currentConfig.AppVersion,
                 ["x-rpc-device_id"] = _deviceId,
-                ["x-rpc-sdk_version"] = "2.16.0"
+                ["x-rpc-sdk_version"] = "2.16.0",
+                ["x-rpc-device_fp"] = fp   
             };
-            if (cookieDic.TryGetValue("DEVICEFP", out var fp)) data["x-rpc-device_fp"] = fp;
             return new JsResult { Data = data };
         }
 
@@ -776,13 +797,6 @@ namespace FufuLauncher.Views
                 {
                     cookieDic[kv.Key] = kv.Value;
                 }
-            }
-
-      
-            var registeredFp = _fingerprintService.GetCurrentFingerprint();
-            if (!string.IsNullOrEmpty(registeredFp))
-            {
-                cookieDic["DEVICEFP"] = registeredFp;
             }
         }
 

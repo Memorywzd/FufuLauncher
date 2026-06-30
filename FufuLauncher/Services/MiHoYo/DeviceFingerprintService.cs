@@ -23,10 +23,10 @@ internal sealed class DeviceFingerprintService : IDeviceFingerprintService
         Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
     };
 
-    private static string _registeredDeviceFp = "";
-    private static bool _fpRegistered;
-    private static string _currentAccountId = "";
-    private static string _cachedDeviceId = ""; // 持久化缓存
+
+    private string _registeredDeviceFp = "";
+    private bool _fpRegistered;
+    private string _currentAccountId = "";
 
     private readonly ILocalSettingsService _settings;
     #endregion
@@ -37,11 +37,21 @@ internal sealed class DeviceFingerprintService : IDeviceFingerprintService
         _settings = settings;
     }
 
-    public string? GetCurrentFingerprint() =>
-        string.IsNullOrEmpty(_registeredDeviceFp) ? null : _registeredDeviceFp;
+    public string? GetCurrentFingerprint(string accountId) =>
+    _currentAccountId == accountId && !string.IsNullOrEmpty(_registeredDeviceFp)
+        ? _registeredDeviceFp
+        : null;
 
     public async Task<string> GetOrRegisterFingerprintAsync(string accountId, Dictionary<string, string> cookies)
     {
+       
+        if (_currentAccountId != accountId)
+        {
+            _fpRegistered = false;
+            _registeredDeviceFp = "";
+            _currentAccountId = accountId;
+        }
+
         if (_fpRegistered && !string.IsNullOrEmpty(_registeredDeviceFp))
             return _registeredDeviceFp;
 
@@ -51,16 +61,17 @@ internal sealed class DeviceFingerprintService : IDeviceFingerprintService
             return _registeredDeviceFp;
         }
 
-        _currentAccountId = accountId;
         await RegisterDeviceFpAsync(accountId, cookies);
         return _registeredDeviceFp;
     }
 
     public async Task ResetFingerprintAsync(string accountId)
     {
-        _fpRegistered = false;
-        _registeredDeviceFp = "";
-        // 只清除注册状态，不动种子
+        if (_currentAccountId == accountId)
+        {
+            _fpRegistered = false;
+            _registeredDeviceFp = "";
+        }
     }
     #endregion
 
@@ -188,7 +199,7 @@ internal sealed class DeviceFingerprintService : IDeviceFingerprintService
     }
     #endregion
 
-    #region 种子管理（永久复用，绝不刷新）
+    #region 种子管理
     private async Task<(string seedId, string seedTime)> GetOrCreateSeedAsync(string accountId)
     {
         string seedJson = (await _settings.ReadSettingAsync($"DeviceFpSeed_{accountId}")) as string ?? "";
@@ -234,20 +245,16 @@ internal sealed class DeviceFingerprintService : IDeviceFingerprintService
         return Convert.ToHexString(hash).ToLower()[..16];
     }
 
-    // 持久化缓存的异步版本
     private async Task<string> GetOrCacheDeviceIdAsync(string accountId)
     {
-        if (!string.IsNullOrEmpty(_cachedDeviceId))
-            return _cachedDeviceId;
         string cached = (await _settings.ReadSettingAsync($"DeviceFpDeviceId_{accountId}")) as string ?? "";
         if (!string.IsNullOrEmpty(cached))
         {
-            _cachedDeviceId = cached;
             Debug.WriteLine($"[DeviceFingerprint] 从持久化加载 device_id={cached}");
             return cached;
         }
+
         string newId = GetDeviceIdForAccount(accountId);
-        _cachedDeviceId = newId;
         await _settings.SaveSettingAsync($"DeviceFpDeviceId_{accountId}", newId);
         Debug.WriteLine($"[DeviceFingerprint] device_id={newId} 已持久化");
         return newId;
@@ -262,10 +269,8 @@ internal sealed class DeviceFingerprintService : IDeviceFingerprintService
         var (seedId, seedTime) = await GetOrCreateSeedAsync(accountId);
         string bbsDeviceId = await GetOrCreateBbsDeviceIdAsync(accountId);
 
-        // 1. 获取设备档案
         var variant = SelectVariant(accountId);
 
-        // 2. 请求 ext_list 并构建 ext_fields
         var extList = await FetchExtListAsync();
         var allFields = BuildExtFields(variant);
         var filtered = allFields.Where(kv => extList.Contains(kv.Key))
@@ -286,17 +291,10 @@ internal sealed class DeviceFingerprintService : IDeviceFingerprintService
         string bodyJson = JsonSerializer.Serialize(fpData, _jsonOptions);
         Debug.WriteLine($"[DeviceFingerprint] >>> 请求体: {bodyJson.Substring(0, Math.Min(bodyJson.Length, 800))}");
 
-        //若风控仍然严重；考虑恢复 TLS 代理（TLS 代理已经写了（）
-        // 3. 通过 TLS 代理工具获取
-        //string serverFp = await TryGetFpViaProxyAsync(bodyJson);
-        //if (!string.IsNullOrEmpty(serverFp))
-        //    Debug.WriteLine($"[DeviceFingerprint] getfp.exe 成功 device_fp={serverFp}");
-
         string serverFp = null;
-        // 4. 回退到普通 HttpClient
         if (string.IsNullOrEmpty(serverFp))
         {
-            Debug.WriteLine("[DeviceFingerprint] getfp.exe 不可用，回退 HttpClient");
+            Debug.WriteLine("[DeviceFingerprint] 使用 HttpClient 请求 device_fp");
             serverFp = await TryGetFpViaHttpAsync(bodyJson);
         }
 
@@ -306,7 +304,7 @@ internal sealed class DeviceFingerprintService : IDeviceFingerprintService
             cookies["DEVICEFP"] = serverFp;
             cookies["DEVICEFP_SEED_ID"] = seedId;
             cookies["DEVICEFP_SEED_TIME"] = seedTime;
-            // 持久化指纹到 Cookie 存储
+
             try
             {
                 var accountManager = App.GetService<AccountManager>();
@@ -322,44 +320,44 @@ internal sealed class DeviceFingerprintService : IDeviceFingerprintService
         else
         {
             _registeredDeviceFp = errorFp;
-            Debug.WriteLine($"[DeviceFingerprint] 全部失败，使用 errorFp={errorFp}");
+            Debug.WriteLine($"[DeviceFingerprint] 请求失败，使用 errorFp={errorFp}");
         }
         _fpRegistered = true;
     }
     #endregion
 
     #region 网络请求（TLS 代理工具 / HttpClient 回退）
-    private static async Task<string?> TryGetFpViaProxyAsync(string bodyJson)
-    {
-        string? exePath = FindExePath("getfp.exe");
-        if (exePath == null) return null;
-        Debug.WriteLine($"[DeviceFingerprint] 使用 getfp.exe: {exePath}");
-        try
-        {
-            var psi = new ProcessStartInfo
-            {
-                FileName = exePath,
-                RedirectStandardInput = true,
-                RedirectStandardOutput = true,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            };
-            using var proc = new Process { StartInfo = psi };
-            proc.Start();
-            byte[] bodyBytes = Encoding.UTF8.GetBytes(bodyJson);
-            await proc.StandardInput.BaseStream.WriteAsync(bodyBytes);
-            await proc.StandardInput.BaseStream.FlushAsync();
-            proc.StandardInput.Close();
-            string response = await proc.StandardOutput.ReadToEndAsync();
-            if (!proc.WaitForExit(10000)) { proc.Kill(); return null; }
-            return ParseFpResponse(response);
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"[DeviceFingerprint] getfp.exe 异常: {ex.Message}");
-            return null;
-        }
-    }
+    //private static async Task<string?> TryGetFpViaProxyAsync(string bodyJson)
+    //{
+    //    string? exePath = FindExePath("getfp.exe");
+    //    if (exePath == null) return null;
+    //    Debug.WriteLine($"[DeviceFingerprint] 使用 getfp.exe: {exePath}");
+    //    try
+    //    {
+    //        var psi = new ProcessStartInfo
+    //        {
+    //            FileName = exePath,
+    //            RedirectStandardInput = true,
+    //            RedirectStandardOutput = true,
+    //            UseShellExecute = false,
+    //            CreateNoWindow = true
+    //        };
+    //        using var proc = new Process { StartInfo = psi };
+    //        proc.Start();
+    //        byte[] bodyBytes = Encoding.UTF8.GetBytes(bodyJson);
+    //        await proc.StandardInput.BaseStream.WriteAsync(bodyBytes);
+    //        await proc.StandardInput.BaseStream.FlushAsync();
+    //        proc.StandardInput.Close();
+    //        string response = await proc.StandardOutput.ReadToEndAsync();
+    //        if (!proc.WaitForExit(10000)) { proc.Kill(); return null; }
+    //        return ParseFpResponse(response);
+    //    }
+    //    catch (Exception ex)
+    //    {
+    //        Debug.WriteLine($"[DeviceFingerprint] getfp.exe 异常: {ex.Message}");
+    //        return null;
+    //    }
+    //}
 
     private static async Task<string?> TryGetFpViaHttpAsync(string bodyJson)
     {
@@ -369,7 +367,6 @@ internal sealed class DeviceFingerprintService : IDeviceFingerprintService
             req.Content = new StringContent(bodyJson, Encoding.UTF8, "application/json");
             req.Headers.Add("User-Agent", "okhttp/4.9.3");
             Debug.WriteLine($"[DeviceFingerprint] >>> HttpClient POST {GetFpUrl}");
-            Debug.WriteLine($"[DeviceFingerprint] >>> UA: okhttp/4.9.3");
             using var resp = await _httpClient.SendAsync(req);
             string json = await resp.Content.ReadAsStringAsync();
             Debug.WriteLine($"[DeviceFingerprint] <<< HttpClient 状态码: {(int)resp.StatusCode}, 响应: {json.Substring(0, Math.Min(json.Length, 500))}");
@@ -403,7 +400,7 @@ internal sealed class DeviceFingerprintService : IDeviceFingerprintService
                 Debug.WriteLine($"[DeviceFingerprint] ParseFpResponse: data.device_fp={fp}");
                 return string.IsNullOrEmpty(fp) ? null : fp;
             }
-            Debug.WriteLine($"[DeviceFingerprint] ParseFpResponse: 未找到 device_fp, 完整响应={json.Substring(0, Math.Min(json.Length, 300))}");
+            Debug.WriteLine($"[DeviceFingerprint] ParseFpResponse: 未找到 device_fp");
             return null;
         }
         catch (Exception ex)
@@ -420,16 +417,17 @@ internal sealed class DeviceFingerprintService : IDeviceFingerprintService
         var seedTime = await _settings.ReadSettingAsync($"DeviceFpSeedTime_{accountId}");
         if (seedTime is string st && !string.IsNullOrEmpty(st))
         {
-            // 优先从持久化指纹恢复
+          
             var savedFp = await _settings.ReadSettingAsync($"DeviceFpFingerprint_{accountId}");
             if (savedFp is string sfp && !string.IsNullOrEmpty(sfp))
             {
                 _registeredDeviceFp = sfp;
+                _currentAccountId = accountId;
                 _fpRegistered = true;
                 Debug.WriteLine($"[DeviceFingerprint] 从持久化恢复指纹={sfp}");
                 return true;
             }
-            // 备选：从 cookies 恢复
+      
             try
             {
                 var accountManager = App.GetService<AccountManager>();
@@ -437,13 +435,14 @@ internal sealed class DeviceFingerprintService : IDeviceFingerprintService
                 if (cookies != null && cookies.TryGetValue("DEVICEFP", out var fp) && !string.IsNullOrEmpty(fp))
                 {
                     _registeredDeviceFp = fp;
+                    _currentAccountId = accountId;
                     _fpRegistered = true;
                     Debug.WriteLine($"[DeviceFingerprint] 从 Cookie 恢复指纹 device_fp={fp}");
                     return true;
                 }
             }
             catch { }
-            // 有 seedTime 但指纹无法恢复，清除 seedTime 重新注册
+     
             await _settings.SaveSettingAsync($"DeviceFpSeedTime_{accountId}", "");
             Debug.WriteLine("[DeviceFingerprint] 有 seedTime 但无指纹，已清除 seedTime，需要重新注册");
         }
@@ -473,21 +472,21 @@ internal sealed class DeviceFingerprintService : IDeviceFingerprintService
         return new string(new[] { (char)('1' + rng.Next(9)) }.Concat(Enumerable.Range(0, 10).Select(_ => (char)('0' + rng.Next(10)))).ToArray());
     }
 
-    private static string? FindExePath(string exeName)
-    {
-        string exePath = Path.Combine(AppContext.BaseDirectory, exeName);
-        if (File.Exists(exePath)) return exePath;
-        string dir = AppContext.BaseDirectory;
-        for (int i = 0; i < 5; i++)
-        {
-            string candidate = Path.Combine(dir, "tools", "getfp", exeName);
-            if (File.Exists(candidate)) return candidate;
-            string parent = Path.GetDirectoryName(dir);
-            if (string.IsNullOrEmpty(parent)) break;
-            dir = parent;
-        }
-        return null;
-    }
+    //private static string? FindExePath(string exeName)
+    //{
+    //    string exePath = Path.Combine(AppContext.BaseDirectory, exeName);
+    //    if (File.Exists(exePath)) return exePath;
+    //    string dir = AppContext.BaseDirectory;
+    //    for (int i = 0; i < 5; i++)
+    //    {
+    //        string candidate = Path.Combine(dir, "tools", "getfp", exeName);
+    //        if (File.Exists(candidate)) return candidate;
+    //        string parent = Path.GetDirectoryName(dir);
+    //        if (string.IsNullOrEmpty(parent)) break;
+    //        dir = parent;
+    //    }
+    //    return null;
+    //}
     #endregion
 
     #region 内部数据模型

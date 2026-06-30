@@ -22,20 +22,25 @@ public sealed class DailyNoteService
     private const string DailyNoteUrl = "https://api-takumi-record.mihoyo.com/game_record/app/genshin/api/dailyNote";
     private const string WidgetUrl = "https://api-takumi-record.mihoyo.com/game_record/app/genshin/aapi/widget/v2?game_id=2";
 
-    private static string _currentAccountId = "";
-    private static string _currentDeviceId = "";
-    private static string _currentDeviceName = "";
-    private static string _currentSysVersion = "";
-    private static string _currentUserAgent = "";
-    private static string _registeredDeviceFp = "";
+
+    private string _currentAccountId = "";
+    private string _currentDeviceId = "";
+    private string _currentDeviceName = "";
+    private string _currentSysVersion = "";
+    private string _currentUserAgent = "";
 
     private static readonly DeviceProfileService _deviceProfileService = new();
     private static readonly SemaphoreSlim _semaphore = new(1, 1);
     private static readonly HttpClient _httpClient = new() { Timeout = TimeSpan.FromSeconds(15) };
 
+
+    private static DailyNoteService? _currentInstance;
+
     public DailyNoteService()
     {
-        _fingerprintService = App.GetService<IDeviceFingerprintService>();
+        _fingerprintService = App.GetService<IDeviceFingerprintService>()
+            ?? throw new InvalidOperationException("无法获取设备指纹服务");
+        _currentInstance = this;
     }
 
     public async Task<DailyNoteCardData> GetDailyNoteAsync(string roleId, string server)
@@ -48,48 +53,38 @@ public sealed class DailyNoteService
             Dictionary<string, string> cookies = await accountManager.LoadCookiesAsync(activeId)
                 ?? throw new InvalidOperationException("无法加载Cookie");
 
+        
             if (_currentAccountId != activeId)
             {
                 _currentAccountId = activeId;
                 _currentDeviceId = DeviceProfileService.GetDeviceIdForAccount(activeId);
                 InitDeviceProfile(activeId);
-                _registeredDeviceFp = "";
             }
 
-            // 指纹由 DeviceFingerprintService 统一管理
-            var fp = _fingerprintService.GetCurrentFingerprint();
-            if (string.IsNullOrEmpty(fp))
-            {
-                fp = await _fingerprintService.GetOrRegisterFingerprintAsync(activeId, cookies);
-                if (cookies.TryGetValue("DEVICEFP", out var cfp) && !string.IsNullOrEmpty(cfp))
-                    _registeredDeviceFp = cfp;
-                else if (!string.IsNullOrEmpty(fp) && fp.Length > 5)
-                    _registeredDeviceFp = fp;
-            }
-            else
-            {
-                _registeredDeviceFp = fp;
-            }
+            string deviceFp = await _fingerprintService.GetOrRegisterFingerprintAsync(activeId, cookies);
 
             string apiUrl = $"{DailyNoteUrl}?server={Uri.EscapeDataString(server)}&role_id={Uri.EscapeDataString(roleId)}";
-            string json = await RequestDailyNoteAsync(apiUrl, cookies, null);
+            string json = await RequestDailyNoteAsync(apiUrl, cookies, null, deviceFp);
             int retcode = ParseRetcode(json);
 
             if (retcode == 1034)
             {
-                _registeredDeviceFp = "";
+         
+                await _fingerprintService.ResetFingerprintAsync(activeId);
+                deviceFp = await _fingerprintService.GetOrRegisterFingerprintAsync(activeId, cookies);
+
                 GeetestService geetestService = new();
                 string xrpcChallenge = await geetestService.TryVerifyForDailyNoteAsync(cookies);
                 if (!string.IsNullOrEmpty(xrpcChallenge))
                 {
-                    json = await RequestDailyNoteAsync(apiUrl, cookies, xrpcChallenge);
+                    json = await RequestDailyNoteAsync(apiUrl, cookies, xrpcChallenge, deviceFp);
                     retcode = ParseRetcode(json);
                 }
             }
 
             if (retcode == 5003 || retcode == 1034)
             {
-                json = await RequestWidgetAsync(cookies);
+                json = await RequestWidgetAsync(cookies, deviceFp);
                 retcode = ParseRetcode(json);
             }
 
@@ -101,13 +96,12 @@ public sealed class DailyNoteService
         finally { _semaphore.Release(); }
     }
 
-    private async Task<string> RequestDailyNoteAsync(string apiUrl, Dictionary<string, string> cookies, string? xrpcChallenge)
+    private async Task<string> RequestDailyNoteAsync(string apiUrl, Dictionary<string, string> cookies, string? xrpcChallenge, string deviceFp)
     {
         string cookieStr = BuildCookieString(cookies, CookieMode.Cookie);
         string query = new Uri(apiUrl).Query.TrimStart('?');
         string sortedQuery = string.Join("&", query.Split('&').OrderBy(s => s, StringComparer.Ordinal));
         string ds = CalculateDS2(CNX4, sortedQuery, "");
-        string fp = GetDeviceFp(cookies);
 
         using var req = new HttpRequestMessage(HttpMethod.Get, apiUrl);
         req.Headers.Add("Cookie", cookieStr);
@@ -115,7 +109,7 @@ public sealed class DailyNoteService
         req.Headers.Add("x-rpc-client_type", "5");
         req.Headers.Add("x-rpc-device_id", GenGameRecordDeviceId());
         req.Headers.Add("x-rpc-device_name", _currentDeviceName);
-        req.Headers.Add("x-rpc-device_fp", fp);
+        req.Headers.Add("x-rpc-device_fp", deviceFp);
         req.Headers.Add("x-rpc-sys_version", _currentSysVersion);
         req.Headers.Add("x-rpc-tool_verison", ToolVersion);
         req.Headers.Add("x-rpc-page", Page);
@@ -132,12 +126,11 @@ public sealed class DailyNoteService
         return await resp.Content.ReadAsStringAsync();
     }
 
-    private async Task<string> RequestWidgetAsync(Dictionary<string, string> cookies)
+    private async Task<string> RequestWidgetAsync(Dictionary<string, string> cookies, string deviceFp)
     {
         string cookieStr = BuildCookieString(cookies, CookieMode.SToken);
         string sortedQuery = string.Join("&", WidgetUrl.Split('?', 2)[1].Split('&').OrderBy(s => s, StringComparer.Ordinal));
         string ds = CalculateDS2(CNX6, sortedQuery, "");
-        string fp = GetDeviceFp(cookies);
 
         using var req = new HttpRequestMessage(HttpMethod.Get, WidgetUrl);
         req.Headers.Add("Cookie", cookieStr);
@@ -145,7 +138,7 @@ public sealed class DailyNoteService
         req.Headers.Add("x-rpc-client_type", "5");
         req.Headers.Add("x-rpc-device_id", GenGameRecordDeviceId());
         req.Headers.Add("x-rpc-device_name", _currentDeviceName);
-        req.Headers.Add("x-rpc-device_fp", fp);
+        req.Headers.Add("x-rpc-device_fp", deviceFp);
         req.Headers.Add("x-rpc-sys_version", _currentSysVersion);
         req.Headers.Add("x-rpc-page", Page);
         req.Headers.Add("X-Requested-With", "com.mihoyo.hyperion");
@@ -187,20 +180,11 @@ public sealed class DailyNoteService
         return sb.ToString();
     }
 
-    internal static string GetDeviceFp(Dictionary<string, string> cookies)
-    {
-        if (!string.IsNullOrEmpty(_registeredDeviceFp))
-            return _registeredDeviceFp;
-        if (cookies.TryGetValue("DEVICEFP", out var fp) && !string.IsNullOrEmpty(fp))
-            return fp;
-        string fallback = Convert.ToHexString(RandomNumberGenerator.GetBytes(7)).ToLowerInvariant();
-        return fallback;
-    }
 
-    internal static string GetDeviceId() => _currentDeviceId;
+    internal static string GetDeviceId() => _currentInstance?._currentDeviceId ?? "";
     internal static string GetGameRecordDeviceId() => GenGameRecordDeviceId();
-    internal static string GetCurrentUserAgent() => _currentUserAgent;
-    internal static string GetCurrentDeviceName() => _currentDeviceName;
+    internal static string GetCurrentUserAgent() => _currentInstance?._currentUserAgent ?? "";
+    internal static string GetCurrentDeviceName() => _currentInstance?._currentDeviceName ?? "";
 
     private static Guid NameUuidFromBytes(byte[] name)
     {
@@ -210,7 +194,8 @@ public sealed class DailyNoteService
         return new Guid(new byte[] { hash[3], hash[2], hash[1], hash[0], hash[5], hash[4], hash[7], hash[6], hash[8], hash[9], hash[10], hash[11], hash[12], hash[13], hash[14], hash[15] });
     }
 
-    private static string GenGameRecordDeviceId() => NameUuidFromBytes(Encoding.UTF8.GetBytes(_currentDeviceId)).ToString();
+    private static string GenGameRecordDeviceId() =>
+        NameUuidFromBytes(Encoding.UTF8.GetBytes(_currentInstance?._currentDeviceId ?? "")).ToString();
 
     private void InitDeviceProfile(string accountId)
     {
@@ -220,8 +205,17 @@ public sealed class DailyNoteService
         _currentUserAgent = profile.UserAgent;
     }
 
-    private static int ParseRetcode(string json) { using var doc = JsonDocument.Parse(json); return doc.RootElement.TryGetProperty("retcode", out var rc) ? rc.GetInt32() : -1; }
-    private static string ExtractMessage(string json) { using var doc = JsonDocument.Parse(json); return doc.RootElement.TryGetProperty("message", out var m) ? m.GetString() ?? "未知错误" : "未知错误"; }
+    private static int ParseRetcode(string json)
+    {
+        using var doc = JsonDocument.Parse(json); return doc.RootElement.TryGetProperty("retcode", out var rc) ? rc.GetInt32() : -1;
+    }
+    private static string ExtractMessage(string json)
+    {
+        using var doc = JsonDocument.Parse(json); return doc.RootElement.TryGetProperty("message", out var m) ? m.GetString() ?? "未知错误" : "未知错误";
+    }
 
-    internal enum CookieMode { Cookie, SToken }
+    internal enum CookieMode
+    {
+        Cookie, SToken
+    }
 }

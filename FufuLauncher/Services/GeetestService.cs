@@ -8,6 +8,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using FufuLauncher.Contracts.Services;
 using FufuLauncher.Services.MiHoYo;
 using Microsoft.UI;
 using Microsoft.UI.Windowing;
@@ -32,6 +33,17 @@ public sealed class GeetestService
     private static string MobileUserAgent => DailyNoteService.GetCurrentUserAgent();
 
     private static readonly HttpClient _httpClient = new() { Timeout = TimeSpan.FromSeconds(15) };
+
+    private readonly IDeviceFingerprintService _fingerprintService;
+    private readonly AccountManager _accountManager;
+
+    public GeetestService()
+    {
+        _fingerprintService = App.GetService<IDeviceFingerprintService>()
+            ?? throw new InvalidOperationException("无法获取设备指纹服务");
+        _accountManager = App.GetService<AccountManager>()
+            ?? throw new InvalidOperationException("无法获取账号管理服务");
+    }
 
     public async Task<string> TryVerifyForDailyNoteAsync(Dictionary<string, string> cookies)
     {
@@ -82,9 +94,10 @@ public sealed class GeetestService
 
     private async Task<string> CallCreateVerificationAsync(Dictionary<string, string> cookies)
     {
+        string activeId = _accountManager.ActiveAccountId ?? throw new InvalidOperationException("无活跃账号");
         string cookieStr = DailyNoteService.BuildCookieString(cookies, DailyNoteService.CookieMode.Cookie);
         string ds = DailyNoteService.CalculateDS2(CNX4, "is_high=true", "");
-        string fp = DailyNoteService.GetDeviceFp(cookies);
+        string fp = await _fingerprintService.GetOrRegisterFingerprintAsync(activeId, cookies);
         Debug.WriteLine($"[GeetestService] CallCreateVerification: device_fp={fp}");
 
         using HttpRequestMessage req = new(HttpMethod.Get, CreateVerificationUrl);
@@ -105,6 +118,7 @@ public sealed class GeetestService
 
     private async Task<string> CallVerifyVerificationAsync(Dictionary<string, string> cookies, string challenge, string validate)
     {
+        string activeId = _accountManager.ActiveAccountId ?? throw new InvalidOperationException("无活跃账号");
         string cookieStr = DailyNoteService.BuildCookieString(cookies, DailyNoteService.CookieMode.Cookie);
         GeetestWebResponse body = new()
         {
@@ -114,7 +128,7 @@ public sealed class GeetestService
         };
         string bodyJson = JsonSerializer.Serialize(body);
         string ds = DailyNoteService.CalculateDS2(CNX4, "", bodyJson);
-        string fp = DailyNoteService.GetDeviceFp(cookies);
+        string fp = await _fingerprintService.GetOrRegisterFingerprintAsync(activeId, cookies);
         Debug.WriteLine($"[GeetestService] CallVerifyVerification: device_fp={fp}");
 
         using HttpRequestMessage req = new(HttpMethod.Post, VerifyVerificationUrl);
@@ -134,6 +148,7 @@ public sealed class GeetestService
         return await resp.Content.ReadAsStringAsync();
     }
 
+    // ShowGeetestWebViewAsync 保持不变
     private static async Task<GeetestResult> ShowGeetestWebViewAsync(string gt, string challenge)
     {
         TaskCompletionSource<GeetestResult> tcs = new();
@@ -283,21 +298,36 @@ public sealed class GeetestService
     private sealed class GeetestWebResponse
     {
         [JsonPropertyName("geetest_challenge")]
-        public string Challenge { get; set; }
+        public string Challenge
+        {
+            get; set;
+        }
 
         [JsonPropertyName("geetest_validate")]
-        public string Validate { get; set; }
+        public string Validate
+        {
+            get; set;
+        }
 
         [JsonPropertyName("geetest_seccode")]
-        public string Seccode { get; set; }
+        public string Seccode
+        {
+            get; set;
+        }
     }
 }
 
 public sealed class GeetestResult
 {
     [JsonPropertyName("geetest_challenge")]
-    public string Challenge { get; set; }
+    public string Challenge
+    {
+        get; set;
+    }
 
     [JsonPropertyName("geetest_validate")]
-    public string Validate { get; set; }
+    public string Validate
+    {
+        get; set;
+    }
 }
