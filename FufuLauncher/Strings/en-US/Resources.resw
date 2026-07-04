@@ -264,4 +264,173 @@
   <data name="BatchApplyAllBtn" xml:space="preserve"><value>Apply to All Sizes</value></data>
   <data name="CancelBtn" xml:space="preserve"><value>Cancel</value></data>
   <data name="CropHint" xml:space="preserve"><value>* Drag within the box or use Ctrl + mouse wheel to zoom and adjust the crop position</value></data>
+  <data name="Plugin_FpsUnlock" xml:space="preserve"><value>Unlock Frame Rate Limit</value></data>
+  <data name="Plugin_TargetFps" xml:space="preserve"><value>Target Frame Rate</value></data>
+  <data name="Plugin_VSync" xml:space="preserve"><value>Disable V-Sync</value></data>
+  <data name="Plugin_TouchScreen" xml:space="preserve"><value>Enable Mobile UI Mode</value></data>
+  <data name="Plugin_FovUnlock" xml:space="preserve"><value>Enable FOV Modification</value></data>
+  <data name="Plugin_FovValue" xml:space="preserve"><value>Custom FOV Value</value></data>
+  <data name="Plugin_DisableDamageText" xml:space="preserve"><value>Disable Damage Numbers</value></data>
+  <data name="Plugin_DisableCameraMove" xml:space="preserve"><value>Disable Camera Movement (Ultimate Animation)</value></data>
+  <data name="Plugin_DisableFog" xml:space="preserve"><value>Disable Fog Effect</value></data>
+  <data name="Plugin_DisableCharFade" xml:space="preserve"><value>Disable Character Blur</value></data>
+  <data name="Plugin_RedirectCraft" xml:space="preserve"><value>Enable Crafting Bench Redirect</value></data>
+  <data name="Plugin_RemoveTeamAnim" xml:space="preserve"><value>Remove Team Menu Loading Bar</value></data>
+  <data name="Plugin_HideGrass" xml:space="preserve"><value>Hide Grass</value></data>
+  <data name="Plugin_HideGrassIndiscriminate" xml:space="preserve"><value>Hide All Grass Indiscriminately</value></data>
+  <data name="Plugin_EnableCustomTitle" xml:space="preserve"><value>Enable Custom Window Title</value></data>
+  <data name="Plugin_CustomTitleText" xml:space="preserve"><value>Custom Title Text</value></data>
+  <data name="Plugin_ToggleKey" xml:space="preserve"><value>Config Reload Hotkey</value></data>
+  <data name="Plugin_CraftKey" xml:space="preserve"><value>Crafting Bench Hotkey</value></data>
+  <data name="Plugin_HideQuestBanner" xml:space="preserve"><value>Hide Quest Banner</value></data>
+  <data name="Plugin_FovLimitCheck" xml:space="preserve"><value>Fix Special FOV Camera Angles</value></data>
+  <data name="Plugin_HideUID" xml:space="preserve"><value>Hide UID in Bottom-Right Corner</value></data>
+  <data name="Plugin_ClockSpeedup" xml:space="preserve"><value>Quick Time Adjustment</value></data>
+  <data name="Plugin_AutoCook" xml:space="preserve"><value>Quick-Open Cooking Menu</value></data>
+  <data name="Plugin_AutoExpedition" xml:space="preserve"><value>Quick-Open Expedition Menu</value></data>
+  <data name="Plugin_AutoCookKey" xml:space="preserve"><value>Open Cooking Menu Hotkey</value></data>
+  <data name="Plugin_AutoExpeditionKey" xml:space="preserve"><value>Open Expedition Menu Hotkey</value></data>
+  <data name="Plugin_DisableUnderwaterMask" xml:space="preserve"><value>Disable Underwater Overlay</value></data>
+  <data name="Plugin_EnableRainbowDamage" xml:space="preserve"><value>Enable Damage Number Color Customization</value></data>
+  <data name="Plugin_RainbowDamageMode" xml:space="preserve"><value>0 = Cycling, 1 = Fixed Color</value></data>
+  <data name="Plugin_RainbowFixedColorIdx" xml:space="preserve"><value>Fixed Color Index (0-7)</value></data>
+  <data name="Plugin_NetworkToggleKey" xml:space="preserve"><value>Game Network Disconnect Hotkey (DEV)</value></data>
+  <data name="Plugin_BlockNetwork" xml:space="preserve"><value>Game Network Disconnect Quick Mode (DEV)</value></data>
+  <data name="Plugin_EnableNetworkToggle" xml:space="preserve"><value>Game Network Disconnect (DEV)</value></data>
+  <data name="Plugin_DebugConsole" xml:space="preserve"><value>Enable Debug Console (DEV)</value></data>
+  <data name="Plugin_DumpOffsets" xml:space="preserve"><value>Dump Offsets (DEV)</value></data>
+  <data name="PageTitle_GameSettings" xml:space="preserve"><value>Game Settings</value></data>
+  <data name="SectionGameInstallPath" xml:space="preserve"><value>Game Install Location</value></data>
+  <data name="SelectExeFolderPlaceholder" xml:space="preserve"><value>Select the folder containing YuanShen.exe...</value></data>
+  <data name="ApplyBtn" xml:space="preserve"><value>Apply</value></data>
+  <data name="ClearGamePathTooltip" xml:space="preserve"><value>Clear the configured game directory</value></data>
+  <data name="ConfigureGamePathFirst" xml:space="preserve"><value>Please configure the game path first</value></data>
+  <data name="ClientStatusTitle" xml:space="preserve"><value>Client Status</value></data>
+  <data name="CurrentVersionLabel" xml:space="preserve"><value>Current Version</value></data>
+  <data name="ServerLabel" xml:space="preserve"><value>Server</value></data>
+  <data name="DiskUsageLabel" xml:space="preserve"><value>Disk Usage</value></data>
+  <data name="LatestVersionLabel" xml:space="preserve"><value>Latest Version</value></data>
+  <data name="CheckingEllipsis" xml:space="preserve"><value>Checking...</value></data>
+  <data name="PreDownloadLabel" xml:space="preserve"><value>Pre-Download Resources</value></data>
+  <data name="LatestRedeemCodesTitle" xml:space="preserve"><value>Latest Redeem Codes</value></data>
+  <data name="CopyBtn" xml:space="preserve"><value>Copy</value></data>
+  <data name="NoCodesAvailable" xml:space="preserve"><value>No redeem codes available right now</value></data>
+  <data name="AccountSwitchTitle" xml:space="preserve"><value>Account Switching</value></data>
+  <data name="ReadFromLocalTooltip" xml:space="preserve"><value>Read from Local</value></data>
+  <data name="RefreshListTooltip" xml:space="preserve"><value>Refresh List</value></data>
+  <data name="DoubleClickToEditTooltip" xml:space="preserve"><value>Double-click to edit note</value></data>
+  <data name="SwitchBtn" xml:space="preserve"><value>Switch</value></data>
+  <data name="ResourceMgmtTitle" xml:space="preserve"><value>Resource Management</value></data>
+  <data name="DownloadOrVerifyFiles" xml:space="preserve"><value>Download or verify files</value></data>
+  <data name="SwitchServerTitle" xml:space="preserve"><value>Switch Server</value></data>
+  <data name="ServerSwitchCaption" xml:space="preserve"><value>Official / Bilibili / Global server switching</value></data>
+  <data name="MapToolsTitle" xml:space="preserve"><value>Map Tools</value></data>
+  <data name="ViewTeyvatMap" xml:space="preserve"><value>View the Teyvat map</value></data>
+  <data name="OfficialAnnouncementsTitle" xml:space="preserve"><value>Official Announcements</value></data>
+  <data name="EventsAndUpdatesCaption" xml:space="preserve"><value>Events and update news</value></data>
+  <data name="VerifyGameTitle" xml:space="preserve"><value>Verify Game Files</value></data>
+  <data name="VerifyAndRepairCaption" xml:space="preserve"><value>Verify and repair game files</value></data>
+  <data name="CreateShortcutTitle" xml:space="preserve"><value>Create Launch Shortcut</value></data>
+  <data name="CreateShortcutCaption" xml:space="preserve"><value>Create a one-click injection shortcut on the desktop</value></data>
+  <data name="FpsMonitorTitle" xml:space="preserve"><value>In-Game FPS Monitor</value></data>
+  <data name="FpsMonitorCaption" xml:space="preserve"><value>When enabled, shows real-time FPS in the top-left corner while the game is running (requires administrator privileges)</value></data>
+  <data name="Err_GamePathNotFound" xml:space="preserve"><value>Game path not found. Please specify the game location in Settings first.</value></data>
+  <data name="Title_VerifyGameIntegrity" xml:space="preserve"><value>Verify Game Integrity</value></data>
+  <data name="Err_GamePathNotSet" xml:space="preserve"><value>Game path not set.</value></data>
+  <data name="Err_ExeNotFoundInFolder_Format" xml:space="preserve"><value>Game executable not found in folder:
+{0}</value></data>
+  <data name="Placeholder_DefaultUseCurrentPreset" xml:space="preserve"><value>Use the app&apos;s current preset by default</value></data>
+  <data name="None_Value" xml:space="preserve"><value>None</value></data>
+  <data name="Msg_ChooseShortcutAction" xml:space="preserve"><value>Please choose what you&apos;d like to do:
+
+Create a desktop shortcut: generates an icon directly on the desktop (will run as administrator)?
+Or copy the launch command: get the full command line, usable with Steam or scripts?</value></data>
+  <data name="Msg_ImportedLaunchParams_Format" xml:space="preserve"><value>Imported launch parameters: {0}</value></data>
+  <data name="Label_SpecifyInjectionPreset" xml:space="preserve"><value>Specify injection configuration (preset):</value></data>
+  <data name="Title_ChooseAction" xml:space="preserve"><value>Choose an Action</value></data>
+  <data name="Btn_CreateDesktopShortcut" xml:space="preserve"><value>Create Desktop Shortcut</value></data>
+  <data name="Btn_CopyLaunchCommand" xml:space="preserve"><value>Copy Launch Command</value></data>
+  <data name="FileName_ShortcutName" xml:space="preserve"><value>Launch Genshin Impact.lnk</value></data>
+  <data name="Desc_ShortcutDescription" xml:space="preserve"><value>Launch Genshin Impact via FufuLauncher injection</value></data>
+  <data name="Title_ShortcutCreated" xml:space="preserve"><value>Shortcut Created</value></data>
+  <data name="Msg_ShortcutCreated" xml:space="preserve"><value>Desktop shortcut created. It will run as administrator by default. Check your desktop.</value></data>
+  <data name="Title_LaunchCommand" xml:space="preserve"><value>Launch Command</value></data>
+  <data name="Msg_LaunchCommandInstructions" xml:space="preserve"><value>Below is the launch command. You can use it directly in CMD, PowerShell, or as a Steam non-Steam game target:</value></data>
+  <data name="Btn_CopyAndClose" xml:space="preserve"><value>Copy and Close</value></data>
+  <data name="CloseBtn" xml:space="preserve"><value>Close</value></data>
+  <data name="Err_OperationFailed_Format" xml:space="preserve"><value>Operation failed: {0}</value></data>
+  <data name="Err_FpsMonitorNeedsAdmin" xml:space="preserve"><value>Failed to enable FPS monitoring: this feature requires running the launcher as administrator.</value></data>
+  <data name="Msg_NoNewRedeemCodes" xml:space="preserve"><value>No new redeem codes right now</value></data>
+  <data name="Err_FetchFailedCheckNetwork" xml:space="preserve"><value>Failed to fetch. Please check your network connection.</value></data>
+  <data name="Btn_Copied" xml:space="preserve"><value>Copied</value></data>
+  <data name="Title_PathError" xml:space="preserve"><value>Path Error</value></data>
+  <data name="Err_CannotCreateGameDir_Format" xml:space="preserve"><value>Failed to create game directory: {0}
+Error: {1}</value></data>
+  <data name="Err_ConfigIniNotFound_Format" xml:space="preserve"><value>Could not find the config.ini file.
+
+The path that was checked:
+{0}
+
+Please check that your Game Path setting correctly points to the game installation directory</value></data>
+  <data name="Msg_GlobalClientNoSwitchToBili" xml:space="preserve"><value>This is a Global client. Switching to the Bilibili server isn&apos;t allowed here -- use server conversion to switch to a China server instead!</value></data>
+  <data name="Btn_SwitchToOfficialServer" xml:space="preserve"><value>Switch to Official Server</value></data>
+  <data name="Label_ChooseTargetServer" xml:space="preserve"><value>Please choose the server to switch to:</value></data>
+  <data name="Btn_SwitchToBiliServer" xml:space="preserve"><value>Switch to Bilibili Server</value></data>
+  <data name="Btn_ConvertBetweenGlobalAndCN" xml:space="preserve"><value>Convert Between Global and CN Servers</value></data>
+  <data name="Title_Convert" xml:space="preserve"><value>Convert</value></data>
+  <data name="ServerType_Unknown" xml:space="preserve"><value>Unknown Server</value></data>
+  <data name="ServerType_Global" xml:space="preserve"><value>Global Server</value></data>
+  <data name="ServerType_Bilibili" xml:space="preserve"><value>Bilibili Server</value></data>
+  <data name="ServerType_Official" xml:space="preserve"><value>Official Server</value></data>
+  <data name="ServerType_CustomOther_Format" xml:space="preserve"><value>Custom/Other (Channel: {0})</value></data>
+  <data name="Err_ReadConfigFailed" xml:space="preserve"><value>Failed to read configuration file</value></data>
+  <data name="Title_TeyvatMap" xml:space="preserve"><value>Teyvat Map</value></data>
+  <data name="Title_GlobalClient" xml:space="preserve"><value>Global Client</value></data>
+  <data name="Msg_GlobalClientInjectionWarning" xml:space="preserve"><value>Note: This launcher&apos;s injection feature is primarily designed for the China server. On a Global client, it may not work or could cause unexpected errors.
+
+Continue using this path anyway?</value></data>
+  <data name="Btn_ContinueUsing" xml:space="preserve"><value>Continue Using</value></data>
+  <data name="Btn_DiscardAndClear" xml:space="preserve"><value>Discard and Clear</value></data>
+  <data name="Title_InvalidGamePath" xml:space="preserve"><value>Invalid Game Path</value></data>
+  <data name="Err_ExeNotFoundAtPath_Format" xml:space="preserve"><value>Game executable not found at this path ({0}).
+
+Please confirm you selected the installation directory containing the game executable, or configure a custom name in Settings.</value></data>
+  <data name="Title_InvalidPath" xml:space="preserve"><value>Invalid Path</value></data>
+  <data name="Msg_PathDoesNotExist" xml:space="preserve"><value>The entered path does not exist. Please check that it&apos;s correct.</value></data>
+  <data name="OkBtn" xml:space="preserve"><value>OK</value></data>
+  <data name="Err_PathProcessingFailed_Format" xml:space="preserve"><value>Path processing failed: {0}</value></data>
+  <data name="Title_AutoFoundGamePath" xml:space="preserve"><value>Game Path Automatically Found</value></data>
+  <data name="Msg_DetectedPossiblePath_Format" xml:space="preserve"><value>A possible installation path was detected:
+
+{0}
+
+Apply this path?</value></data>
+  <data name="Btn_SelectManually" xml:space="preserve"><value>Select Manually</value></data>
+  <data name="ErrorTitle" xml:space="preserve"><value>Error</value></data>
+  <data name="Err_CannotOpenFilePicker" xml:space="preserve"><value>Unable to open the file picker</value></data>
+  <data name="Msg_VersionInfoNotFound" xml:space="preserve"><value>Version info not found</value></data>
+  <data name="UnknownGeneric" xml:space="preserve"><value>Unknown</value></data>
+  <data name="FetchFailedShort" xml:space="preserve"><value>Fetch Failed</value></data>
+  <data name="Msg_HasVersion_Format" xml:space="preserve"><value>Available (version {0})</value></data>
+  <data name="NotAvailableGeneric" xml:space="preserve"><value>None</value></data>
+  <data name="ServerType_MainlandChina" xml:space="preserve"><value>Mainland China Server</value></data>
+  <data name="Msg_CannotCalculate" xml:space="preserve"><value>Unable to calculate</value></data>
+  <data name="Err_CannotAccessRegistry" xml:space="preserve"><value>Unable to access the registry</value></data>
+  <data name="Err_NoLoggedInAccount" xml:space="preserve"><value>No logged-in account found (registry data is empty)</value></data>
+  <data name="Err_AccountAlreadySaved" xml:space="preserve"><value>This account has already been saved.</value></data>
+  <data name="Placeholder_EnterAccountName" xml:space="preserve"><value>Enter an account name (e.g. Main / Alt)</value></data>
+  <data name="Title_SaveNewAccount" xml:space="preserve"><value>Save New Account</value></data>
+  <data name="SaveBtn" xml:space="preserve"><value>Save</value></data>
+  <data name="Prefix_Account_Format" xml:space="preserve"><value>Account_{0}</value></data>
+  <data name="Err_SaveFailed_Format" xml:space="preserve"><value>Save failed: {0}</value></data>
+  <data name="Title_SwitchSuccess" xml:space="preserve"><value>Switch Successful</value></data>
+  <data name="Msg_SwitchedToAccount_Format" xml:space="preserve"><value>Switched to: {0}
+
+You must restart the game for this to take effect!</value></data>
+  <data name="Btn_GotIt" xml:space="preserve"><value>Got It</value></data>
+  <data name="Err_SwitchFailed_Format" xml:space="preserve"><value>Switch failed: {0}</value></data>
+  <data name="Title_ConfirmDelete" xml:space="preserve"><value>Confirm Delete</value></data>
+  <data name="Msg_DeleteAccountConfirm_Format" xml:space="preserve"><value>Delete account &apos;{0}&apos;?</value></data>
+  <data name="Err_DeleteFailed_Format" xml:space="preserve"><value>Delete failed: {0}</value></data>
+  <data name="Title_OperationFailed" xml:space="preserve"><value>Operation Failed</value></data>
 </root>

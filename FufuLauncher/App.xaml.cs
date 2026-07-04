@@ -609,7 +609,7 @@ public partial class App : Application
                     AppLanguage.zhCN => "zh-CN",
                     AppLanguage.zhTW => "zh-TW",
                     AppLanguage.enUS => "en-US",
-                    _ => "zh-CN"
+                    _ => Windows.System.UserProfile.GlobalizationPreferences.Languages.FirstOrDefault() ?? "zh-CN"
                 };
 
                 Windows.Globalization.ApplicationLanguages.PrimaryLanguageOverride = culture;

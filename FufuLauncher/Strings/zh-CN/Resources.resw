@@ -264,4 +264,173 @@
   <data name="BatchApplyAllBtn" xml:space="preserve"><value>批量应用到全部尺寸</value></data>
   <data name="CancelBtn" xml:space="preserve"><value>取消</value></data>
   <data name="CropHint" xml:space="preserve"><value>* 请在方框内拖动或使用Ctrl+鼠标滚轮缩放调整裁切位置</value></data>
+  <data name="Plugin_FpsUnlock" xml:space="preserve"><value>解锁帧率限制</value></data>
+  <data name="Plugin_TargetFps" xml:space="preserve"><value>目标帧率</value></data>
+  <data name="Plugin_VSync" xml:space="preserve"><value>禁用垂直同步</value></data>
+  <data name="Plugin_TouchScreen" xml:space="preserve"><value>启用手机端UI模式</value></data>
+  <data name="Plugin_FovUnlock" xml:space="preserve"><value>启用广角修改</value></data>
+  <data name="Plugin_FovValue" xml:space="preserve"><value>自定义广角数值</value></data>
+  <data name="Plugin_DisableDamageText" xml:space="preserve"><value>禁用伤害跳字显示</value></data>
+  <data name="Plugin_DisableCameraMove" xml:space="preserve"><value>禁用镜头移动(大招动画)</value></data>
+  <data name="Plugin_DisableFog" xml:space="preserve"><value>禁用雾气效果</value></data>
+  <data name="Plugin_DisableCharFade" xml:space="preserve"><value>反角色虚化</value></data>
+  <data name="Plugin_RedirectCraft" xml:space="preserve"><value>启用合成台重定向</value></data>
+  <data name="Plugin_RemoveTeamAnim" xml:space="preserve"><value>移除队伍打开加载条</value></data>
+  <data name="Plugin_HideGrass" xml:space="preserve"><value>隐藏草地</value></data>
+  <data name="Plugin_HideGrassIndiscriminate" xml:space="preserve"><value>无差别隐藏草</value></data>
+  <data name="Plugin_EnableCustomTitle" xml:space="preserve"><value>启用自定义窗口标题</value></data>
+  <data name="Plugin_CustomTitleText" xml:space="preserve"><value>自定义标题内容</value></data>
+  <data name="Plugin_ToggleKey" xml:space="preserve"><value>配置重载热键</value></data>
+  <data name="Plugin_CraftKey" xml:space="preserve"><value>合成台热键</value></data>
+  <data name="Plugin_HideQuestBanner" xml:space="preserve"><value>隐藏任务横幅</value></data>
+  <data name="Plugin_FovLimitCheck" xml:space="preserve"><value>广角特殊视角修复</value></data>
+  <data name="Plugin_HideUID" xml:space="preserve"><value>隐藏右下角UID</value></data>
+  <data name="Plugin_ClockSpeedup" xml:space="preserve"><value>快速调整时间</value></data>
+  <data name="Plugin_AutoCook" xml:space="preserve"><value>快捷打开烹饪界面</value></data>
+  <data name="Plugin_AutoExpedition" xml:space="preserve"><value>快捷打开探索派遣界面</value></data>
+  <data name="Plugin_AutoCookKey" xml:space="preserve"><value>打开烹饪界面快捷键</value></data>
+  <data name="Plugin_AutoExpeditionKey" xml:space="preserve"><value>打开探索派遣界面快捷键</value></data>
+  <data name="Plugin_DisableUnderwaterMask" xml:space="preserve"><value>禁用下水遮罩</value></data>
+  <data name="Plugin_EnableRainbowDamage" xml:space="preserve"><value>启用伤害跳字颜色修改</value></data>
+  <data name="Plugin_RainbowDamageMode" xml:space="preserve"><value>0动态循环 1固定颜色</value></data>
+  <data name="Plugin_RainbowFixedColorIdx" xml:space="preserve"><value>固定颜色索引(0至7)</value></data>
+  <data name="Plugin_NetworkToggleKey" xml:space="preserve"><value>游戏网络中断快捷键(DEV)</value></data>
+  <data name="Plugin_BlockNetwork" xml:space="preserve"><value>游戏网络中断快捷模式(DEV)</value></data>
+  <data name="Plugin_EnableNetworkToggle" xml:space="preserve"><value>游戏网络中断(DEV)</value></data>
+  <data name="Plugin_DebugConsole" xml:space="preserve"><value>启用调试窗口(DEV)</value></data>
+  <data name="Plugin_DumpOffsets" xml:space="preserve"><value>DumpOffsets(DEV)</value></data>
+  <data name="PageTitle_GameSettings" xml:space="preserve"><value>游戏设置</value></data>
+  <data name="SectionGameInstallPath" xml:space="preserve"><value>游戏安装位置</value></data>
+  <data name="SelectExeFolderPlaceholder" xml:space="preserve"><value>请选择 YuanShen.exe 所在文件夹...</value></data>
+  <data name="ApplyBtn" xml:space="preserve"><value>应用</value></data>
+  <data name="ClearGamePathTooltip" xml:space="preserve"><value>清空已设置的游戏目录</value></data>
+  <data name="ConfigureGamePathFirst" xml:space="preserve"><value>请先配置游戏路径</value></data>
+  <data name="ClientStatusTitle" xml:space="preserve"><value>客户端状态</value></data>
+  <data name="CurrentVersionLabel" xml:space="preserve"><value>当前版本</value></data>
+  <data name="ServerLabel" xml:space="preserve"><value>服务器</value></data>
+  <data name="DiskUsageLabel" xml:space="preserve"><value>占用空间</value></data>
+  <data name="LatestVersionLabel" xml:space="preserve"><value>最新版本</value></data>
+  <data name="CheckingEllipsis" xml:space="preserve"><value>检查中...</value></data>
+  <data name="PreDownloadLabel" xml:space="preserve"><value>预下载资源</value></data>
+  <data name="LatestRedeemCodesTitle" xml:space="preserve"><value>最新兑换码</value></data>
+  <data name="CopyBtn" xml:space="preserve"><value>复制</value></data>
+  <data name="NoCodesAvailable" xml:space="preserve"><value>暂无可用兑换码</value></data>
+  <data name="AccountSwitchTitle" xml:space="preserve"><value>账号切换</value></data>
+  <data name="ReadFromLocalTooltip" xml:space="preserve"><value>从本地读取</value></data>
+  <data name="RefreshListTooltip" xml:space="preserve"><value>刷新列表</value></data>
+  <data name="DoubleClickToEditTooltip" xml:space="preserve"><value>双击可编辑备注</value></data>
+  <data name="SwitchBtn" xml:space="preserve"><value>切换</value></data>
+  <data name="ResourceMgmtTitle" xml:space="preserve"><value>资源管理</value></data>
+  <data name="DownloadOrVerifyFiles" xml:space="preserve"><value>下载或验证文件</value></data>
+  <data name="SwitchServerTitle" xml:space="preserve"><value>切换服务器</value></data>
+  <data name="ServerSwitchCaption" xml:space="preserve"><value>官服 / B服 / 国际服互转</value></data>
+  <data name="MapToolsTitle" xml:space="preserve"><value>地图工具</value></data>
+  <data name="ViewTeyvatMap" xml:space="preserve"><value>查看提瓦特地图</value></data>
+  <data name="OfficialAnnouncementsTitle" xml:space="preserve"><value>官方公告</value></data>
+  <data name="EventsAndUpdatesCaption" xml:space="preserve"><value>活动与更新资讯</value></data>
+  <data name="VerifyGameTitle" xml:space="preserve"><value>校验游戏</value></data>
+  <data name="VerifyAndRepairCaption" xml:space="preserve"><value>校验并修复游戏文件</value></data>
+  <data name="CreateShortcutTitle" xml:space="preserve"><value>创建快捷方式启动</value></data>
+  <data name="CreateShortcutCaption" xml:space="preserve"><value>在桌面生成一键注入快捷启动方式</value></data>
+  <data name="FpsMonitorTitle" xml:space="preserve"><value>游戏内帧数 (FPS) 监控</value></data>
+  <data name="FpsMonitorCaption" xml:space="preserve"><value>开启后将在游戏运行时于屏幕左上角显示实时帧数（需要管理员权限）</value></data>
+  <data name="Err_GamePathNotFound" xml:space="preserve"><value>未找到游戏路径，请先在设置中指定游戏位置</value></data>
+  <data name="Title_VerifyGameIntegrity" xml:space="preserve"><value>校验游戏完整性</value></data>
+  <data name="Err_GamePathNotSet" xml:space="preserve"><value>未设置游戏路径。</value></data>
+  <data name="Err_ExeNotFoundInFolder_Format" xml:space="preserve"><value>在文件夹中找不到游戏主程序：
+{0}</value></data>
+  <data name="Placeholder_DefaultUseCurrentPreset" xml:space="preserve"><value>默认使用当前应用内的预设</value></data>
+  <data name="None_Value" xml:space="preserve"><value>无</value></data>
+  <data name="Msg_ChooseShortcutAction" xml:space="preserve"><value>请选择您想要执行的操作：
+
+你需要创建桌面快捷方式：直接在桌面生成图标（将以管理员权限运行）？
+还是复制启动命令：获取完整命令行，可用于 Steam 或 脚本？</value></data>
+  <data name="Msg_ImportedLaunchParams_Format" xml:space="preserve"><value>已导入启动参数：{0}</value></data>
+  <data name="Label_SpecifyInjectionPreset" xml:space="preserve"><value>指定注入配置（预设）：</value></data>
+  <data name="Title_ChooseAction" xml:space="preserve"><value>选择操作</value></data>
+  <data name="Btn_CreateDesktopShortcut" xml:space="preserve"><value>创建桌面快捷方式</value></data>
+  <data name="Btn_CopyLaunchCommand" xml:space="preserve"><value>复制启动命令</value></data>
+  <data name="FileName_ShortcutName" xml:space="preserve"><value>快捷启动原神.lnk</value></data>
+  <data name="Desc_ShortcutDescription" xml:space="preserve"><value>通过 FufuLauncher 注入启动原神</value></data>
+  <data name="Title_ShortcutCreated" xml:space="preserve"><value>快捷方式已创建</value></data>
+  <data name="Msg_ShortcutCreated" xml:space="preserve"><value>已创建桌面快捷方式，默认将以管理员权限运行。请检查你的电脑桌面</value></data>
+  <data name="Title_LaunchCommand" xml:space="preserve"><value>启动命令</value></data>
+  <data name="Msg_LaunchCommandInstructions" xml:space="preserve"><value>以下是启动命令，您可以直接在 CMD、PowerShell 或 Steam 的非 Steam 游戏目标中使用：</value></data>
+  <data name="Btn_CopyAndClose" xml:space="preserve"><value>复制并关闭</value></data>
+  <data name="CloseBtn" xml:space="preserve"><value>关闭</value></data>
+  <data name="Err_OperationFailed_Format" xml:space="preserve"><value>操作失败: {0}</value></data>
+  <data name="Err_FpsMonitorNeedsAdmin" xml:space="preserve"><value>开启帧数监控失败：该功能需要以管理员身份运行启动器。</value></data>
+  <data name="Msg_NoNewRedeemCodes" xml:space="preserve"><value>当前没有新的兑换码</value></data>
+  <data name="Err_FetchFailedCheckNetwork" xml:space="preserve"><value>获取失败，请检查网络</value></data>
+  <data name="Btn_Copied" xml:space="preserve"><value>已复制</value></data>
+  <data name="Title_PathError" xml:space="preserve"><value>路径错误</value></data>
+  <data name="Err_CannotCreateGameDir_Format" xml:space="preserve"><value>无法创建游戏目录: {0}
+错误: {1}</value></data>
+  <data name="Err_ConfigIniNotFound_Format" xml:space="preserve"><value>无法找到 config.ini 配置文件。
+
+尝试寻找的路径是：
+{0}
+
+请检查您的游戏路径设置是否正确指向了游戏安装目录</value></data>
+  <data name="Msg_GlobalClientNoSwitchToBili" xml:space="preserve"><value>当前为国际服客户端，不允许切换到B服，请通过服务器转换来切换到中国服务器！</value></data>
+  <data name="Btn_SwitchToOfficialServer" xml:space="preserve"><value>切换到 官方服务器</value></data>
+  <data name="Label_ChooseTargetServer" xml:space="preserve"><value>请选择你要切换到的服务器：</value></data>
+  <data name="Btn_SwitchToBiliServer" xml:space="preserve"><value>切换到B服</value></data>
+  <data name="Btn_ConvertBetweenGlobalAndCN" xml:space="preserve"><value>国际服和国服互相转换</value></data>
+  <data name="Title_Convert" xml:space="preserve"><value>转换</value></data>
+  <data name="ServerType_Unknown" xml:space="preserve"><value>未知服务器</value></data>
+  <data name="ServerType_Global" xml:space="preserve"><value>国际服务器</value></data>
+  <data name="ServerType_Bilibili" xml:space="preserve"><value>Bilibili 服</value></data>
+  <data name="ServerType_Official" xml:space="preserve"><value>官方服务器</value></data>
+  <data name="ServerType_CustomOther_Format" xml:space="preserve"><value>自定义/其他 (Channel: {0})</value></data>
+  <data name="Err_ReadConfigFailed" xml:space="preserve"><value>读取配置文件失败</value></data>
+  <data name="Title_TeyvatMap" xml:space="preserve"><value>提瓦特大地图</value></data>
+  <data name="Title_GlobalClient" xml:space="preserve"><value>国际服客户端</value></data>
+  <data name="Msg_GlobalClientInjectionWarning" xml:space="preserve"><value>注意：本启动器的注入功能主要是针对国服设计的。在国际服客户端上，此功能可能无法生效或导致未知的错误。
+
+是否继续使用此路径？</value></data>
+  <data name="Btn_ContinueUsing" xml:space="preserve"><value>继续使用</value></data>
+  <data name="Btn_DiscardAndClear" xml:space="preserve"><value>放弃并清除</value></data>
+  <data name="Title_InvalidGamePath" xml:space="preserve"><value>无效的游戏路径</value></data>
+  <data name="Err_ExeNotFoundAtPath_Format" xml:space="preserve"><value>在该路径下未找到游戏主程序 ({0})。
+
+请确认您选择的是包含游戏可执行文件的安装目录，或前往设置中配置自定义名称。</value></data>
+  <data name="Title_InvalidPath" xml:space="preserve"><value>无效路径</value></data>
+  <data name="Msg_PathDoesNotExist" xml:space="preserve"><value>输入的路径不存在，请检查路径是否正确。</value></data>
+  <data name="OkBtn" xml:space="preserve"><value>确定</value></data>
+  <data name="Err_PathProcessingFailed_Format" xml:space="preserve"><value>路径处理失败: {0}</value></data>
+  <data name="Title_AutoFoundGamePath" xml:space="preserve"><value>自动找到游戏路径</value></data>
+  <data name="Msg_DetectedPossiblePath_Format" xml:space="preserve"><value>检测到可能的安装路径：
+
+{0}
+
+是否应用此路径？</value></data>
+  <data name="Btn_SelectManually" xml:space="preserve"><value>手动选择</value></data>
+  <data name="ErrorTitle" xml:space="preserve"><value>错误</value></data>
+  <data name="Err_CannotOpenFilePicker" xml:space="preserve"><value>无法打开文件选择器</value></data>
+  <data name="Msg_VersionInfoNotFound" xml:space="preserve"><value>未找到版本信息</value></data>
+  <data name="UnknownGeneric" xml:space="preserve"><value>未知</value></data>
+  <data name="FetchFailedShort" xml:space="preserve"><value>获取失败</value></data>
+  <data name="Msg_HasVersion_Format" xml:space="preserve"><value>有 (版本 {0})</value></data>
+  <data name="NotAvailableGeneric" xml:space="preserve"><value>暂无</value></data>
+  <data name="ServerType_MainlandChina" xml:space="preserve"><value>中国大陆服务器</value></data>
+  <data name="Msg_CannotCalculate" xml:space="preserve"><value>无法计算</value></data>
+  <data name="Err_CannotAccessRegistry" xml:space="preserve"><value>无法访问注册表</value></data>
+  <data name="Err_NoLoggedInAccount" xml:space="preserve"><value>当前没有登录的账号信息（注册表数据为空）</value></data>
+  <data name="Err_AccountAlreadySaved" xml:space="preserve"><value>该账号已经保存过了，无需重复保存。</value></data>
+  <data name="Placeholder_EnterAccountName" xml:space="preserve"><value>请输入账号名称 (例如: 大号 / 小号)</value></data>
+  <data name="Title_SaveNewAccount" xml:space="preserve"><value>保存新账号</value></data>
+  <data name="SaveBtn" xml:space="preserve"><value>保存</value></data>
+  <data name="Prefix_Account_Format" xml:space="preserve"><value>账号_{0}</value></data>
+  <data name="Err_SaveFailed_Format" xml:space="preserve"><value>保存失败: {0}</value></data>
+  <data name="Title_SwitchSuccess" xml:space="preserve"><value>切换成功</value></data>
+  <data name="Msg_SwitchedToAccount_Format" xml:space="preserve"><value>已切换到: {0}
+
+必须重启游戏才能生效！</value></data>
+  <data name="Btn_GotIt" xml:space="preserve"><value>我知道了</value></data>
+  <data name="Err_SwitchFailed_Format" xml:space="preserve"><value>切换失败: {0}</value></data>
+  <data name="Title_ConfirmDelete" xml:space="preserve"><value>确认删除</value></data>
+  <data name="Msg_DeleteAccountConfirm_Format" xml:space="preserve"><value>删除账号 &apos;{0}&apos; ？</value></data>
+  <data name="Err_DeleteFailed_Format" xml:space="preserve"><value>删除失败: {0}</value></data>
+  <data name="Title_OperationFailed" xml:space="preserve"><value>操作失败</value></data>
 </root>
