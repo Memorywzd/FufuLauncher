@@ -63,6 +63,12 @@ public partial class App : Application
 
     public static WindowEx MainWindow { get; private set; }
 
+    /// <summary>
+    /// Tracks the language selected on the first-run language selection page,
+    /// so the AgreementPage can show the appropriate agreement text.
+    /// </summary>
+    public static ViewModels.AppLanguage? FirstRunSelectedLanguage { get; set; }
+
     public static UIElement? AppTitlebar
     {
         get; set;
@@ -148,6 +154,8 @@ public partial class App : Application
                     services.AddTransient<OtherPage>();
                     services.AddSingleton<IAutoClickerService, AutoClickerService>();
                     services.AddSingleton<IScreenshotService, ScreenshotService>();
+                    services.AddTransient<LanguageSelectionViewModel>();
+                    services.AddTransient<LanguageSelectionPage>();
                     services.AddTransient<AgreementViewModel>();
                     services.AddTransient<AgreementPage>();
                     services.AddSingleton<IUpdateService, UpdateService>();
@@ -353,6 +361,10 @@ public partial class App : Application
             }
             else
             {
+                // On first run, apply system default language so the language
+                // selection page shows in the user's OS language.
+                await ApplyLanguageSettingAsync();
+
                 WeakReferenceMessenger.Default.Register<Messages.AgreementAcceptedMessage>(this, (r, m) =>
                 {
                     WeakReferenceMessenger.Default.Unregister<Messages.AgreementAcceptedMessage>(r);

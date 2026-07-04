@@ -6,6 +6,10 @@
   <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
   <data name="LanguageChangedTitle" xml:space="preserve"><value>語言已更改</value></data>
   <data name="LanguageChangedMessage" xml:space="preserve"><value>語言設定已更改。由於技術限制，部分介面需要重新啟動才能完全生效。</value></data>
+  <data name="LanguageSelection_Title" xml:space="preserve"><value>選擇你的語言</value></data>
+  <data name="LanguageSelection_Subtitle" xml:space="preserve"><value>請選擇你偏好的語言以繼續</value></data>
+  <data name="LanguageSelection_Confirm" xml:space="preserve"><value>確認</value></data>
+  <data name="LanguageSelection_SystemDefault" xml:space="preserve"><value>系統默認</value></data>
   <data name="RestartNowBtn" xml:space="preserve"><value>立即重新啟動</value></data>
   <data name="RestartLaterBtn" xml:space="preserve"><value>稍後手動重新啟動</value></data>
   <data name="AppVersionFormat" xml:space="preserve"><value>版本 {0}</value></data>

@@ -104,23 +104,12 @@
                 </Grid.RenderTransform>
 
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
-                <ComboBox Grid.Row="0"
-                          HorizontalAlignment="Right"
-                          Margin="0,0,0,8"
-                          MinWidth="140"
-                          SelectedIndex="{x:Bind ViewModel.SelectedLanguageIndex, Mode=TwoWay}">
-                    <ComboBoxItem Content="简体中文" />
-                    <ComboBoxItem Content="English" />
-                    <ComboBoxItem Content="繁體中文" />
-                </ComboBox>
-
-                <Border Grid.Row="1"
+                <Border Grid.Row="0"
                         Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                         BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                         BorderThickness="1"
@@ -136,13 +125,13 @@
                     </ScrollViewer>
                 </Border>
 
-                <CheckBox Grid.Row="2"
+                <CheckBox Grid.Row="1"
                           IsChecked="{x:Bind ViewModel.IsAgreementChecked, Mode=TwoWay}"
                           IsEnabled="{x:Bind ViewModel.HasReadAgreement, Mode=OneWay}"
                           Margin="0,8,0,0"
                           Content="{helpers:Loc Key=AgreementPage_AgreeCheck}" />
 
-                <TextBlock Grid.Row="3"
+                <TextBlock Grid.Row="2"
                            Text="{helpers:Loc Key=AgreementPage_ScrollHint}"
                            FontSize="11"
                            Foreground="{ThemeResource TextFillColorTertiaryBrush}"

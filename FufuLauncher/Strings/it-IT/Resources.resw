@@ -881,6 +881,10 @@ Dettagli: {0}</value></data>
   <data name="LangZhCN" xml:space="preserve"><value>Cinese Semplificato (Consigliato)</value></data>
   <data name="LangZhTW" xml:space="preserve"><value>Cinese Tradizionale</value></data>
   <data name="LanguageChangedMessage" xml:space="preserve"><value>Lingua modificata. Alcuni elementi dell'interfaccia richiedono un riavvio per essere applicati completamente.</value></data>
+  <data name="LanguageSelection_Title" xml:space="preserve"><value>Scegli la lingua</value></data>
+  <data name="LanguageSelection_Subtitle" xml:space="preserve"><value>Seleziona la tua lingua preferita per continuare</value></data>
+  <data name="LanguageSelection_Confirm" xml:space="preserve"><value>Conferma</value></data>
+  <data name="LanguageSelection_SystemDefault" xml:space="preserve"><value>Predefinito di sistema</value></data>
   <data name="LanguageChangedTitle" xml:space="preserve"><value>Lingua Modificata</value></data>
   <data name="LatestRedeemCodesTitle" xml:space="preserve"><value>Ultimi Codici Riscatto</value></data>
   <data name="LatestVersionLabel" xml:space="preserve"><value>Ultima Versione</value></data>

@@ -6,6 +6,10 @@
   <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
   <data name="LanguageChangedTitle" xml:space="preserve"><value>Bahasa Telah Diubah</value></data>
   <data name="LanguageChangedMessage" xml:space="preserve"><value>Bahasa telah diubah. Beberapa elemen UI memerlukan mulai ulang agar diterapkan sepenuhnya.</value></data>
+  <data name="LanguageSelection_Title" xml:space="preserve"><value>Pilih Bahasa</value></data>
+  <data name="LanguageSelection_Subtitle" xml:space="preserve"><value>Pilih bahasa pilihan Anda untuk melanjutkan</value></data>
+  <data name="LanguageSelection_Confirm" xml:space="preserve"><value>Konfirmasi</value></data>
+  <data name="LanguageSelection_SystemDefault" xml:space="preserve"><value>Default Sistem</value></data>
   <data name="RestartNowBtn" xml:space="preserve"><value>Mulai Ulang Sekarang</value></data>
   <data name="RestartLaterBtn" xml:space="preserve"><value>Mulai Ulang Nanti</value></data>
   <data name="AppVersionFormat" xml:space="preserve"><value>Versi {0}</value></data>

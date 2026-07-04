@@ -1218,10 +1218,10 @@ public sealed partial class MainWindow : WindowEx
             {
                 IsAgreementShowing = true;
                 Width = 850;
-                Height = 560;
+                Height = 640;
                 WindowManagerHelper.CenterWindowOnScreen(AppWindow, Width, Height);
                 AgreementFrame.Visibility = Visibility.Visible;
-                AgreementFrame.Navigate(typeof(Views.AgreementPage));
+                AgreementFrame.Navigate(typeof(Views.LanguageSelectionPage));
                 return;
             }
 
@@ -1232,10 +1232,10 @@ public sealed partial class MainWindow : WindowEx
             {
                 IsAgreementShowing = true;
                 Width = 850;
-                Height = 560;
+                Height = 640;
                 WindowManagerHelper.CenterWindowOnScreen(AppWindow, Width, Height);
                 AgreementFrame.Visibility = Visibility.Visible;
-                AgreementFrame.Navigate(typeof(Views.AgreementPage));
+                AgreementFrame.Navigate(typeof(Views.LanguageSelectionPage));
                 return;
             }
 

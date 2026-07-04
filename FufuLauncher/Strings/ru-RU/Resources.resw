@@ -6,6 +6,10 @@
   <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
   <data name="LanguageChangedTitle" xml:space="preserve"><value>Язык изменён</value></data>
   <data name="LanguageChangedMessage" xml:space="preserve"><value>Язык изменён. Некоторые элементы интерфейса требуют перезапуска для полного применения.</value></data>
+  <data name="LanguageSelection_Title" xml:space="preserve"><value>Выберите язык</value></data>
+  <data name="LanguageSelection_Subtitle" xml:space="preserve"><value>Выберите предпочитаемый язык, чтобы продолжить</value></data>
+  <data name="LanguageSelection_Confirm" xml:space="preserve"><value>Подтвердить</value></data>
+  <data name="LanguageSelection_SystemDefault" xml:space="preserve"><value>По умолчанию</value></data>
   <data name="RestartNowBtn" xml:space="preserve"><value>Перезапустить сейчас</value></data>
   <data name="RestartLaterBtn" xml:space="preserve"><value>Перезапустить позже</value></data>
   <data name="AppVersionFormat" xml:space="preserve"><value>Версия {0}</value></data>

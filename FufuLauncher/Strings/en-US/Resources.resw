@@ -6,6 +6,10 @@
   <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
   <data name="LanguageChangedTitle" xml:space="preserve"><value>Language Changed</value></data>
   <data name="LanguageChangedMessage" xml:space="preserve"><value>Language changed. Some UI elements require a restart to fully apply.</value></data>
+  <data name="LanguageSelection_Title" xml:space="preserve"><value>Choose Your Language</value></data>
+  <data name="LanguageSelection_Subtitle" xml:space="preserve"><value>Select your preferred language to continue</value></data>
+  <data name="LanguageSelection_Confirm" xml:space="preserve"><value>Confirm</value></data>
+  <data name="LanguageSelection_SystemDefault" xml:space="preserve"><value>System Default</value></data>
   <data name="RestartNowBtn" xml:space="preserve"><value>Restart Now</value></data>
   <data name="RestartLaterBtn" xml:space="preserve"><value>Restart Later</value></data>
   <data name="AppVersionFormat" xml:space="preserve"><value>Version {0}</value></data>
