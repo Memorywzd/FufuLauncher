@@ -93,6 +93,7 @@
   <data name="LangKo" xml:space="preserve"><value>Koreanisch</value></data>
   <data name="LangIt" xml:space="preserve"><value>Italienisch</value></data>
   <data name="LangId" xml:space="preserve"><value>Indonesisch</value></data>
+  <data name="LangPt" xml:space="preserve"><value>Portugiesisch (Brasilien)</value></data>
   <data name="LangDefault" xml:space="preserve"><value>System-Standardsprache verwenden</value></data>
   <data name="LaunchWindowModeTitle" xml:space="preserve"><value>Startfenster-Modus</value></data>
   <data name="WindowModeNormal" xml:space="preserve"><value>Normales Fenster</value></data>

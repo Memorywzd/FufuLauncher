@@ -93,6 +93,7 @@
   <data name="LangKo" xml:space="preserve"><value>한국어</value></data>
   <data name="LangIt" xml:space="preserve"><value>Italiano</value></data>
   <data name="LangId" xml:space="preserve"><value>Bahasa Indonesia</value></data>
+  <data name="LangPt" xml:space="preserve"><value>Bahasa Portugis (Brasil)</value></data>
   <data name="LangDefault" xml:space="preserve"><value>Gunakan Bahasa Default Sistem</value></data>
   <data name="LaunchWindowModeTitle" xml:space="preserve"><value>Mode Jendela Peluncuran</value></data>
   <data name="WindowModeNormal" xml:space="preserve"><value>Jendela Normal</value></data>

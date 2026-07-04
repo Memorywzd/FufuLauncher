@@ -616,6 +616,7 @@ public partial class App : Application
                     AppLanguage.ko => "ko-KR",
                     AppLanguage.it => "it-IT",
                     AppLanguage.id => "id-ID",
+                    AppLanguage.pt => "pt-BR",
                     _ => Windows.System.UserProfile.GlobalizationPreferences.Languages.FirstOrDefault() ?? "zh-CN"
                 };
 
@@ -661,6 +662,7 @@ public partial class App : Application
                     AppLanguage.ko => "ko-KR",
                     AppLanguage.it => "it-IT",
                     AppLanguage.id => "id-ID",
+                    AppLanguage.pt => "pt-BR",
                     _ => Windows.System.UserProfile.GlobalizationPreferences.Languages.FirstOrDefault() ?? "zh-CN"
                 };
 
