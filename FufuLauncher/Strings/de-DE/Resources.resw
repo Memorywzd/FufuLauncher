@@ -90,6 +90,7 @@
   <data name="LangRu" xml:space="preserve"><value>Русский</value></data>
   <data name="LangJa" xml:space="preserve"><value>日本語</value></data>
   <data name="LangEs" xml:space="preserve"><value>Spanisch</value></data>
+  <data name="LangEsMX" xml:space="preserve"><value>Spanisch (Mexiko)</value></data>
   <data name="LangKo" xml:space="preserve"><value>Koreanisch</value></data>
   <data name="LangIt" xml:space="preserve"><value>Italienisch</value></data>
   <data name="LangId" xml:space="preserve"><value>Indonesisch</value></data>

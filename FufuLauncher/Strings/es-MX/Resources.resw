@@ -62,7 +62,7 @@
   <data name="NotesItemsTitle" xml:space="preserve"><value>Elementos de la tarjeta de notas</value></data>
   <data name="NotesItemsCaption" xml:space="preserve"><value>Elige qué elementos mostrar (máx. 3)</value></data>
   <data name="NotesWarningTitle" xml:space="preserve"><value>Aviso</value></data>
-  <data name="NotesWarningMessage" xml:space="preserve"><value>Los datos de las notas provienen de la API de registros de juego de HoYoLAB. Las actualizaciones frecuentes pueden activar CAPTCHA; en casos graves, el control de riesgos puede bloquear temporalmente el acceso. Reduce la frecuencia de actualización e inténtalo de nuevo más tarde.</value></data>
+  <data name="NotesWarningMessage" xml:space="preserve"><value>Los datos de las notas provienen de la API de registros de juego de HoYoLAB. Las actualizaciones frecuentes pueden activar CAPTCHA; en casos graves, el control de riesgos puede bloquear temporalmente el acceso. Reduce la frecuencia de actualización e intenta de nuevo más tarde.</value></data>
   <data name="HideNotesCard" xml:space="preserve"><value>Ocultar tarjeta de notas</value></data>
   <data name="ShowResin" xml:space="preserve"><value>Mostrar resina</value></data>
   <data name="ShowDailyTasks" xml:space="preserve"><value>Mostrar comisiones diarias</value></data>
@@ -89,7 +89,7 @@
   <data name="LangDe" xml:space="preserve"><value>Deutsch</value></data>
   <data name="LangRu" xml:space="preserve"><value>Русский</value></data>
   <data name="LangJa" xml:space="preserve"><value>日本語</value></data>
-  <data name="LangEs" xml:space="preserve"><value>Español</value></data>
+  <data name="LangEs" xml:space="preserve"><value>Español (España)</value></data>
   <data name="LangEsMX" xml:space="preserve"><value>Español (México)</value></data>
   <data name="LangKo" xml:space="preserve"><value>Coreano</value></data>
   <data name="LangIt" xml:space="preserve"><value>Italiano</value></data>
@@ -114,7 +114,7 @@
   <data name="AdvLaunchArgsCaption" xml:space="preserve"><value>Los parámetros personalizados se añadirán después del comando de inicio</value></data>
   <data name="CustomLaunchArgsLabel" xml:space="preserve"><value>Parámetros de inicio personalizados</value></data>
   <data name="CustomLaunchArgsPlaceholder" xml:space="preserve"><value>ej. -fullscreen -high</value></data>
-  <data name="CustomLaunchArgsInfo" xml:space="preserve"><value>Consejo: Los parámetros se añaden después del comando de inicio. No introduzcas la ruta del juego. Si no responde, prueba a hacer clic en el botón de ajustes unas cuantas veces más.</value></data>
+  <data name="CustomLaunchArgsInfo" xml:space="preserve"><value>Consejo: Los parámetros se añaden después del comando de inicio. No introduzcas la ruta del juego. Si no responde, intenta hacer clic en el botón de ajustes unas cuantas veces más.</value></data>
   <data name="CustomExeNameTitle" xml:space="preserve"><value>Nombre del ejecutable del juego personalizado</value></data>
   <data name="CustomExeNameCaption" xml:space="preserve"><value>Personaliza el nombre del archivo .exe usado para detección e inicio. Déjalo en blanco para usar el predeterminado (YuanShen.exe / GenshinImpact.exe).</value></data>
   <data name="CustomExeNamePlaceholder" xml:space="preserve"><value>ej. YuanShen.exe</value></data>
@@ -206,8 +206,8 @@
   <data name="EnableInGameScreenshot" xml:space="preserve"><value>Activar capturas de pantalla en el juego</value></data>
   <data name="ScreenshotCaption" xml:space="preserve"><value>Captura la ventana del juego mediante atajo de teclado; otras ventanas no se incluirán</value></data>
   <data name="ScreenshotHotkeyTitle" xml:space="preserve"><value>Atajo de captura</value></data>
-  <data name="ScreenshotHotkeyCaption" xml:space="preserve"><value>Haz clic en el botón de abajo y luego pulsa la combinación de teclas deseada (admite Ctrl/Alt/Shift + tecla)</value></data>
-  <data name="RecordingHint" xml:space="preserve"><value>Grabando... pulsa tu combinación de teclas</value></data>
+  <data name="ScreenshotHotkeyCaption" xml:space="preserve"><value>Haz clic en el botón de abajo y luego presiona la combinación de teclas deseada (admite Ctrl/Alt/Shift + tecla)</value></data>
+  <data name="RecordingHint" xml:space="preserve"><value>Grabando... presiona tu combinación de teclas</value></data>
   <data name="ScreenshotSaveLocTitle" xml:space="preserve"><value>Ubicación de guardado de capturas</value></data>
   <data name="ScreenshotSaveLocCaption" xml:space="preserve"><value>Personaliza dónde se guardan las capturas. Por defecto en Documentos/FufuScreenshots</value></data>
   <data name="OpenScreenshotFolder" xml:space="preserve"><value>Abrir carpeta de capturas</value></data>
@@ -235,7 +235,7 @@
   <data name="PluginSettingsLabel" xml:space="preserve"><value>Ajustes de plugin</value></data>
   <data name="EmptyPluginLibrary" xml:space="preserve"><value>No hay plugins instalados</value></data>
   <data name="PluginSafetyDisclaimer" xml:space="preserve"><value>Usa los plugins bajo tu propia responsabilidad. Los desarrolladores no se hacen responsables de ningún daño.</value></data>
-  <data name="DiagnosticsHint" xml:space="preserve"><value>¿Tienes problemas? Prueba a diagnosticar tu sistema primero.</value></data>
+  <data name="DiagnosticsHint" xml:space="preserve"><value>¿Tienes problemas? Intenta diagnosticar tu sistema primero.</value></data>
   <data name="DiagnosticsBtn" xml:space="preserve"><value>Diagnosticar equipo</value></data>
   <data name="ViewHelpTooltip" xml:space="preserve"><value>Ver ayuda</value></data>
   <data name="GifInvalidError" xml:space="preserve"><value>El enlace configurado no tiene un formato GIF válido</value></data>
@@ -275,11 +275,11 @@
   <data name="SaveCurrentSizeBtn" xml:space="preserve"><value>Guardar tamaño actual</value></data>
   <data name="BatchApplyAllBtn" xml:space="preserve"><value>Aplicar a todos los tamaños</value></data>
   <data name="CancelBtn" xml:space="preserve"><value>Cancelar</value></data>
-  <data name="CropHint" xml:space="preserve"><value>* Arrastra dentro del recuadro o usa Ctrl + rueda del ratón para ampliar y ajustar la posición de recorte</value></data>
+  <data name="CropHint" xml:space="preserve"><value>* Arrastra dentro del recuadro o usa Ctrl + rueda del mouse para ampliar y ajustar la posición de recorte</value></data>
   <data name="Plugin_FpsUnlock" xml:space="preserve"><value>Desbloquear límite de fotogramas</value></data>
   <data name="Plugin_TargetFps" xml:space="preserve"><value>Fotogramas objetivo</value></data>
   <data name="Plugin_VSync" xml:space="preserve"><value>Desactivar V-Sync</value></data>
-  <data name="Plugin_TouchScreen" xml:space="preserve"><value>Activar modo de interfaz móvil</value></data>
+  <data name="Plugin_TouchScreen" xml:space="preserve"><value>Activar modo de interfaz táctil</value></data>
   <data name="Plugin_FovUnlock" xml:space="preserve"><value>Activar modificación de FOV</value></data>
   <data name="Plugin_FovValue" xml:space="preserve"><value>Valor de FOV personalizado</value></data>
   <data name="Plugin_DisableDamageText" xml:space="preserve"><value>Desactivar números de daño</value></data>
@@ -322,7 +322,7 @@
   <data name="ServerLabel" xml:space="preserve"><value>Servidor</value></data>
   <data name="DiskUsageLabel" xml:space="preserve"><value>Uso de disco</value></data>
   <data name="LatestVersionLabel" xml:space="preserve"><value>Última versión</value></data>
-  <data name="CheckingEllipsis" xml:space="preserve"><value>Comprobando...</value></data>
+  <data name="CheckingEllipsis" xml:space="preserve"><value>Verificando...</value></data>
   <data name="PreDownloadLabel" xml:space="preserve"><value>Recursos de predescarga</value></data>
   <data name="LatestRedeemCodesTitle" xml:space="preserve"><value>Últimos códigos de canje</value></data>
   <data name="CopyBtn" xml:space="preserve"><value>Copiar</value></data>
@@ -373,7 +373,7 @@
   <data name="Err_OperationFailed_Format" xml:space="preserve"><value>Operación fallida: {0}</value></data>
   <data name="Err_FpsMonitorNeedsAdmin" xml:space="preserve"><value>Error al activar la monitorización de FPS: esta función requiere ejecutar el launcher como administrador.</value></data>
   <data name="Msg_NoNewRedeemCodes" xml:space="preserve"><value>No hay nuevos códigos de canje ahora mismo</value></data>
-  <data name="Err_FetchFailedCheckNetwork" xml:space="preserve"><value>Error al obtener datos. Por favor, comprueba tu conexión de red.</value></data>
+  <data name="Err_FetchFailedCheckNetwork" xml:space="preserve"><value>Error al obtener datos. Por favor, revisa tu conexión de red.</value></data>
   <data name="Btn_Copied" xml:space="preserve"><value>Copiado</value></data>
   <data name="Title_PathError" xml:space="preserve"><value>Error de ruta</value></data>
   <data name="Err_CannotCreateGameDir_Format" xml:space="preserve"><value>Error al crear el directorio del juego: {0}
@@ -408,7 +408,7 @@ Por favor, verifica que la configuración de Ruta del juego apunte correctamente
 
 Por favor, confirma que seleccionaste el directorio de instalación que contiene el ejecutable del juego, o configura un nombre personalizado en Ajustes.</value></data>
   <data name="Title_InvalidPath" xml:space="preserve"><value>Ruta no válida</value></data>
-  <data name="Msg_PathDoesNotExist" xml:space="preserve"><value>La ruta no existe. Por favor, comprueba que es correcta.</value></data>
+  <data name="Msg_PathDoesNotExist" xml:space="preserve"><value>La ruta no existe. Por favor, revisa que es correcta.</value></data>
   <data name="OkBtn" xml:space="preserve"><value>Aceptar</value></data>
   <data name="Err_PathProcessingFailed_Format" xml:space="preserve"><value>Error al procesar la ruta: {0}</value></data>
   <data name="Title_AutoFoundGamePath" xml:space="preserve"><value>Ruta del juego encontrada automáticamente</value></data>
@@ -456,10 +456,10 @@ Por favor, confirma que seleccionaste el directorio de instalación que contiene
   <data name="NavCommunity" xml:space="preserve"><value>Comunidad</value></data>
   <data name="TrayShowWindow" xml:space="preserve"><value>Mostrar ventana principal</value></data>
   <data name="TrayExit" xml:space="preserve"><value>Salir</value></data>
-  <data name="SysStatusChecking" xml:space="preserve"><value>Comprobando estado de la red...</value></data>
+  <data name="SysStatusChecking" xml:space="preserve"><value>Verificando estado de la red...</value></data>
   <data name="NotificationCenter" xml:space="preserve"><value>Notificaciones</value></data>
   <data name="ClearAllBtn" xml:space="preserve"><value>Limpiar todo</value></data>
-  <data name="NetDisconnected" xml:space="preserve"><value>Red desconectada. Por favor, comprueba tu configuración de red.</value></data>
+  <data name="NetDisconnected" xml:space="preserve"><value>Red desconectada. Por favor, revisa tu configuración de red.</value></data>
   <data name="NetProxyWarning" xml:space="preserve"><value>Usando una conexión proxy. Por favor, ten cuidado con tu uso de datos.</value></data>
   <data name="AdminWarningTitle" xml:space="preserve"><value>Aviso</value></data>
   <data name="AdminWarningContent" xml:space="preserve"><value>Ejecutar como administrador puede afectar a algunas funciones, como el selector de archivos.</value></data>
@@ -547,17 +547,17 @@ Por favor, confirma que seleccionaste el directorio de instalación que contiene
   <data name="OtherPage_PathHint" xml:space="preserve"><value>Consejo: Si no ocurre nada después de seleccionar una ruta, pégala manualmente y haz clic en Aplicar.</value></data>
   <data name="OtherPage_AccessibilityTools" xml:space="preserve"><value>Herramientas de accesibilidad</value></data>
   <data name="OtherPage_AutoClicker" xml:space="preserve"><value>Auto Clicker</value></data>
-  <data name="OtherPage_AutoClickerDesc" xml:space="preserve"><value>Mantén presionada una tecla o botón del ratón para simular clics de alta frecuencia</value></data>
+  <data name="OtherPage_AutoClickerDesc" xml:space="preserve"><value>Mantén presionada una tecla o botón del mouse para simular clics de alta frecuencia</value></data>
   <data name="OtherPage_ClickMode" xml:space="preserve"><value>Modo de clic</value></data>
-  <data name="OtherPage_MouseLeft" xml:space="preserve"><value>Botón izquierdo del ratón</value></data>
-  <data name="OtherPage_MouseRight" xml:space="preserve"><value>Botón derecho del ratón</value></data>
-  <data name="OtherPage_MouseModeHint" xml:space="preserve"><value>Solo se puede activar un modo de ratón a la vez. Establece un atajo de parada antes de activar un modo de ratón.</value></data>
+  <data name="OtherPage_MouseLeft" xml:space="preserve"><value>Botón izquierdo del mouse</value></data>
+  <data name="OtherPage_MouseRight" xml:space="preserve"><value>Botón derecho del mouse</value></data>
+  <data name="OtherPage_MouseModeHint" xml:space="preserve"><value>Solo se puede activar un modo de mouse a la vez. Establece un atajo de parada antes de activar un modo de mouse.</value></data>
   <data name="OtherPage_TriggerKeyHeader" xml:space="preserve"><value>Tecla de activación (mantén presionada esta tecla)</value></data>
   <data name="OtherPage_RecordClick" xml:space="preserve"><value>Haz clic para grabar</value></data>
   <data name="OtherPage_StopKeyHeader" xml:space="preserve"><value>Atajo de parada (obligatorio)</value></data>
   <data name="OtherPage_ClickKeyHeader" xml:space="preserve"><value>Tecla de clic de teclado (solo modo teclado)</value></data>
   <data name="OtherPage_UsageInstructions" xml:space="preserve"><value>Instrucciones de uso</value></data>
-  <data name="OtherPage_UsageHint" xml:space="preserve"><value>Haz clic en el icono para comenzar a grabar, luego presiona cualquier tecla. Los modos de botón izquierdo y derecho del ratón son mutuamente excluyentes. Primero debes establecer un atajo de parada.</value></data>
+  <data name="OtherPage_UsageHint" xml:space="preserve"><value>Haz clic en el icono para comenzar a grabar, luego presiona cualquier tecla. Los modos de botón izquierdo y derecho del mouse son mutuamente excluyentes. Primero debes establecer un atajo de parada.</value></data>
   <data name="OtherPage_UtilityTools" xml:space="preserve"><value>Herramientas de utilidad</value></data>
   <data name="OtherPage_Browser" xml:space="preserve"><value>Navegador</value></data>
   <data name="OtherPage_BrowserDesc" xml:space="preserve"><value>Abre un navegador flotante independiente con soporte de siempre visible</value></data>
@@ -1221,14 +1221,14 @@ Archivos buscados:
   <data name="RedeemCode_ExpiringTitle" xml:space="preserve"><value>Código de canje a punto de caducar</value></data>
   <data name="RedeemCode_ExpiringContent" xml:space="preserve"><value>El evento {0} tiene códigos disponibles:\n{1}\nPor favor, úsalos en el juego lo antes posible. ¡Caducan hoy!</value></data>
   <data name="HashCheck_Failed" xml:space="preserve"><value>Verificación fallida</value></data>
-  <data name="HashCheck_FileNotFound" xml:space="preserve"><value>Archivo de verificación no encontrado. Por favor, comprueba la integridad del cliente.</value></data>
+  <data name="HashCheck_FileNotFound" xml:space="preserve"><value>Archivo de verificación no encontrado. Por favor, revisa la integridad del cliente.</value></data>
   <data name="HashCheck_FormatError" xml:space="preserve"><value>Error de formato</value></data>
-  <data name="HashCheck_ComponentModified" xml:space="preserve"><value>Componente modificado o faltante, por favor comprueba:\nCaptureApp\n</value></data>
+  <data name="HashCheck_ComponentModified" xml:space="preserve"><value>Componente modificado o faltante, por favor revisa:\nCaptureApp\n</value></data>
   <data name="HashCheck_NotPassed" xml:space="preserve"><value>Verificación no superada</value></data>
   <data name="HashCheck_Exception" xml:space="preserve"><value>Excepción de verificación</value></data>
   <data name="HashCheck_ExceptionMsg" xml:space="preserve"><value>Error durante la verificación de hash: {0}</value></data>
   <data name="Settings_DirCreateFailed" xml:space="preserve"><value>Error al crear directorio</value></data>
-  <data name="Settings_DirCreateFailedMsg" xml:space="preserve"><value>No se puede crear el directorio de datos de la aplicación. Por favor, comprueba los permisos: {0}</value></data>
+  <data name="Settings_DirCreateFailedMsg" xml:space="preserve"><value>No se puede crear el directorio de datos de la aplicación. Por favor, revisa los permisos: {0}</value></data>
   <data name="Settings_DbInitFailed" xml:space="preserve"><value>Error al inicializar base de datos</value></data>
   <data name="Settings_DbInitFailedMsg" xml:space="preserve"><value>No se puede crear o inicializar la base de datos de configuración: {0}</value></data>
   <data name="Settings_ConfigDeleteFailed" xml:space="preserve"><value>Error al eliminar configuración</value></data>
@@ -1252,7 +1252,7 @@ Archivos buscados:
   <data name="Diagnostics_NotInstalled" xml:space="preserve"><value>No instalado o desinstalado</value></data>
   <data name="Diagnostics_CannotDetect" xml:space="preserve"><value>No se puede detectar</value></data>
   <data name="Diagnostics_PartialError" xml:space="preserve"><value>Ocurrió un error durante el diagnóstico. Parte de la información puede ser inexacta.</value></data>
-  <data name="Diagnostics_SuggestNoNetwork" xml:space="preserve"><value>Red no conectada. Por favor, comprueba tu configuración de red.</value></data>
+  <data name="Diagnostics_SuggestNoNetwork" xml:space="preserve"><value>Red no conectada. Por favor, revisa tu configuración de red.</value></data>
   <data name="Diagnostics_SuggestDomesticSlow" xml:space="preserve"><value>Actualmente en red nacional. El acceso al servidor puede ser lento.</value></data>
   <data name="Diagnostics_SuggestSecurityCenter" xml:space="preserve"><value>El Centro de Seguridad de Windows está activado, lo que puede causar fallos en la inyección de plugins. Se recomienda desactivarlo.</value></data>
   <data name="Diagnostics_SuggestLowMemory" xml:space="preserve"><value>La memoria física actual es de {0}GB, por debajo del requisito mínimo de 12GB.</value></data>
@@ -1335,7 +1335,7 @@ Archivos buscados:
   <data name="Hoyolab_EuroServer" xml:space="preserve"><value>Servidor de Europa</value></data>
   <data name="Hoyolab_CHTServer" xml:space="preserve"><value>Servidor TW/HK/MO</value></data>
   <data name="FilePicker_MainWindowNull" xml:space="preserve"><value>La ventana principal no existe, no se puede abrir el selector de archivos</value></data>
-  <data name="FilePicker_InvalidWindowHandle" xml:space="preserve"><value>El identificador de ventana no es válido. Por favor, ejecuta en modo usuario normal o inténtalo de nuevo.</value></data>
+  <data name="FilePicker_InvalidWindowHandle" xml:space="preserve"><value>El identificador de ventana no es válido. Por favor, ejecuta en modo usuario normal o intenta de nuevo.</value></data>
   <data name="Crash_Title" xml:space="preserve"><value>FufuLauncher encontró un error</value></data>
   <data name="Crash_Message" xml:space="preserve"><value>La aplicación encontró un error
 
@@ -1347,7 +1347,7 @@ Traza de pila:
   <data name="Program_InjectionFailed" xml:space="preserve"><value>Falló el inicio de inyección: {0} (código: {1})</value></data>
   <data name="Program_InjectionException" xml:space="preserve"><value>Excepción de proceso de inyección: {0}</value></data>
   <data name="Program_ErrorTitle" xml:space="preserve"><value>Error de FufuLauncher</value></data>
-  <data name="IniFile_AccessDenied" xml:space="preserve"><value>Acceso denegado. Por favor, comprueba si el archivo o carpeta está configurado como &quot;solo lectura&quot;, o prueba a ejecutar el launcher como administrador.</value></data>
+  <data name="IniFile_AccessDenied" xml:space="preserve"><value>Acceso denegado. Por favor, revisa si el archivo o carpeta está configurado como &quot;solo lectura&quot;, o intenta ejecutar el launcher como administrador.</value></data>
   <data name="IniFile_WriteFailed" xml:space="preserve"><value>Escritura fallida: el archivo puede estar en uso por el juego u otro programa.
 Detalles: {0}</value></data>
   <data name="IniFile_WriteError" xml:space="preserve"><value>Ocurrió un error al escribir la configuración.

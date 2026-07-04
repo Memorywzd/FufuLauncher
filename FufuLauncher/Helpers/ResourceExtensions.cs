@@ -51,6 +51,7 @@ public static class ResourceExtensions
                 LoadResw(Path.Combine(exeDir, "Strings", "it-IT", "Resources.resw"), "it-IT");
                 LoadResw(Path.Combine(exeDir, "Strings", "id-ID", "Resources.resw"), "id-ID");
                 LoadResw(Path.Combine(exeDir, "Strings", "pt-BR", "Resources.resw"), "pt-BR");
+                LoadResw(Path.Combine(exeDir, "Strings", "es-MX", "Resources.resw"), "es-MX");
 
                 Debug.WriteLine($"[ResourceExt] Loaded {_resources.Count} language(s): {string.Join(", ", _resources.Keys)}");
             }

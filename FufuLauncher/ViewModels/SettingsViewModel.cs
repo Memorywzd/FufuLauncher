@@ -47,7 +47,8 @@ namespace FufuLauncher.ViewModels
         ko = 9,
         it = 10,
         id = 11,
-        pt = 12
+        pt = 12,
+        esMX = 13
     }
 
     public enum WindowModeType
