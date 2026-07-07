@@ -689,8 +689,36 @@ private void OnOpenGachaAnalysisClick(object sender, RoutedEventArgs e)
         base.OnNavigatedTo(e);
         if (_isInitialized)
         {
+            RefreshCardAcrylicBrushes();
             _ = ViewModel.OnPageReturnedAsync();
         }
+    }
+
+    private void RefreshCardAcrylicBrushes()
+    {
+        if (InfoCardBlurBg == null || CheckinCardBlurBg == null || DailyNoteCardBlurBg == null) return;
+        
+        if (Resources.ThemeDictionaries != null)
+        {
+            var themeKey = ActualTheme == ElementTheme.Light ? "Light" : "Default";
+            if (Resources.ThemeDictionaries.TryGetValue(themeKey, out var dict) &&
+                dict is ResourceDictionary rd &&
+                rd.TryGetValue("IosGlassBrush", out var brush) &&
+                brush is AcrylicBrush acrylicBrush)
+            {
+                var newBrush = new AcrylicBrush
+                {
+                    TintColor = acrylicBrush.TintColor,
+                    TintOpacity = acrylicBrush.TintOpacity,
+                    FallbackColor = acrylicBrush.FallbackColor
+                };
+                InfoCardBlurBg.Background = newBrush;
+                CheckinCardBlurBg.Background = newBrush;
+                DailyNoteCardBlurBg.Background = newBrush;
+            }
+        }
+
+        UpdateCardBackgrounds();
     }
 
     private async void Page_Loaded(object sender, RoutedEventArgs e)

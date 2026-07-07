@@ -9,6 +9,7 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:viewModels="using:FufuLauncher.ViewModels"
     x:Name="MainPageRoot"
+    NavigationCacheMode="Required"
     Background="Transparent"
     Loaded="Page_Loaded"
     mc:Ignorable="d">
