@@ -1387,6 +1387,7 @@
   <data name="Hoyolab_USAServer" xml:space="preserve"><value>美服</value></data>
   <data name="Hoyolab_EuroServer" xml:space="preserve"><value>欧服</value></data>
   <data name="Hoyolab_CHTServer" xml:space="preserve"><value>台港澳服</value></data>
+<data name="DisableFpsAutoDisableLabel" xml:space="preserve"><value>关闭启动时自动禁用FPS</value></data>
   <data name="FilePicker_MainWindowNull" xml:space="preserve"><value>主窗口不存在，无法打开文件选择器</value></data>
   <data name="FilePicker_InvalidWindowHandle" xml:space="preserve"><value>窗口句柄无效，请以普通用户模式运行或重试</value></data>
   <data name="Crash_Title" xml:space="preserve"><value>芙芙启动器发生了异常</value></data>

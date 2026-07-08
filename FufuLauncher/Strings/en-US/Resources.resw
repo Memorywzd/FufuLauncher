@@ -544,6 +544,7 @@ Go to the Microsoft website to download and install it?</value></data>
   <data name="Home_VideoTooltip" xml:space="preserve"><value>Video Library: Browse character demos and in-game cutscenes</value></data>
   <data name="Home_BBSTooltip" xml:space="preserve"><value>Battle Chronicle: View detailed battle records such as Spiral Abyss and Imaginarium Theater</value></data>
   <data name="OtherPage_Title" xml:space="preserve"><value>Other Settings</value></data>
+  <data name="DisableFpsAutoDisableLabel" xml:space="preserve"><value>Turn off auto-disable FPS plugin on startup</value></data>
   <data name="OtherPage_ExternalPrograms" xml:space="preserve"><value>External Programs</value></data>
   <data name="OtherPage_AdditionalProgramLaunch" xml:space="preserve"><value>Additional Program Launch</value></data>
   <data name="OtherPage_AutostartExeDesc" xml:space="preserve"><value>Launch the specified .exe program alongside the game automatically</value></data>
