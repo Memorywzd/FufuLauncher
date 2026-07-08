@@ -76,6 +76,36 @@ namespace FufuLauncher.Services
                 
                 _settings = await LoadSettingsFromDbAsync();
                 
+                try
+                {
+                    bool isAutoDisableFpsOff = false;
+                    if (_settings.TryGetValue("IsAutoDisableFpsOff", out var offStr))
+                    {
+                        isAutoDisableFpsOff = offStr.Contains("true", StringComparison.OrdinalIgnoreCase);
+                    }
+
+                    if (!isAutoDisableFpsOff)
+                    {
+                        string fpsDir = Path.Combine(AppContext.BaseDirectory, "Plugins", "FPS");
+                        string fpsEnabledPath = Path.Combine(fpsDir, "FPS.dll");
+                        string fpsDisabledPath = Path.Combine(fpsDir, "FPS.disabled");
+        
+                        if (File.Exists(fpsEnabledPath))
+                        {
+                            if (File.Exists(fpsDisabledPath))
+                            {
+                                File.Delete(fpsDisabledPath);
+                            }
+                            File.Move(fpsEnabledPath, fpsDisabledPath);
+                            Debug.WriteLine("LocalSettingsService: 已在启动时自动禁用FPS插件");
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"LocalSettingsService: 自动禁用FPS插件失败 - {ex.Message}");
+                }
+                
                 _isInitialized = true;
                 Debug.WriteLine($"LocalSettingsService: 初始化完成，加载 {_settings.Count} 项");
             }
