@@ -467,22 +467,24 @@ public sealed partial class LoginQrWindow : Window
         _currentSession?.Cancel();
         UpdateStatus("", false, true);
 
-        if (_loginTcs == null)
+        var tcs = _loginTcs;
+        if (tcs == null)
             return;
 
-        _loginTcs.TrySetResult((cookies, serverType));
+        tcs.TrySetResult((cookies, serverType));
         DispatcherQueue.TryEnqueue(() => Close());
     }
 
     private void OnLoginFailed(Exception? ex = null)
     {
-        if (_loginTcs == null)
+        var tcs = _loginTcs;
+        if (tcs == null)
             return;
 
         if (ex != null)
-            _loginTcs.TrySetException(ex);
+            tcs.TrySetException(ex);
         else
-            _loginTcs.TrySetCanceled();
+            tcs.TrySetCanceled();
 
         DispatcherQueue.TryEnqueue(() => Close());
     }
@@ -1116,38 +1118,63 @@ public sealed partial class LoginQrWindow : Window
 
     private async void CoreWebView2_WebResourceResponseReceived(object sender, CoreWebView2WebResourceResponseReceivedEventArgs e)
     {
-        string uri = e.Request.Uri;
-
-        if (uri.Contains("/ma-cn-passport/web/loginByPassword") ||
-            uri.Contains("/ma-cn-passport/web/loginByMobileCaptcha") ||
-            uri.Contains("/ma-cn-passport/web/queryQRLoginStatus"))
+        try
         {
-            if (e.Response.StatusCode == 200)
+            string uri = e.Request.Uri;
+
+            if (uri.Contains("/ma-cn-passport/web/loginByPassword") ||
+                uri.Contains("/ma-cn-passport/web/loginByMobileCaptcha") ||
+                uri.Contains("/ma-cn-passport/web/queryQRLoginStatus"))
             {
-                var cookies = await PassportWebView.CoreWebView2.CookieManager.GetCookiesAsync("https://mihoyo.com");
-                var cookieDict = new Dictionary<string, string>();
-
-                foreach (var cookie in cookies)
+                if (e.Response.StatusCode == 200)
                 {
-                    cookieDict[cookie.Name] = cookie.Value;
-                }
+                    var cookies = await PassportWebView.CoreWebView2.CookieManager.GetCookiesAsync("https://mihoyo.com");
+                    var cookieDict = new Dictionary<string, string>();
 
-                if (cookieDict.ContainsKey("cookie_token") || cookieDict.ContainsKey("cookie_token_v2"))
-                {
-                    DispatcherQueue.TryEnqueue(() =>
+                    foreach (var cookie in cookies)
+                    {
+                        cookieDict[cookie.Name] = cookie.Value;
+                    }
+                    
+                    bool hasLoginToken = cookieDict.ContainsKey("cookie_token") || cookieDict.ContainsKey("cookie_token_v2");
+                    bool hasAccountId = cookieDict.ContainsKey("ltuid") || cookieDict.ContainsKey("stuid");
+
+                    if (hasLoginToken && hasAccountId)
                     {
                         try
                         {
-                            UpdateStatus("凭证提取成功", true);
-                            OnLoginSuccess(cookieDict, "cn");
+                            PassportWebView.CoreWebView2.WebResourceResponseReceived -= CoreWebView2_WebResourceResponseReceived;
                         }
-                        catch (Exception ex)
+                        catch (ObjectDisposedException) { }
+
+                        bool enqueued = DispatcherQueue.TryEnqueue(() =>
                         {
-                            UpdateStatus($"处理失败: {ex.Message}", false);
+                            try
+                            {
+                                UpdateStatus("凭证提取成功", true);
+                                OnLoginSuccess(cookieDict, "cn");
+                            }
+                            catch (Exception ex)
+                            {
+                                UpdateStatus($"处理失败: {ex.Message}", false);
+                            }
+                        });
+
+                        if (!enqueued)
+                        {
+                            Debug.WriteLine("无法将保存操作调度到 UI 线程，可能窗口已关闭。");
                         }
-                    });
+                    }
+                    else if (hasLoginToken && !hasAccountId)
+                    {
+                        Debug.WriteLine("WebView2 Cookie 缺少账户 ID (ltuid/stuid)，等待后续事件...");
+                    }
                 }
             }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"WebResourceResponseReceived 处理异常: {ex.Message}");
         }
     }
 
@@ -1306,7 +1333,12 @@ public sealed partial class LoginQrWindow : Window
 
         if (!dict.ContainsKey("cookie_token_v2"))
             return;
-
+        
+        if (!dict.ContainsKey("ltuid_v2"))
+        {
+            Debug.WriteLine("HoYoLAB Cookie 缺少 ltuid_v2 字段，等待后续事件...");
+            return;
+        }
 
         try
         {
