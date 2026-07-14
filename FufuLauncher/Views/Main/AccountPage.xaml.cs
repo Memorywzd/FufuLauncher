@@ -65,6 +65,8 @@ public sealed partial class AccountPage : Page
     private void Page_Unloaded(object sender, RoutedEventArgs e)
     {
         ViewModel.Cleanup();
+        this.SizeChanged -= OnPageSizeChanged;
+        ViewModel.PropertyChanged -= OnViewModelPropertyChanged;
     }
 
     private async void Page_Loaded(object sender, RoutedEventArgs e)
@@ -373,9 +375,7 @@ public sealed partial class AccountPage : Page
   
     private void AdjustButtonSpacing()
     {
-        try
-        {
-            if (BtnGrid == null || ProfileCard == null) return;
+        if (BtnGrid == null || ProfileCard == null) return;
 
             const int baseSpacing = 8;
             const int maxSpacing = 28;
@@ -413,8 +413,6 @@ public sealed partial class AccountPage : Page
                 spacing = minSpacing;
 
             BtnGrid.RowSpacing = spacing;
-        }
-        catch { }
     }
     #endregion
 
