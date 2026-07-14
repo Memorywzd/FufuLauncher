@@ -345,6 +345,7 @@ namespace FufuLauncher.ViewModels
         {
             await LoadTextStylesAsync();
             await LoadUserPreferencesAsync();
+            await SwitchToStaticBackgroundOnVersionChangeAsync();
             await LoadCustomBackgroundPathAsync();
             
             var loadBackgroundTask = LoadBackgroundAsync();
@@ -543,6 +544,33 @@ private async Task OpenPresetManagerAsync()
             catch
             {
                 _panelOpacityValue = 0.5;
+            }
+        }
+        
+        private async Task SwitchToStaticBackgroundOnVersionChangeAsync()
+        {
+            try
+            {
+                var currentVersion = System.Reflection.Assembly.GetEntryAssembly()?.GetName().Version?.ToString() ?? "";
+                var lastVersion = await _localSettingsService.ReadSettingAsync("LastAppVersion");
+                string lastVersionStr = lastVersion?.ToString() ?? "";
+
+                if (!string.IsNullOrEmpty(lastVersionStr) && lastVersionStr != currentVersion)
+                {
+                    if (PreferVideoBackground)
+                    {
+                        PreferVideoBackground = false;
+                        await _localSettingsService.SaveSettingAsync("PreferVideoBackground", false);
+                        await _localSettingsService.SaveSettingAsync("UserPreferVideoBackground", false);
+                        Debug.WriteLine($"[MainViewModel] 版本更变 ({lastVersionStr} -> {currentVersion})，已将动态背景切换为静态背景");
+                    }
+                }
+                
+                await _localSettingsService.SaveSettingAsync("LastAppVersion", currentVersion);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[MainViewModel] 版本变更背景切换检查失败: {ex.Message}");
             }
         }
 
