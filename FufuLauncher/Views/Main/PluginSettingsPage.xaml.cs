@@ -510,14 +510,7 @@ private async Task PerformFpsPluginRepairAsync(bool showUI)
 
         if (showUI) WeakReferenceMessenger.Default.Send(new NotificationMessage("Success".GetLocalized(), "Fps_Repair_Success".GetLocalized(), NotificationType.Success));
         
-        try
-        {
-            Frame?.Navigate(typeof(PluginSettingsPage), null, new Microsoft.UI.Xaml.Media.Animation.SuppressNavigationTransitionInfo());
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"刷新插件设置页面失败: {ex.Message}");
-        }
+        ViewModel.RefreshPluginStates();
     }
     catch (Exception ex)
     {
@@ -856,14 +849,7 @@ private async Task PerformFpsPluginRepairAsync(bool showUI)
 
             WeakReferenceMessenger.Default.Send(new NotificationMessage("Success".GetLocalized(), "Plugin_Download_Success".GetLocalized(), NotificationType.Success));
             
-            try
-            {
-                Frame?.Navigate(typeof(PluginSettingsPage), null, new Microsoft.UI.Xaml.Media.Animation.SuppressNavigationTransitionInfo());
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"刷新插件设置页面失败: {ex.Message}");
-            }
+            ViewModel.RefreshPluginStates();
         }
         catch (Exception ex)
         {
